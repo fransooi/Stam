@@ -14,5 +14,10 @@
     "postcss": "^8.5.3",
     "tailwindcss": "^4.0.10",
     "vite": "^6.2.0"
+  },
+  "dependencies": {
+    "@codemirror/lang-javascript": "^6.2.3",
+    "@codemirror/theme-one-dark": "^6.1.2",
+    "codemirror": "^6.0.1"
   }
 }

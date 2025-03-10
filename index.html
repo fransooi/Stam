@@ -4,10 +4,70 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite App</title>
+    <title>PCOS - Programmable Code Operating System</title>
   </head>
   <body>
-    <div id="app"></div>
+    <div id="app">
+      <!-- Menu Bar -->
+      <div id="menu-bar">
+        <div class="menu-items">
+          <div class="menu-item">File</div>
+          <div class="menu-item">Edit</div>
+          <div class="menu-item">View</div>
+          <div class="menu-item">Run</div>
+          <div class="menu-item">Help</div>
+        </div>
+      </div>
+      
+      <!-- Main Content Area -->
+      <div id="main-content">
+        <!-- Information Area (Left Panel) -->
+        <div id="info-area">
+          <!-- Project Window -->
+          <div class="info-section project-section">
+            <div class="section-header">Project Files</div>
+            <div id="project-tree">
+              <!-- Project tree will be populated by JavaScript -->
+            </div>
+          </div>
+          
+          <!-- Resizable separator for Output section -->
+          <div class="resize-separator" id="output-separator"></div>
+          
+          <!-- Running Window -->
+          <div class="info-section output-section">
+            <div class="section-header">Output</div>
+            <div id="output-window">
+              <!-- Output will be populated by JavaScript -->
+            </div>
+          </div>
+        </div>
+        
+        <div id="editor-container">
+          <!-- Icon Area -->
+          <div id="icon-area">
+            <button class="icon-button run-button">Run</button>
+            <button class="icon-button debug-button">Debug</button>
+            <button class="icon-button stop-button">Stop</button>
+            <select id="mode-selector">
+              <option value="modern">Modern Mode</option>
+              <option value="stos">STOS Basic</option>
+              <option value="cb64">Commodore 64</option>
+            </select>
+          </div>
+          
+          <!-- Source Editor Area -->
+          <div id="editor-area">
+            <!-- Editor will be populated by JavaScript -->
+          </div>
+        </div>
+      </div>
+      
+      <!-- Status Line -->
+      <div id="status-line">
+        Ready
+      </div>
+    </div>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
