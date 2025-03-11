@@ -5,6 +5,11 @@ class IconBar {
     this.onModeChangeCallback = onModeChangeCallback;
     this.currentMode = currentMode;
     this.modeSpecificIcons = null;
+    
+    // Store this instance on the container element for external access
+    if (this.container) {
+      this.container._iconBarInstance = this;
+    }
   }
 
   async render() {
@@ -53,6 +58,11 @@ class IconBar {
       this.modeSpecificIcons = new IconsModule.default(iconContainer, this.handleIconAction.bind(this));
       this.modeSpecificIcons.render();
       
+      // Store the icon bar instance on the container element for external access
+      this.container._iconBarInstance = this.modeSpecificIcons;
+      
+      console.log(`Loaded icons for ${this.currentMode} mode`);
+      
     } catch (error) {
       console.error(`Error loading icons for mode ${this.currentMode}:`, error);
       iconContainer.innerHTML = `<div class="error-message">Failed to load icons for ${this.currentMode} mode</div>`;
@@ -66,6 +76,16 @@ class IconBar {
   
   setMode(mode) {
     this.currentMode = mode;
+  }
+  
+  // Method to expose the mode-specific icons instance
+  setEditorInstance(editorInstance) {
+    if (this.modeSpecificIcons && typeof this.modeSpecificIcons.setEditorInstance === 'function') {
+      console.log('Connecting icon bar to editor instance');
+      this.modeSpecificIcons.setEditorInstance(editorInstance);
+    } else {
+      console.warn('Cannot connect icon bar to editor: setEditorInstance method not available');
+    }
   }
 }
 

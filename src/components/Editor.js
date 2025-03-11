@@ -17,6 +17,8 @@ class Editor {
   
   async loadModeSpecificEditor() {
     try {
+      console.log(`Loading editor for ${this.currentMode} mode`);
+      
       // Dynamically import the editor module for the current mode
       let EditorModule;
       
@@ -44,6 +46,21 @@ class Editor {
       this.editorInstance = new EditorModule.default(this.container);
       this.editorInstance.render();
       
+      console.log(`Editor for ${this.currentMode} mode loaded successfully`);
+      
+      // If we're in C64 mode, get the icon bar and connect it to the editor
+      if (this.currentMode === 'c64') {
+        // Find the icon bar instance
+        const iconBar = document.getElementById('icon-area');
+        if (iconBar && iconBar._iconBarInstance) {
+          console.log('Found icon bar instance, connecting to editor');
+          // Connect the icon bar to the editor
+          iconBar._iconBarInstance.setEditorInstance(this.editorInstance);
+        } else {
+          console.warn('Icon bar instance not found, cannot connect to editor');
+        }
+      }
+      
     } catch (error) {
       console.error(`Error loading editor for mode ${this.currentMode}:`, error);
       this.container.innerHTML = `<div class="error-message">Failed to load editor for ${this.currentMode} mode</div>`;
@@ -64,6 +81,7 @@ class Editor {
   }
   
   setMode(mode) {
+    console.log(`Changing editor mode from ${this.currentMode} to ${mode}`);
     this.currentMode = mode;
   }
 }
