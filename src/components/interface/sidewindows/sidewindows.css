@@ -1,0 +1,767 @@
+/* SideWindows CSS - Styling for the SideBar and SideWindow components */
+
+/* SideBar Container */
+.side-bar {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  background-color: #1a1a1a;
+  border-right: 1px solid #333;
+}
+
+/* Windows Container */
+.side-windows-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Window Wrapper */
+.side-window-wrapper {
+  position: relative;
+  width: 100%;
+  min-height: 80px;
+  overflow: hidden;
+}
+
+/* SideWindow Styles */
+.side-window {
+  display: flex;
+  flex-direction: column;
+  background-color: #1a1a1a;
+  border: none;
+  overflow: hidden;
+  margin: 0;
+  position: relative; /* Enable positioning context */
+  height: 100%; /* Fill the wrapper */
+  width: 100%;
+}
+
+/* Bottom window styling */
+.bottom-side-window {
+  border-bottom: none;
+}
+
+.fixed-bottom {
+  margin-top: auto; /* Push to the bottom */
+  min-height: 180px;
+  max-height: 180px;
+  border-top: 1px solid #333;
+}
+
+.output-content {
+  padding: 0;
+}
+
+.side-window-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px;
+  background-color: #2a2a2a;
+  border-bottom: 1px solid #333;
+  cursor: move;
+  user-select: none;
+  font-weight: bold;
+  font-size: 14px;
+  color: #FFFFFF;
+}
+
+.side-window-title {
+  font-weight: bold;
+  font-size: 14px;
+  color: #FFFFFF;
+}
+
+.side-window-controls {
+  display: flex;
+  gap: 4px;
+}
+
+.side-window-toggle,
+.side-window-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  color: #FFFFFF;
+}
+
+.side-window-toggle:hover,
+.side-window-close:hover {
+  background-color: #3b82f6;
+}
+
+.side-window-edit {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  color: #FFFFFF;
+  margin-right: 4px;
+}
+
+.side-window-edit:hover {
+  background-color: #3b82f6;
+}
+
+.side-window-content {
+  flex: 1;
+  overflow: auto;
+  padding: 8px;
+  background-color: #1a1a1a;
+  color: #FFFFFF;
+}
+
+/* Resize Separator */
+.resize-separator {
+  height: 6px;
+  background-color: #333;
+  cursor: ns-resize;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  margin: 0;
+}
+
+.resize-separator:hover, 
+.resize-separator.active {
+  background-color: #3b82f6;
+}
+
+.resize-separator::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 30px;
+  height: 2px;
+  background-color: #666;
+}
+
+.resize-separator:hover::after, 
+.resize-separator.active::after {
+  background-color: #fff;
+}
+
+/* Project Tree Styles */
+.project-tree {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #FFFFFF;
+}
+
+.tree-item {
+  margin: 2px 0;
+}
+
+.tree-item-content {
+  padding: 2px 4px;
+  cursor: pointer;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  color: #FFFFFF;
+}
+
+.tree-item-content:hover {
+  background-color: #334155;
+}
+
+.tree-item-content.folder::before {
+  content: "📁";
+  margin-right: 4px;
+}
+
+.tree-item-content.file::before {
+  content: "📄";
+  margin-right: 4px;
+}
+
+.tree-item.expanded > .tree-item-content.folder::before {
+  content: "📂";
+}
+
+.tree-children {
+  margin-left: 16px;
+  display: none;
+}
+
+.tree-item.expanded > .tree-children {
+  display: block;
+}
+
+/* Output Window Styles */
+.output-window {
+  font-family: monospace;
+  white-space: pre-wrap;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #FFFFFF;
+  height: 100%;
+  overflow: auto;
+  background-color: #000000;
+}
+
+/* TV Window Styles */
+.tv-iframe-container,
+.clip-iframe-container {
+  width: 100%;
+  height: calc(100% - 30px); /* Reduce height to make room for controls */
+  overflow: hidden;
+  position: relative;
+}
+
+.tv-iframe,
+.clip-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+/* Clip Selector Styles */
+.clip-selector-container {
+  position: relative;
+  margin-right: 5px;
+}
+
+.clip-selector-button {
+  background-color: #333;
+  color: #fff;
+  border: 1px solid #444;
+  border-radius: 3px;
+  padding: 2px 8px;
+  font-size: 11px;
+  cursor: pointer;
+  outline: none;
+}
+
+.clip-selector-button:hover {
+  background-color: #444;
+}
+
+.clip-selector-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 10;
+  background-color: #333;
+  border: 1px solid #444;
+  border-radius: 3px;
+  min-width: 120px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+.clip-selector-option {
+  padding: 5px 10px;
+  font-size: 11px;
+  cursor: pointer;
+  color: #fff;
+}
+
+.clip-selector-option:hover {
+  background-color: #444;
+}
+
+.clip-selector-separator {
+  height: 1px;
+  background-color: #444;
+  margin: 5px 0;
+}
+
+/* Playlist Dialog Styles */
+.playlist-dialog {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.playlist-dialog-content {
+  background-color: #222;
+  border-radius: 5px;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+  width: 500px;
+  max-width: 90%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.playlist-edit-content {
+  width: 600px;
+}
+
+.playlist-dialog-header {
+  background-color: #333;
+  padding: 10px 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #444;
+}
+
+.playlist-dialog-close {
+  background: none;
+  border: none;
+  color: #ccc;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.playlist-dialog-close:hover {
+  color: #fff;
+}
+
+.playlist-dialog-buttons {
+  padding: 10px 15px;
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px solid #444;
+}
+
+.playlist-dialog-buttons button {
+  background-color: #333;
+  border: 1px solid #444;
+  color: #fff;
+  padding: 5px 15px;
+  margin-left: 10px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.playlist-dialog-buttons button:hover {
+  background-color: #444;
+}
+
+.playlist-dialog form {
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  overflow-y: auto;
+}
+
+.playlist-dialog label {
+  display: block;
+  margin-bottom: 5px;
+  color: #ccc;
+}
+
+.playlist-dialog input[type="text"] {
+  width: 100%;
+  padding: 8px;
+  background-color: #333;
+  border: 1px solid #444;
+  color: #fff;
+  border-radius: 3px;
+}
+
+.playlist-dialog-placeholder {
+  padding: 20px;
+  text-align: center;
+  color: #888;
+}
+
+/* Playlist List Styles */
+.playlist-list-container {
+  display: flex;
+  flex-direction: column;
+  height: 300px;
+  overflow: hidden;
+  padding: 15px;
+}
+
+.playlist-list {
+  flex: 1;
+  overflow-y: auto;
+  border: 1px solid #444;
+  border-radius: 3px;
+  margin-bottom: 10px;
+  background-color: #1a1a1a;
+}
+
+.playlist-item {
+  padding: 10px;
+  border-bottom: 1px solid #333;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+}
+
+.playlist-item:last-child {
+  border-bottom: none;
+}
+
+.playlist-item:hover {
+  background-color: #2a2a2a;
+}
+
+.playlist-item.selected {
+  background-color: #2c3e50;
+}
+
+.playlist-item-name {
+  font-weight: bold;
+  color: #fff;
+}
+
+.playlist-item-info {
+  color: #999;
+  font-size: 12px;
+}
+
+.playlist-action-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 5px;
+}
+
+.playlist-action-button {
+  background-color: #333;
+  border: 1px solid #444;
+  color: #fff;
+  width: 30px;
+  height: 30px;
+  border-radius: 3px;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.playlist-action-button:hover {
+  background-color: #444;
+}
+
+.playlist-action-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.playlist-empty-message {
+  padding: 20px;
+  text-align: center;
+  color: #888;
+}
+
+/* Playlist Clip Editing Styles */
+.playlist-clips-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.playlist-clips-label {
+  color: #ccc;
+  font-weight: bold;
+}
+
+.playlist-clips-container {
+  max-height: 250px;
+  overflow-y: auto;
+  border: 1px solid #444;
+  border-radius: 3px;
+  background-color: #1a1a1a;
+}
+
+.playlist-clip-item {
+  padding: 10px;
+  border-bottom: 1px solid #333;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.playlist-clip-item:last-child {
+  border-bottom: none;
+}
+
+.playlist-clip-type {
+  width: 100px;
+  padding: 5px;
+  background-color: #333;
+  border: 1px solid #444;
+  color: #fff;
+  border-radius: 3px;
+}
+
+.playlist-clip-url {
+  flex: 1;
+  padding: 5px;
+  background-color: #333;
+  border: 1px solid #444;
+  color: #fff;
+  border-radius: 3px;
+}
+
+.playlist-clip-move,
+.playlist-clip-remove {
+  background-color: #333;
+  border: 1px solid #444;
+  color: #fff;
+  width: 24px;
+  height: 24px;
+  border-radius: 3px;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 12px;
+}
+
+.playlist-clip-move:hover,
+.playlist-clip-remove:hover {
+  background-color: #444;
+}
+
+.playlist-clip-move:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.playlist-add-clip-button {
+  background-color: #2c3e50;
+  border: none;
+  color: #fff;
+  padding: 8px 15px;
+  border-radius: 3px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  align-self: flex-start;
+}
+
+.playlist-add-clip-button:hover {
+  background-color: #34495e;
+}
+
+/* Confirmation Dialog */
+.playlist-confirm-dialog {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1100;
+}
+
+.playlist-confirm-content {
+  background-color: #222;
+  border-radius: 5px;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+  width: 350px;
+  max-width: 90%;
+  padding: 20px;
+}
+
+.playlist-confirm-message {
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.playlist-confirm-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.playlist-confirm-buttons button {
+  background-color: #333;
+  border: 1px solid #444;
+  color: #fff;
+  padding: 8px 20px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.playlist-confirm-buttons button:hover {
+  background-color: #444;
+}
+
+.playlist-delete-button {
+  background-color: #c0392b !important;
+}
+
+.playlist-delete-button:hover {
+  background-color: #e74c3c !important;
+}
+
+/* Playlist Controls */
+.playlist-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 5px;
+  background-color: #222;
+  border-top: 1px solid #333;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 30px;
+  box-sizing: border-box;
+}
+
+.playlist-control-button {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px 8px;
+  margin: 0 2px;
+  border-radius: 3px;
+}
+
+.playlist-control-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.playlist-info {
+  margin: 0 10px;
+  font-size: 11px;
+  color: #ccc;
+}
+
+/* URL Edit Modal */
+.url-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.url-modal-content {
+  background-color: #1a1a1a;
+  border-radius: 4px;
+  width: 400px;
+  max-width: 90%;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+}
+
+.url-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background-color: #2a2a2a;
+  color: #FFFFFF;
+  font-weight: bold;
+  border-bottom: 1px solid #333;
+}
+
+.url-modal-close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: #FFFFFF;
+  cursor: pointer;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+}
+
+.url-modal-close:hover {
+  background-color: #3b82f6;
+}
+
+.url-modal form {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.url-modal input[type="url"] {
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid #333;
+  background-color: #2a2a2a;
+  color: #FFFFFF;
+  font-size: 14px;
+  width: 100%;
+}
+
+.url-modal input[type="url"]:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+.url-help-text {
+  font-size: 12px;
+  color: #999;
+  margin-bottom: 8px;
+}
+
+.url-help-text code {
+  background-color: #2a2a2a;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-family: monospace;
+  color: #3b82f6;
+}
+
+.url-modal button[type="submit"] {
+  padding: 8px 16px;
+  background-color: #3b82f6;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 4px;
+  font-weight: bold;
+  cursor: pointer;
+  align-self: flex-end;
+}
+
+.url-modal button[type="submit"]:hover {
+  background-color: #2563eb;
+}
+
+/* Placeholder for empty windows */
+.side-window-placeholder {
+  color: #999;
+  font-style: italic;
+  text-align: center;
+  padding: 20px;
+}

@@ -1,4 +1,5 @@
 import './style.css'
+import './components/interface/sidewindows/sidewindows.css'
 
 // Import components
 import MenuBar from './components/MenuBar.js';
