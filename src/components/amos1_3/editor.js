@@ -1,8 +1,5 @@
 // AMOS 1.3 Editor component
-import { basicSetup } from 'codemirror'
-import { EditorState } from '@codemirror/state'
-import { EditorView, keymap } from '@codemirror/view'
-import { defaultKeymap } from '@codemirror/commands'
+import { EditorView } from '@codemirror/view'
 
 class AMOS13Editor {
   constructor(container) {
@@ -10,10 +7,8 @@ class AMOS13Editor {
     this.editorView = null;
   }
 
-  render() {
-    // Clear the container
-    this.container.innerHTML = '';
-    
+  // Prepare the container with AMOS 1.3-specific styling
+  prepareContainer() {
     // Create a styled container for AMOS 1.3
     this.container.innerHTML = `
       <div class="amos-editor">
@@ -21,7 +16,15 @@ class AMOS13Editor {
         <div id="amos-editor-container" class="amos-content"></div>
       </div>
     `;
-    
+  }
+  
+  // Return the parent element for the editor
+  getEditorParent() {
+    return document.getElementById('amos-editor-container');
+  }
+  
+  // Provide configuration for the main Editor component
+  getConfig() {
     // Custom theme for AMOS 1.3 based on the image
     const amosTheme = EditorView.theme({
       "&": {
@@ -64,40 +67,34 @@ class AMOS13Editor {
       }
     });
     
-    const startState = EditorState.create({
-      doc: '10 REM AMOS 1.3 Program\n20 PRINT "Hello from AMOS 1.3!"\n30 FOR I=1 TO 10\n40 PRINT "Loop: ";I\n50 NEXT I\n60 END',
-      extensions: [
-        basicSetup,
-        keymap.of(defaultKeymap),
-        EditorView.lineWrapping,
-        amosTheme
-      ]
-    });
-
-    this.editorView = new EditorView({
-      state: startState,
-      parent: document.getElementById('amos-editor-container')
-    });
+    return {
+      extensions: [amosTheme],
+      initialDoc: '10 REM AMOS 1.3 Program\n20 PRINT "Hello from AMOS 1.3!"\n30 FOR I=1 TO 10\n40 PRINT "Loop: ";I\n50 NEXT I\n60 END'
+    };
   }
   
-  getContent() {
-    if (this.editorView) {
-      return this.editorView.state.doc.toString();
-    }
-    return '';
+  // Store the editor view instance
+  setEditorView(editorView) {
+    this.editorView = editorView;
   }
   
-  setContent(content) {
-    if (this.editorView) {
-      const transaction = this.editorView.state.update({
-        changes: {
-          from: 0,
-          to: this.editorView.state.doc.length,
-          insert: content
-        }
-      });
-      this.editorView.dispatch(transaction);
-    }
+  // Mode-specific operations
+  runProgram() {
+    console.log('Running AMOS 1.3 program');
+    // Implement AMOS-specific run logic here
+    alert('AMOS 1.3 program execution started');
+  }
+  
+  debugProgram() {
+    console.log('Debugging AMOS 1.3 program');
+    // Implement AMOS-specific debug logic here
+    alert('AMOS 1.3 program debugging started');
+  }
+  
+  showHelp() {
+    console.log('Showing AMOS 1.3 help');
+    // Implement AMOS-specific help logic here
+    alert('AMOS 1.3 Help:\n\nBasic commands:\nPRINT - Output text\nFOR/NEXT - Loop\nIF/THEN - Conditional\nGOTO - Jump to line\nGOSUB/RETURN - Subroutine');
   }
 }
 

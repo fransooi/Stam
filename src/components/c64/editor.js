@@ -145,6 +145,33 @@ class C64Editor {
     console.log('C64: Saving program');
     this.sendCommand('save');
   }
+  
+  // Additional methods to match the interface expected by the main Editor component
+  debugProgram() {
+    console.log('C64: Debug mode not supported');
+    alert('Debug mode is not supported in the C64 emulator');
+  }
+  
+  showHelp() {
+    console.log('C64: Showing help');
+    alert('C64 Help:\n\nBasic Commands:\nLOAD - Load a program\nSAVE - Save a program\nRUN - Run the program\nLIST - List the program\nNEW - Clear the program\n\nUse the icon bar for common operations.');
+  }
+  
+  newFile() {
+    console.log('C64: Creating new file');
+    this.sendCommand('new');
+  }
+  
+  openFile() {
+    console.log('C64: Opening file');
+    // In a real implementation, this would open a file picker
+    alert('Open file functionality not implemented for C64 mode');
+  }
+  
+  saveFile() {
+    console.log('C64: Saving file');
+    this.saveProgram();
+  }
 }
 
 export default C64Editor;

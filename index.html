@@ -5,6 +5,71 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>PCOS - Programmable Code Operating System</title>
+    <!-- Font Awesome for modern icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <!-- Custom styles for modern icon buttons -->
+    <style>
+      .modern-icon-button {
+        background-color: transparent !important;
+        color: #e0e0e0 !important;
+        border: 1px solid #555 !important;
+        border-radius: 4px !important;
+        padding: 0 !important;
+        margin: 0 4px !important;
+        cursor: pointer !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        transition: all 0.2s ease !important;
+        width: 45px !important;
+        height: 45px !important;
+        min-width: unset !important;
+      }
+      
+      .modern-icon-button:hover {
+        background-color: rgba(255, 255, 255, 0.1) !important;
+        border-color: #888 !important;
+      }
+      
+      .modern-icon-button:active {
+        background-color: rgba(255, 255, 255, 0.2) !important;
+      }
+      
+      .modern-icon-button i {
+        font-size: 24px !important;
+      }
+      
+      /* Button-specific colors */
+      .new-button {
+        color: #90CAF9 !important;
+      }
+      
+      .open-button {
+        color: #FFE082 !important;
+      }
+      
+      .save-button {
+        color: #A5D6A7 !important;
+      }
+      
+      .run-button {
+        color: #81C784 !important;
+        background-color: transparent !important;
+      }
+      
+      .debug-button {
+        color: #FFB74D !important;
+        background-color: transparent !important;
+      }
+      
+      .share-button {
+        color: #9FA8DA !important;
+      }
+      
+      .help-button {
+        color: #CE93D8 !important;
+      }
+    </style>
   </head>
   <body>
     <div id="app">
@@ -46,13 +111,11 @@
         <div id="editor-container">
           <!-- Icon Area -->
           <div id="icon-area">
-            <button class="icon-button run-button">Run</button>
-            <button class="icon-button debug-button">Debug</button>
-            <button class="icon-button stop-button">Stop</button>
+            <!-- Icon area will be populated by JavaScript -->
             <select id="mode-selector">
               <option value="modern">Modern Mode</option>
               <option value="stos">STOS Basic</option>
-              <option value="cb64">Commodore 64</option>
+              <option value="c64">Commodore 64</option>
             </select>
           </div>
           

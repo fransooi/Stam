@@ -1,8 +1,5 @@
 // AMOS Pro Editor component
-import { basicSetup } from 'codemirror'
-import { EditorState } from '@codemirror/state'
-import { EditorView, keymap } from '@codemirror/view'
-import { defaultKeymap } from '@codemirror/commands'
+import { EditorView } from '@codemirror/view'
 
 class AMOSProEditor {
   constructor(container) {
@@ -10,10 +7,8 @@ class AMOSProEditor {
     this.editorView = null;
   }
 
-  render() {
-    // Clear the container
-    this.container.innerHTML = '';
-    
+  // Prepare the container with AMOS Pro-specific styling
+  prepareContainer() {
     // Create a styled container for AMOS Pro
     this.container.innerHTML = `
       <div class="amospro-editor">
@@ -22,6 +17,37 @@ class AMOSProEditor {
       </div>
     `;
     
+    // Add custom styles for AMOS Pro
+    const style = document.createElement('style');
+    style.textContent = `
+      .amospro-editor {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        border: 2px solid #00AAAA;
+      }
+      .amospro-header {
+        background-color: #006666;
+        color: #FFFF00;
+        padding: 4px 8px;
+        font-weight: bold;
+        text-align: center;
+      }
+      .amospro-content {
+        flex-grow: 1;
+        overflow: auto;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+  
+  // Return the parent element for the editor
+  getEditorParent() {
+    return document.getElementById('amospro-editor-container');
+  }
+  
+  // Provide configuration for the main Editor component
+  getConfig() {
     // Custom theme for AMOS Pro based on the image
     const amosProTheme = EditorView.theme({
       "&": {
@@ -64,63 +90,34 @@ class AMOSProEditor {
       }
     });
     
-    const startState = EditorState.create({
-      doc: '10 REM AMOS Professional Program\n20 PRINT "Hello from AMOS Pro!"\n30 FOR I=1 TO 10\n40 PRINT "Loop: ";I\n50 NEXT I\n60 END',
-      extensions: [
-        basicSetup,
-        keymap.of(defaultKeymap),
-        EditorView.lineWrapping,
-        amosProTheme
-      ]
-    });
-
-    this.editorView = new EditorView({
-      state: startState,
-      parent: document.getElementById('amospro-editor-container')
-    });
-    
-    // Add custom styles for AMOS Pro
-    const style = document.createElement('style');
-    style.textContent = `
-      .amospro-editor {
-        display: flex;
-        flex-direction: column;
-        height: 100%;
-        border: 2px solid #00AAAA;
-      }
-      .amospro-header {
-        background-color: #006666;
-        color: #FFFF00;
-        padding: 4px 8px;
-        font-weight: bold;
-        text-align: center;
-      }
-      .amospro-content {
-        flex-grow: 1;
-        overflow: auto;
-      }
-    `;
-    document.head.appendChild(style);
+    return {
+      extensions: [amosProTheme],
+      initialDoc: '10 REM AMOS Professional Program\n20 PRINT "Hello from AMOS Pro!"\n30 FOR I=1 TO 10\n40 PRINT "Loop: ";I\n50 NEXT I\n60 END'
+    };
   }
   
-  getContent() {
-    if (this.editorView) {
-      return this.editorView.state.doc.toString();
-    }
-    return '';
+  // Store the editor view instance
+  setEditorView(editorView) {
+    this.editorView = editorView;
   }
   
-  setContent(content) {
-    if (this.editorView) {
-      const transaction = this.editorView.state.update({
-        changes: {
-          from: 0,
-          to: this.editorView.state.doc.length,
-          insert: content
-        }
-      });
-      this.editorView.dispatch(transaction);
-    }
+  // Mode-specific operations
+  runProgram() {
+    console.log('Running AMOS Pro program');
+    // Implement AMOS Pro-specific run logic here
+    alert('AMOS Pro program execution started');
+  }
+  
+  debugProgram() {
+    console.log('Debugging AMOS Pro program');
+    // Implement AMOS Pro-specific debug logic here
+    alert('AMOS Pro program debugging started');
+  }
+  
+  showHelp() {
+    console.log('Showing AMOS Pro help');
+    // Implement AMOS Pro-specific help logic here
+    alert('AMOS Pro Help:\n\nBasic commands:\nPRINT - Output text\nFOR/NEXT - Loop\nIF/THEN - Conditional\nGOTO - Jump to line\nGOSUB/RETURN - Subroutine\n\nAMOS Pro Extensions:\nAMOSPRO_TURBO - Speed up execution\nAMOSPRO_REQUEST - System requests\nAMOSPRO_MUSIC - Enhanced music commands');
   }
 }
 

@@ -1,8 +1,5 @@
 // STOS Basic Editor component
-import { basicSetup } from 'codemirror'
-import { EditorState } from '@codemirror/state'
-import { EditorView, keymap } from '@codemirror/view'
-import { defaultKeymap } from '@codemirror/commands'
+import { EditorView } from '@codemirror/view'
 
 class STOSEditor {
   constructor(container) {
@@ -10,10 +7,8 @@ class STOSEditor {
     this.editorView = null;
   }
 
-  render() {
-    // Clear the container
-    this.container.innerHTML = '';
-    
+  // Prepare the container with STOS-specific styling
+  prepareContainer() {
     // Create a styled container for STOS Basic
     this.container.innerHTML = `
       <div class="stos-editor">
@@ -21,7 +16,15 @@ class STOSEditor {
         <div id="stos-editor-container" class="stos-content"></div>
       </div>
     `;
-    
+  }
+  
+  // Return the parent element for the editor
+  getEditorParent() {
+    return document.getElementById('stos-editor-container');
+  }
+  
+  // Provide configuration for the main Editor component
+  getConfig() {
     // Custom theme for STOS Basic
     const stosTheme = EditorView.theme({
       "&": {
@@ -52,40 +55,34 @@ class STOSEditor {
       }
     });
     
-    const startState = EditorState.create({
-      doc: '10 REM STOS Basic Program\n20 PRINT "Hello from STOS Basic!"\n30 FOR I=1 TO 10\n40 PRINT "Loop: ";I\n50 NEXT I\n60 END',
-      extensions: [
-        basicSetup,
-        keymap.of(defaultKeymap),
-        EditorView.lineWrapping,
-        stosTheme
-      ]
-    });
-
-    this.editorView = new EditorView({
-      state: startState,
-      parent: document.getElementById('stos-editor-container')
-    });
+    return {
+      extensions: [stosTheme],
+      initialDoc: '10 REM STOS Basic Program\n20 PRINT "Hello from STOS Basic!"\n30 FOR I=1 TO 10\n40 PRINT "Loop: ";I\n50 NEXT I\n60 END'
+    };
   }
   
-  getContent() {
-    if (this.editorView) {
-      return this.editorView.state.doc.toString();
-    }
-    return '';
+  // Store the editor view instance
+  setEditorView(editorView) {
+    this.editorView = editorView;
   }
   
-  setContent(content) {
-    if (this.editorView) {
-      const transaction = this.editorView.state.update({
-        changes: {
-          from: 0,
-          to: this.editorView.state.doc.length,
-          insert: content
-        }
-      });
-      this.editorView.dispatch(transaction);
-    }
+  // Mode-specific operations
+  runProgram() {
+    console.log('Running STOS Basic program');
+    // Implement STOS-specific run logic here
+    alert('STOS Basic program execution started');
+  }
+  
+  debugProgram() {
+    console.log('Debugging STOS Basic program');
+    // Implement STOS-specific debug logic here
+    alert('STOS Basic program debugging started');
+  }
+  
+  showHelp() {
+    console.log('Showing STOS Basic help');
+    // Implement STOS-specific help logic here
+    alert('STOS Basic Help:\n\nBasic commands:\nPRINT - Output text\nFOR/NEXT - Loop\nIF/THEN - Conditional\nGOTO - Jump to line\nGOSUB/RETURN - Subroutine');
   }
 }
 
