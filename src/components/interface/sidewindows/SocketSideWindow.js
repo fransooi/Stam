@@ -14,13 +14,18 @@ class SocketSideWindow extends SideWindow {
    * @param {number} initialHeight - Initial height of the window
    */
   constructor(initialHeight = 200) {
-    super('socket', 'WebSocket Connection', initialHeight);
+    super('socket', 'Server', initialHeight);
     
     this.client = null;
     this.isConnected = false;
+    this.isConnecting = false;
     this.userKey = '';
     this.messages = [];
     this.maxMessages = 50; // Maximum number of messages to display
+    
+    // Message counters
+    this.messagesSent = 0;
+    this.messagesReceived = 0;
     
     // UI elements
     this.statusElement = null;
@@ -28,6 +33,15 @@ class SocketSideWindow extends SideWindow {
     this.connectButton = null;
     this.disconnectButton = null;
     this.userKeyInput = null;
+    
+    // Indicator elements
+    this.connectionIndicator = null;
+    this.sendIndicator = null;
+    this.receiveIndicator = null;
+    
+    // Indicator timers
+    this.sendFlashTimer = null;
+    this.receiveFlashTimer = null;
   }
   
   /**
@@ -71,6 +85,9 @@ class SocketSideWindow extends SideWindow {
     // Call parent render method
     const container = super.render(parentContainer);
     
+    // Add indicator buttons to the title bar
+    this.addIndicatorButtons();
+    
     // Create the socket UI
     this.createSocketUI();
     
@@ -83,6 +100,114 @@ class SocketSideWindow extends SideWindow {
     this.updateContentHeight();
     
     return container;
+  }
+  
+  /**
+   * Add indicator buttons to the title bar
+   */
+  addIndicatorButtons() {
+    // Create container for indicators
+    const indicatorContainer = document.createElement('div');
+    indicatorContainer.className = 'socket-indicator-container';
+    
+    // Create connection indicator button
+    this.connectionIndicator = document.createElement('span');
+    this.connectionIndicator.className = 'socket-indicator connection-indicator disconnected';
+    this.connectionIndicator.title = 'Connection Status: Disconnected';
+    this.connectionIndicator.addEventListener('click', () => this.toggleConnection());
+    
+    // Create send indicator button
+    this.sendIndicator = document.createElement('span');
+    this.sendIndicator.className = 'socket-indicator send-indicator';
+    this.sendIndicator.title = 'Send Indicator';
+    
+    // Create receive indicator button
+    this.receiveIndicator = document.createElement('span');
+    this.receiveIndicator.className = 'socket-indicator receive-indicator';
+    this.receiveIndicator.title = 'Receive Indicator';
+    
+    // Add indicators to container
+    indicatorContainer.appendChild(this.connectionIndicator);
+    indicatorContainer.appendChild(this.sendIndicator);
+    indicatorContainer.appendChild(this.receiveIndicator);
+    
+    // Add container to the title bar
+    this.addCustomTitleBarButton(indicatorContainer);
+    
+    // Add styles for indicators
+    this.addIndicatorStyles();
+  }
+  
+  /**
+   * Add styles for the indicator buttons
+   */
+  addIndicatorStyles() {
+    if (!document.getElementById('socket-indicator-styles')) {
+      const style = document.createElement('style');
+      style.id = 'socket-indicator-styles';
+      style.textContent = `
+        .socket-indicator-container {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          height: 100%;
+          margin: 0;
+          padding: 0;
+        }
+        
+        .socket-indicator {
+          display: inline-block;
+          width: 14px;
+          height: 14px;
+          border-radius: 50%;
+          margin: 0 3px;
+          cursor: pointer;
+          border: 1px solid #666;
+          position: relative;
+          top: 0px;
+        }
+        
+        .connection-indicator {
+          background-color: #ff3333; /* Red for disconnected */
+        }
+        
+        .connection-indicator.connecting {
+          background-color: #ffaa33; /* Orange for connecting */
+        }
+        
+        .connection-indicator.connected {
+          background-color: #33cc33; /* Green for connected */
+        }
+        
+        .send-indicator {
+          background-color: #225522; /* Dark green when idle */
+        }
+        
+        .send-indicator.active {
+          background-color: #33ff33; /* Light green when sending */
+        }
+        
+        .receive-indicator {
+          background-color: #225522; /* Dark green when idle */
+        }
+        
+        .receive-indicator.active {
+          background-color: #33ff33; /* Light green when receiving */
+        }
+      `;
+      document.head.appendChild(style);
+    }
+  }
+  
+  /**
+   * Toggle connection status
+   */
+  toggleConnection() {
+    if (this.isConnected) {
+      this.disconnect();
+    } else {
+      this.connect();
+    }
   }
   
   /**
@@ -152,10 +277,15 @@ class SocketSideWindow extends SideWindow {
     this.messageContainer = document.createElement('div');
     this.messageContainer.className = 'socket-messages';
     
+    // Create indicator elements
+    const indicatorContainer = document.createElement('div');
+    indicatorContainer.className = 'socket-indicators';
+    
     // Add all elements to content
     this.content.appendChild(this.statusElement);
     this.content.appendChild(controlsContainer);
     this.content.appendChild(this.messageContainer);
+    this.content.appendChild(indicatorContainer);
     
     // Add some basic styling
     this.addStyles();
@@ -177,10 +307,17 @@ class SocketSideWindow extends SideWindow {
       
       if (this.connectButton) this.connectButton.disabled = true;
       if (this.disconnectButton) this.disconnectButton.disabled = false;
+    } else if (this.isConnecting) {
+      this.statusElement.innerHTML = '<span class="status-connecting">Connecting...</span>';
+      this.statusElement.classList.add('connecting');
+      this.statusElement.classList.remove('connected', 'disconnected');
+      
+      if (this.connectButton) this.connectButton.disabled = true;
+      if (this.disconnectButton) this.disconnectButton.disabled = true;
     } else {
       this.statusElement.innerHTML = '<span class="status-disconnected">Disconnected</span>';
       this.statusElement.classList.add('disconnected');
-      this.statusElement.classList.remove('connected');
+      this.statusElement.classList.remove('connected', 'connecting');
       
       if (this.connectButton) this.connectButton.disabled = false;
       if (this.disconnectButton) this.disconnectButton.disabled = true;
@@ -208,11 +345,17 @@ class SocketSideWindow extends SideWindow {
         .socket-status.disconnected {
           background-color: rgba(255, 0, 0, 0.2);
         }
+        .socket-status.connecting {
+          background-color: rgba(255, 255, 0, 0.2);
+        }
         .status-connected {
           color: green;
         }
         .status-disconnected {
           color: red;
+        }
+        .status-connecting {
+          color: yellow;
         }
         .socket-controls {
           display: flex;
@@ -256,6 +399,39 @@ class SocketSideWindow extends SideWindow {
         }
         .socket-message-received .socket-message-direction {
           color: green;
+        }
+        .socket-connection-indicator {
+          width: 10px;
+          height: 10px;
+          border-radius: 50%;
+          background-color: red;
+          margin: 5px;
+        }
+        .socket-connection-indicator.connected {
+          background-color: green;
+        }
+        .socket-connection-indicator.connecting {
+          background-color: yellow;
+        }
+        .socket-send-indicator {
+          width: 10px;
+          height: 10px;
+          border-radius: 50%;
+          background-color: gray;
+          margin: 5px;
+        }
+        .socket-send-indicator.sending {
+          background-color: blue;
+        }
+        .socket-receive-indicator {
+          width: 10px;
+          height: 10px;
+          border-radius: 50%;
+          background-color: gray;
+          margin: 5px;
+        }
+        .socket-receive-indicator.receiving {
+          background-color: green;
         }
       `;
       document.head.appendChild(style);
@@ -336,6 +512,11 @@ class SocketSideWindow extends SideWindow {
     
     // Add connection message
     this.addMessage('sent', 'Connecting to server...');
+    
+    // Update connection indicator
+    this.isConnecting = true;
+    this.updateStatusDisplay();
+    this.updateConnectionIndicator();
   }
   
   /**
@@ -353,7 +534,14 @@ class SocketSideWindow extends SideWindow {
    */
   handleConnectionOpen() {
     this.isConnected = true;
+    this.isConnecting = false;
+    // Reset message counters on new connection
+    this.messagesSent = 0;
+    this.messagesReceived = 0;
     this.updateStatusDisplay();
+    this.updateConnectionIndicator();
+    this.updateSendIndicatorTooltip();
+    this.updateReceiveIndicatorTooltip();
     this.addMessage('received', 'Connected to server');
   }
   
@@ -362,7 +550,9 @@ class SocketSideWindow extends SideWindow {
    */
   handleConnectionClose() {
     this.isConnected = false;
+    this.isConnecting = false;
     this.updateStatusDisplay();
+    this.updateConnectionIndicator();
     this.addMessage('received', 'Disconnected from server');
   }
   
@@ -379,8 +569,15 @@ class SocketSideWindow extends SideWindow {
    * @param {Object} message - The message received
    */
   handleServerMessage(message) {
+    // Increment received counter
+    this.messagesReceived++;
+    
     // Add message to display
     this.addMessage('received', JSON.stringify(message));
+    
+    // Update receive indicator
+    this.updateReceiveIndicator();
+    this.updateReceiveIndicatorTooltip();
   }
   
   /**
@@ -436,7 +633,13 @@ class SocketSideWindow extends SideWindow {
   handleSocketSendMessage(messageData) {
     if (this.client && this.isConnected && messageData.message) {
       this.client.send(messageData.message);
+      // Increment sent counter
+      this.messagesSent++;
       this.addMessage('sent', messageData.message);
+      
+      // Update send indicator
+      this.updateSendIndicator();
+      this.updateSendIndicatorTooltip();
       return true;
     }
     return false;
@@ -456,6 +659,74 @@ class SocketSideWindow extends SideWindow {
       return true;
     }
     return false;
+  }
+  
+  /**
+   * Update the connection indicator
+   */
+  updateConnectionIndicator() {
+    if (!this.connectionIndicator) return;
+    
+    if (this.isConnected) {
+      this.connectionIndicator.className = 'socket-indicator connection-indicator connected';
+      this.connectionIndicator.title = 'Connection Status: Connected (Click to Disconnect)';
+    } else if (this.isConnecting) {
+      this.connectionIndicator.className = 'socket-indicator connection-indicator connecting';
+      this.connectionIndicator.title = 'Connection Status: Connecting...';
+    } else {
+      this.connectionIndicator.className = 'socket-indicator connection-indicator disconnected';
+      this.connectionIndicator.title = 'Connection Status: Disconnected (Click to Connect)';
+    }
+  }
+  
+  /**
+   * Update the send indicator
+   */
+  updateSendIndicator() {
+    if (!this.sendIndicator) return;
+    
+    // Add active class
+    this.sendIndicator.classList.add('active');
+    
+    // Remove active class after a short delay
+    clearTimeout(this.sendFlashTimer);
+    this.sendFlashTimer = setTimeout(() => {
+      this.sendIndicator.classList.remove('active');
+    }, 300);
+  }
+  
+  /**
+   * Update the receive indicator
+   */
+  updateReceiveIndicator() {
+    if (!this.receiveIndicator) return;
+    
+    // Add active class
+    this.receiveIndicator.classList.add('active');
+    
+    // Remove active class after a short delay
+    clearTimeout(this.receiveFlashTimer);
+    this.receiveFlashTimer = setTimeout(() => {
+      this.receiveIndicator.classList.remove('active');
+    }, 300);
+  }
+  
+  /**
+   * Update the send indicator tooltip
+   */
+  updateSendIndicatorTooltip() {
+    if (this.sendIndicator) {
+      this.sendIndicator.title = `Send Indicator: ${this.messagesSent} message${this.messagesSent !== 1 ? 's' : ''} sent since connection`;
+    }
+  }
+  
+  /**
+   * Update the receive indicator tooltip
+   */
+  updateReceiveIndicatorTooltip() {
+    if (this.receiveIndicator) {
+      this.receiveIndicator.title = `Receive Indicator: ${this.messagesReceived} message${this.messagesReceived !== 1 ? 's' : ''} received since connection`;
+    }
   }
 }
 

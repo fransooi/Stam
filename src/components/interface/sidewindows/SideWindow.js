@@ -16,7 +16,7 @@ class SideWindow extends BaseComponent {
     this.isVisible = true;
     this.minimized = false;
     this.originalHeight = initialHeight;
-    this.headerHeight = 30; // Approximate height of the header
+    this.headerHeight = 34; // Approximate height of the header
   }
 
   /**
@@ -80,7 +80,7 @@ class SideWindow extends BaseComponent {
     
     // Create the buttons container
     const buttons = document.createElement('div');
-    buttons.className = 'side-window-buttons';
+    buttons.className = 'side-window-controls';
     
     // Create toggle button
     const toggleButton = document.createElement('button');
@@ -315,6 +315,26 @@ class SideWindow extends BaseComponent {
     // This is a simplified approach - in a real implementation, you might
     // want to use a registry or other mechanism to look up window objects
     return null; // Placeholder - will be implemented by SideBar
+  }
+  
+  /**
+   * Add a custom button to the title bar
+   * @param {HTMLElement} buttonElement - The button element to add
+   */
+  addCustomTitleBarButton(buttonElement) {
+    if (!this.header) return;
+    
+    // Get the buttons container
+    const buttonsContainer = this.header.querySelector('.side-window-controls');
+    if (!buttonsContainer) return;
+    
+    // Insert the button before the toggle button
+    const toggleButton = buttonsContainer.querySelector('.side-window-toggle');
+    if (toggleButton) {
+      buttonsContainer.insertBefore(buttonElement, toggleButton);
+    } else {
+      buttonsContainer.appendChild(buttonElement);
+    }
   }
 }
 
