@@ -61,7 +61,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px;
+  padding: 4px 8px;
   background-color: #2a2a2a;
   border-bottom: 1px solid #333;
   cursor: move;
@@ -80,6 +80,7 @@
 .side-window-controls {
   display: flex;
   gap: 4px;
+  align-items: center;
 }
 
 .side-window-toggle,
@@ -87,9 +88,9 @@
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 14px;
-  width: 20px;
-  height: 20px;
+  font-size: 12px;
+  width: 18px;
+  height: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -106,9 +107,9 @@
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 14px;
-  width: 20px;
-  height: 20px;
+  font-size: 12px;
+  width: 18px;
+  height: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -119,6 +120,14 @@
 
 .side-window-edit:hover {
   background-color: #3b82f6;
+}
+
+.indicator-container {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  margin: 0;
+  padding: 0;
 }
 
 .side-window-content {
