@@ -1,9 +1,8 @@
 // AMOS Pro Icon Bar component
 
 class AMOSProIcons {
-  constructor(container, onActionCallback) {
+  constructor(container) {
     this.container = container;
-    this.onActionCallback = onActionCallback;
     this.buttonStates = {}; // Track button states (up/down)
     
     // Define original button widths (approximate pixel widths from original images)
@@ -186,6 +185,10 @@ class AMOSProIcons {
     rows[0].style.justifyContent = 'flex-start';
     rows[1].style.justifyContent = 'flex-start';
   }
+
+  handleFunctionKeyClick(key, action) {
+    console.log(`AMOS Function Key clicked: ${key} - ${action}`);
+  }
   
   addButton(x, y, container) {
     const buttonId = `button-${x}-${y}`;
@@ -205,6 +208,7 @@ class AMOSProIcons {
     button.addEventListener('mousedown', () => {
       button.src = `/amosPro/${buttonId}-down.png`;
       this.buttonStates[buttonId] = 'down';
+      this.handleClick(buttonId)
     });
     
     // Add mouseup event to release button
@@ -212,10 +216,6 @@ class AMOSProIcons {
       button.src = `/amosPro/${buttonId}-up.png`;
       this.buttonStates[buttonId] = 'up';
       
-      // Trigger action callback if provided
-      if (this.onActionCallback) {
-        this.onActionCallback(parseInt(x), parseInt(y), 'click');
-      }
     });
     
     // Add mouseout event to reset button if mouse leaves while pressed
@@ -225,6 +225,8 @@ class AMOSProIcons {
         this.buttonStates[buttonId] = 'up';
       }
     });
+
+    button.addEventListener('click', () => this.handleFunctionKeyClick(buttonId, 'click'));
     
     // Add to container
     container.appendChild(button);

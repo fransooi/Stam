@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PCOS Bidirectional Messaging Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    
+    #menu-bar {
+      background-color: #333;
+      color: white;
+      padding: 5px;
+      display: flex;
+      justify-content: space-between;
+    }
+    
+    .menu-items-container {
+      display: flex;
+    }
+    
+    .menu-item {
+      margin-right: 15px;
+      cursor: pointer;
+      position: relative;
+    }
+    
+    .menu-title:hover {
+      text-decoration: underline;
+    }
+    
+    #status-bar {
+      background-color: #ddd;
+      padding: 5px;
+      border-top: 1px solid #999;
+    }
+    
+    .main-container {
+      display: flex;
+      flex: 1;
+    }
+    
+    #side-bar {
+      width: 250px;
+      background-color: #f0f0f0;
+      border-right: 1px solid #ccc;
+      padding: 10px;
+      overflow-y: auto;
+    }
+    
+    #editor-container {
+      flex: 1;
+      padding: 10px;
+      overflow: auto;
+    }
+    
+    #icon-bar {
+      background-color: #eee;
+      padding: 5px;
+      display: flex;
+      justify-content: flex-start;
+      border-bottom: 1px solid #ccc;
+    }
+    
+    .icon-button {
+      margin-right: 10px;
+      padding: 5px 10px;
+      background-color: #ddd;
+      border: 1px solid #999;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+    
+    .icon-button:hover {
+      background-color: #ccc;
+    }
+    
+    .popup-menu {
+      position: absolute;
+      background-color: white;
+      border: 1px solid #ccc;
+      box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+      z-index: 1000;
+      min-width: 150px;
+    }
+    
+    .popup-menu-item {
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+    
+    .popup-menu-item:hover {
+      background-color: #f0f0f0;
+    }
+    
+    .popup-menu-separator {
+      height: 1px;
+      background-color: #ccc;
+      margin: 5px 0;
+    }
+    
+    .popup-submenu {
+      position: absolute;
+      background-color: white;
+      border: 1px solid #ccc;
+      box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+      z-index: 1001;
+    }
+    
+    .popup-menu-submenu-indicator {
+      float: right;
+      margin-left: 10px;
+    }
+    
+    #log-container {
+      height: 200px;
+      overflow-y: auto;
+      background-color: #f9f9f9;
+      border: 1px solid #ddd;
+      padding: 10px;
+      margin-top: 10px;
+      font-family: monospace;
+    }
+    
+    .log-entry {
+      margin-bottom: 5px;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 5px;
+    }
+    
+    .command-entry {
+      color: #0066cc;
+    }
+    
+    .message-entry {
+      color: #009900;
+    }
+    
+    .component-list {
+      margin-top: 10px;
+      border: 1px solid #ddd;
+      padding: 10px;
+    }
+    
+    .component-item {
+      padding: 5px;
+      margin-bottom: 5px;
+      background-color: #f0f0f0;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+    
+    .component-item:hover {
+      background-color: #e0e0e0;
+    }
+    
+    .message-controls {
+      margin-top: 10px;
+      padding: 10px;
+      border: 1px solid #ddd;
+      background-color: #f5f5f5;
+    }
+    
+    .control-group {
+      margin-bottom: 10px;
+    }
+    
+    .control-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    
+    .control-group input, .control-group select, .control-group textarea {
+      width: 100%;
+      padding: 5px;
+      box-sizing: border-box;
+    }
+    
+    .control-group button {
+      padding: 5px 10px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      margin-right: 5px;
+    }
+    
+    .control-group button:hover {
+      background-color: #45a049;
+    }
+    
+    .broadcast-button {
+      background-color: #2196F3 !important;
+    }
+    
+    .broadcast-button:hover {
+      background-color: #0b7dda !important;
+    }
+  </style>
+</head>
+<body>
+  <div id="menu-bar"></div>
+  
+  <div id="icon-bar">
+    <div class="icon-button" id="refresh-button">Refresh Components</div>
+    <div class="icon-button" id="clear-log-button">Clear Log</div>
+  </div>
+  
+  <div class="main-container">
+    <div id="side-bar">
+      <h3>Component Registry</h3>
+      <div id="component-list" class="component-list"></div>
+      
+      <div class="message-controls">
+        <h3>Send Message</h3>
+        <div class="control-group">
+          <label for="target-component">Target Component:</label>
+          <select id="target-component"></select>
+        </div>
+        <div class="control-group">
+          <label for="message-type">Message Type:</label>
+          <input type="text" id="message-type" placeholder="e.g., hide, show, updateItems">
+        </div>
+        <div class="control-group">
+          <label for="message-data">Message Data (JSON):</label>
+          <textarea id="message-data" rows="4" placeholder='{"key": "value"}'></textarea>
+        </div>
+        <div class="control-group">
+          <button id="send-message-button">Send Message</button>
+          <button id="broadcast-message-button" class="broadcast-button">Broadcast</button>
+        </div>
+      </div>
+    </div>
+    
+    <div id="editor-container">
+      <h2>Bidirectional Messaging Test</h2>
+      <p>This page demonstrates the bidirectional messaging system in the PCOS editor.</p>
+      <p>Components can send messages up the tree (commands) and down the tree (targeted messages).</p>
+      
+      <h3>Test Actions:</h3>
+      <ul>
+        <li>Use the menu bar to send commands up the tree</li>
+        <li>Use the controls in the sidebar to send messages down to specific components</li>
+        <li>Watch the log below to see the message flow</li>
+      </ul>
+      
+      <h3>Message Log:</h3>
+      <div id="log-container"></div>
+    </div>
+  </div>
+  
+  <div id="status-bar">Ready</div>
+  
+  <script type="module">
+    import PCOSApp from './src/main.js';
+    import { getAllComponents } from './src/utils/ComponentID.js';
+    import messageBus from './src/utils/MessageBus.js';
+    
+    // Initialize the application
+    const app = new PCOSApp();
+    app.init();
+    
+    // Log container
+    const logContainer = document.getElementById('log-container');
+    
+    // Function to add a log entry
+    function addLogEntry(message, type = 'info') {
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${type}-entry`;
+      entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      logContainer.appendChild(entry);
+      logContainer.scrollTop = logContainer.scrollHeight;
+    }
+    
+    // Override console.log to capture component creation and messaging
+    const originalConsoleLog = console.log;
+    console.log = function(...args) {
+      originalConsoleLog.apply(console, args);
+      
+      // Convert args to string
+      const message = args.map(arg => {
+        if (typeof arg === 'object') {
+          try {
+            return JSON.stringify(arg);
+          } catch (e) {
+            return String(arg);
+          }
+        }
+        return String(arg);
+      }).join(' ');
+      
+      // Check if it's a component creation message
+      if (message.includes('created with ID:')) {
+        addLogEntry(message, 'component');
+        updateComponentList();
+      }
+      // Check if it's a message received log
+      else if (message.includes('received message:')) {
+        addLogEntry(message, 'message');
+      }
+      // Check if it's a command log
+      else if (message.includes('received command:')) {
+        addLogEntry(message, 'command');
+      }
+    };
+    
+    // Function to update the component list
+    function updateComponentList() {
+      const componentList = document.getElementById('component-list');
+      const targetComponentSelect = document.getElementById('target-component');
+      
+      // Clear existing items
+      componentList.innerHTML = '';
+      targetComponentSelect.innerHTML = '';
+      
+      // Get all registered components
+      const components = getAllComponents();
+      
+      // Add option for broadcast
+      const broadcastOption = document.createElement('option');
+      broadcastOption.value = 'broadcast';
+      broadcastOption.textContent = '-- Broadcast to All --';
+      targetComponentSelect.appendChild(broadcastOption);
+      
+      // Add components to the list and dropdown
+      components.forEach((component, id) => {
+        // Add to component list
+        const componentItem = document.createElement('div');
+        componentItem.className = 'component-item';
+        componentItem.textContent = id;
+        componentItem.addEventListener('click', () => {
+          document.getElementById('target-component').value = id;
+        });
+        componentList.appendChild(componentItem);
+        
+        // Add to target dropdown
+        const option = document.createElement('option');
+        option.value = id;
+        option.textContent = id;
+        targetComponentSelect.appendChild(option);
+      });
+    }
+    
+    // Set up event listeners
+    document.getElementById('refresh-button').addEventListener('click', updateComponentList);
+    
+    document.getElementById('clear-log-button').addEventListener('click', () => {
+      logContainer.innerHTML = '';
+    });
+    
+    document.getElementById('send-message-button').addEventListener('click', () => {
+      const targetID = document.getElementById('target-component').value;
+      const messageType = document.getElementById('message-type').value;
+      let messageData = {};
+      
+      try {
+        const dataText = document.getElementById('message-data').value;
+        if (dataText) {
+          messageData = JSON.parse(dataText);
+        }
+      } catch (e) {
+        addLogEntry(`Error parsing JSON data: ${e.message}`, 'error');
+        return;
+      }
+      
+      if (targetID === 'broadcast') {
+        // Broadcast message to all components
+        const count = messageBus.broadcastMessage(messageType, messageData, null);
+        addLogEntry(`Broadcast message "${messageType}" to ${count} components`, 'message');
+      } else {
+        // Send message to specific component
+        const success = messageBus.sendMessage(targetID, messageType, messageData, null);
+        if (success) {
+          addLogEntry(`Sent message "${messageType}" to ${targetID}`, 'message');
+        } else {
+          addLogEntry(`Failed to send message "${messageType}" to ${targetID}`, 'error');
+        }
+      }
+    });
+    
+    document.getElementById('broadcast-message-button').addEventListener('click', () => {
+      const messageType = document.getElementById('message-type').value;
+      let messageData = {};
+      
+      try {
+        const dataText = document.getElementById('message-data').value;
+        if (dataText) {
+          messageData = JSON.parse(dataText);
+        }
+      } catch (e) {
+        addLogEntry(`Error parsing JSON data: ${e.message}`, 'error');
+        return;
+      }
+      
+      // Broadcast message to all components
+      const count = messageBus.broadcastMessage(messageType, messageData, null);
+      addLogEntry(`Broadcast message "${messageType}" to ${count} components`, 'message');
+    });
+    
+    // Initial component list update
+    setTimeout(updateComponentList, 500);
+    
+    // Add initial log entry
+    addLogEntry('Bidirectional messaging test initialized', 'info');
+  </script>
+</body>
+</html>

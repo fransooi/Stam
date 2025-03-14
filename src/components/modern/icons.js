@@ -1,10 +1,8 @@
 // Modern Icon Bar component with Font Awesome icons
 
 class ModernIcons {
-  constructor(container, onActionCallback) {
+  constructor(container) {
     this.container = container;
-    this.onActionCallback = onActionCallback;
-    this.editorInstance = null;
   }
 
   render() {
@@ -97,12 +95,6 @@ class ModernIcons {
     document.head.appendChild(style);
   }
   
-  // Set the editor instance to communicate with
-  setEditorInstance(editorInstance) {
-    console.log('ModernIcons: Setting editor instance');
-    this.editorInstance = editorInstance;
-  }
-  
   addButton(text, className, iconClass) {
     const button = document.createElement('button');
     button.className = `icon-button modern-icon-button ${className}`;
@@ -122,85 +114,55 @@ class ModernIcons {
   handleButtonClick(action) {
     console.log(`Modern button clicked: ${action}`);
     
-    switch (action.toLowerCase()) {
-      case 'new':
-        this.handleNewClick();
-        break;
-      case 'open':
-        this.handleOpenClick();
-        break;
-      case 'save':
-        this.handleSaveClick();
-        break;
-      case 'run':
-        this.handleRunClick();
-        break;
-      case 'debug':
-        this.handleDebugClick();
-        break;
-      case 'share':
-        this.handleShareClick();
-        break;
-      case 'help':
-        this.handleHelpClick();
-        break;
-      default:
-        console.log(`Action not implemented: ${action}`);
-    }
-    
-    // Call the callback if provided
-    if (this.onActionCallback) {
-      this.onActionCallback(action.toLowerCase());
-    }
+    this.sendMessageDown('ICON_ACTION', {
+      action: action
+    });
   }
   
   handleNewClick() {
     console.log('New button clicked');
-    if (this.editorInstance && typeof this.editorInstance.newFile === 'function') {
-      this.editorInstance.newFile();
-    }
   }
   
   handleOpenClick() {
     console.log('Open button clicked');
-    if (this.editorInstance && typeof this.editorInstance.openFile === 'function') {
-      this.editorInstance.openFile();
-    }
+    this.sendMessageDown('ICON_ACTION', {
+      action: 'Open'
+    });
   }
   
   handleSaveClick() {
     console.log('Save button clicked');
-    if (this.editorInstance && typeof this.editorInstance.saveFile === 'function') {
-      this.editorInstance.saveFile();
-    }
+    this.sendMessageDown('ICON_ACTION', {
+      action: 'Save'
+    });
   }
   
   handleRunClick() {
     console.log('Run button clicked');
-    if (this.editorInstance && typeof this.editorInstance.runProgram === 'function') {
-      this.editorInstance.runProgram();
-    }
+    this.sendMessageDown('ICON_ACTION', {
+      action: 'Run'
+    });
   }
   
   handleDebugClick() {
     console.log('Debug button clicked');
-    if (this.editorInstance && typeof this.editorInstance.debugProgram === 'function') {
-      this.editorInstance.debugProgram();
-    }
+    this.sendMessageDown('ICON_ACTION', {
+      action: 'Debug'
+    });
   }
   
   handleShareClick() {
     console.log('Share button clicked');
-    if (this.editorInstance && typeof this.editorInstance.shareCode === 'function') {
-      this.editorInstance.shareCode();
-    }
+    this.sendMessageDown('ICON_ACTION', {
+      action: 'Share'
+    });
   }
   
   handleHelpClick() {
     console.log('Help button clicked');
-    if (this.editorInstance && typeof this.editorInstance.showHelp === 'function') {
-      this.editorInstance.showHelp();
-    }
+    this.sendMessageDown('ICON_ACTION', {
+      action: 'Help'
+    });
   }
 }
 

@@ -9,10 +9,9 @@ class AMOSProEditor {
 
   // Prepare the container with AMOS Pro-specific styling
   prepareContainer() {
-    // Create a styled container for AMOS Pro
+    // Create a styled container for AMOS Pro without the header
     this.container.innerHTML = `
       <div class="amospro-editor">
-        <div class="amospro-header">AMOS Professional Version 2.00</div>
         <div id="amospro-editor-container" class="amospro-content"></div>
       </div>
     `;
@@ -25,13 +24,6 @@ class AMOSProEditor {
         flex-direction: column;
         height: 100%;
         border: 2px solid #00AAAA;
-      }
-      .amospro-header {
-        background-color: #006666;
-        color: #FFFF00;
-        padding: 4px 8px;
-        font-weight: bold;
-        text-align: center;
       }
       .amospro-content {
         flex-grow: 1;

@@ -1,10 +1,8 @@
 // Commodore 64 Icon Bar component
 
 class C64Icons {
-  constructor(container, onActionCallback) {
+  constructor(container) {
     this.container = container;
-    this.onActionCallback = onActionCallback;
-    this.editorInstance = null;
   }
 
   render() {
@@ -58,11 +56,6 @@ class C64Icons {
     document.head.appendChild(style);
   }
   
-  // Set the editor instance to communicate with
-  setEditorInstance(editorInstance) {
-    this.editorInstance = editorInstance;
-  }
-  
   addButton(text, className) {
     const button = document.createElement('button');
     button.className = `icon-button c64-button ${className}`;
@@ -73,69 +66,7 @@ class C64Icons {
   
   handleButtonClick(action) {
     console.log(`C64 Button clicked: ${action}`);
-    
-    switch (action.toLowerCase()) {
-      case 'run':
-        this.handleRunClick();
-        break;
-      case 'stop':
-        this.handleStopClick();
-        break;
-      case 'reset':
-        this.handleResetClick();
-        break;
-      case 'load':
-        this.handleLoadClick();
-        break;
-      case 'save':
-        this.handleSaveClick();
-        break;
-      default:
-        console.log(`Action not implemented: ${action}`);
-    }
-    
-    // Call the callback if provided
-    if (this.onActionCallback) {
-      this.onActionCallback(action.toLowerCase());
-    }
-  }
-  
-  handleRunClick() {
-    console.log('C64 Run button clicked');
-    if (this.editorInstance && typeof this.editorInstance.runProgram === 'function') {
-      this.editorInstance.runProgram();
-    }
-  }
-  
-  handleStopClick() {
-    console.log('C64 Stop button clicked');
-    if (this.editorInstance && typeof this.editorInstance.stopProgram === 'function') {
-      this.editorInstance.stopProgram();
-    }
-  }
-  
-  handleResetClick() {
-    console.log('C64 Reset button clicked');
-    if (this.editorInstance && typeof this.editorInstance.resetEmulator === 'function') {
-      this.editorInstance.resetEmulator();
-    }
-  }
-  
-  handleLoadClick() {
-    console.log('C64 Load button clicked');
-    if (this.editorInstance && typeof this.editorInstance.loadProgram === 'function') {
-      // For now, we'll just pass null as the program
-      // In a real implementation, we might open a file dialog or similar
-      this.editorInstance.loadProgram(null);
-    }
-  }
-  
-  handleSaveClick() {
-    console.log('C64 Save button clicked');
-    if (this.editorInstance && typeof this.editorInstance.saveProgram === 'function') {
-      this.editorInstance.saveProgram();
-    }
-  }
+  }  
 }
 
 export default C64Icons;

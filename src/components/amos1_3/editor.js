@@ -9,10 +9,9 @@ class AMOS13Editor {
 
   // Prepare the container with AMOS 1.3-specific styling
   prepareContainer() {
-    // Create a styled container for AMOS 1.3
+    // Create a styled container for AMOS 1.3 without the header
     this.container.innerHTML = `
       <div class="amos-editor">
-        <div class="amos-header">AMOS 1.3 Editor</div>
         <div id="amos-editor-container" class="amos-content"></div>
       </div>
     `;

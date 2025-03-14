@@ -3,9 +3,13 @@ import { basicSetup } from 'codemirror'
 import { EditorState } from '@codemirror/state'
 import { EditorView, keymap } from '@codemirror/view'
 import { defaultKeymap } from '@codemirror/commands'
+import BaseComponent from '../utils/BaseComponent.js'
 
-class Editor {
+class Editor extends BaseComponent {
   constructor(containerId, currentMode = 'modern') {
+    // Initialize the base component with component name
+    super('Editor');
+    
     this.container = document.getElementById(containerId);
     this.currentMode = currentMode;
     this.editorInstance = null;
@@ -29,8 +33,6 @@ class Editor {
     // Create the CodeMirror editor with mode-specific configuration
     this.createEditor();
     
-    // Connect to the icon bar if available
-    this.connectToIconBar();
   }
   
   async loadModeSpecificConfig() {
@@ -146,21 +148,6 @@ class Editor {
     }
   }
   
-  connectToIconBar() {
-    // Connect to icon bar if available
-    const iconBar = document.getElementById('icon-area');
-    if (iconBar) {
-      if (iconBar._modeSpecificIcons) {
-        console.log('Found mode-specific icon bar instance, connecting to editor');
-        iconBar._modeSpecificIcons.setEditorInstance(this);
-      } else if (iconBar._iconBarInstance) {
-        console.log('Found icon bar instance, connecting to editor');
-        iconBar._iconBarInstance.setEditorInstance(this);
-      } else {
-        console.warn('Icon bar instance not found, cannot connect to editor');
-      }
-    }
-  }
   
   // Core editor methods that all modes can use
   
@@ -287,6 +274,44 @@ class Editor {
   setMode(mode) {
     console.log(`Changing editor mode from ${this.currentMode} to ${mode}`);
     this.currentMode = mode;
+    this.loadModeSpecificConfig();
+    this.render();  
+  }
+  
+  // Override the handleMessage method from BaseComponent
+  handleMessage(messageType, messageData, sender) {
+    console.log(`Editor received message: ${messageType}`, messageData);
+    
+    switch (messageType) {
+      case 'MODE_CHANGE':
+        if (messageData.data && messageData.data.mode) {
+          this.setMode(messageData.data.mode);
+          return true;
+        }
+        break;
+        
+      case 'NEW_FILE':
+        this.newFile();
+        return true;
+        
+      case 'OPEN_FILE':
+        this.openFile();
+        return true;
+        
+      case 'SAVE_FILE':
+        this.saveFile();
+        return true;
+        
+      case 'RUN_PROGRAM':
+        this.runProgram();
+        return true;
+        
+      case 'DEBUG_PROGRAM':
+        this.debugProgram();
+        return true;
+    }
+    
+    return false; // Message not handled
   }
 }
 

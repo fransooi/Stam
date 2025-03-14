@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PCOS Message System Test</title>
+  <link rel="stylesheet" href="src/style.css">
+  <link rel="stylesheet" href="src/styles/popupMenu.css">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    
+    #menu-bar {
+      background-color: #f0f0f0;
+      border-bottom: 1px solid #ccc;
+      padding: 5px;
+      display: flex;
+      justify-content: space-between;
+    }
+    
+    #content-area {
+      display: flex;
+      flex: 1;
+    }
+    
+    #editor-area {
+      flex: 1;
+      padding: 10px;
+      border-right: 1px solid #ccc;
+    }
+    
+    #log-area {
+      width: 400px;
+      padding: 10px;
+      background-color: #f8f8f8;
+      overflow-y: auto;
+      font-family: monospace;
+      white-space: pre-wrap;
+    }
+    
+    #status-line {
+      background-color: #f0f0f0;
+      border-top: 1px solid #ccc;
+      padding: 5px;
+      font-size: 12px;
+    }
+    
+    .menu-items-container {
+      display: flex;
+    }
+    
+    .menu-item {
+      margin-right: 15px;
+      cursor: pointer;
+      user-select: none;
+    }
+    
+    .menu-title:hover {
+      background-color: #e0e0e0;
+    }
+    
+    .context-menu-area {
+      border: 1px dashed #ccc;
+      padding: 20px;
+      margin: 20px;
+      text-align: center;
+      cursor: context-menu;
+    }
+    
+    .log-entry {
+      margin-bottom: 5px;
+      padding: 3px;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .log-entry.command {
+      color: #0066cc;
+    }
+    
+    .log-entry.handled {
+      color: #009900;
+    }
+    
+    .log-entry.unhandled {
+      color: #cc0000;
+    }
+    
+    .clear-log {
+      margin-bottom: 10px;
+      padding: 5px;
+      background-color: #f0f0f0;
+      border: 1px solid #ccc;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div id="menu-bar"></div>
+  
+  <div id="content-area">
+    <div id="editor-area">
+      <h2>Message System Test</h2>
+      <p>This page demonstrates the message system for handling commands in the PCOS editor.</p>
+      <p>Try the following:</p>
+      <ol>
+        <li>Click on menu items in the menu bar</li>
+        <li>Right-click on the context menu area below</li>
+        <li>Observe the message flow in the log panel</li>
+      </ol>
+      
+      <div class="context-menu-area">
+        Right-click here for context menu
+      </div>
+    </div>
+    
+    <div id="log-area">
+      <button class="clear-log">Clear Log</button>
+      <div id="log-content"></div>
+    </div>
+  </div>
+  
+  <div id="status-line"></div>
+
+  <!-- Import scripts -->
+  <script type="module">
+    import messageBus from './src/utils/MessageBus.js';
+    import MenuBar from './src/components/interface/MenuBar.js';
+    import PopupMenu from './src/components/interface/PopupMenu.js';
+    
+    // Initialize components
+    const menuBar = new MenuBar('menu-bar', (mode) => {
+      console.log(`Mode changed to: ${mode}`);
+      statusBar.textContent = `Mode: ${mode}`;
+    }, 'modern');
+    
+    // Render menu bar
+    menuBar.render();
+    
+    // Get status bar element
+    const statusBar = document.getElementById('status-line');
+    statusBar.textContent = 'Ready';
+    
+    // Set up context menu area
+    const contextMenuArea = document.querySelector('.context-menu-area');
+    contextMenuArea.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      
+      const contextMenuItems = [
+        'Cut',
+        'Copy',
+        'Paste',
+        '-',
+        { 
+          label: 'Special', 
+          submenu: [
+            'Special Option 1',
+            'Special Option 2',
+            'Special Option 3'
+          ]
+        },
+        '-',
+        'Properties'
+      ];
+      
+      menuBar.createContextMenu(
+        contextMenuItems, 
+        { x: e.clientX, y: e.clientY }, 
+        (item) => {
+          console.log(`Context menu item selected: ${item}`);
+        },
+        'context'
+      );
+    });
+    
+    // Set up log area
+    const logContent = document.getElementById('log-content');
+    const clearLogButton = document.querySelector('.clear-log');
+    
+    // Clear log button
+    clearLogButton.addEventListener('click', () => {
+      logContent.innerHTML = '';
+    });
+    
+    // Log message bus activity
+    function logMessage(type, message, data = null) {
+      const logEntry = document.createElement('div');
+      logEntry.className = `log-entry ${type}`;
+      
+      let logText = message;
+      if (data) {
+        logText += ` ${JSON.stringify(data)}`;
+      }
+      
+      logEntry.textContent = logText;
+      logContent.appendChild(logEntry);
+      
+      // Auto-scroll to bottom
+      logContent.scrollTop = logContent.scrollHeight;
+    }
+    
+    // Register a global handler to log all commands
+    messageBus.registerGlobalHandler((command, data, sender) => {
+      logMessage('command', `Command: ${command}`, data);
+      return false; // Don't handle, just log
+    });
+    
+    // Create a test component that handles some commands
+    class TestComponent {
+      constructor() {
+        this.unregisterHandler = messageBus.registerHandler('Edit:Copy', this.handleCopy.bind(this), this);
+        this.unregisterHandler2 = messageBus.registerHandler('Edit:Paste', this.handlePaste.bind(this), this);
+      }
+      
+      handleCopy(command, data, sender) {
+        logMessage('handled', `TestComponent handled: ${command}`);
+        return true; // Mark as handled
+      }
+      
+      handlePaste(command, data, sender) {
+        logMessage('handled', `TestComponent handled: ${command}`);
+        return true; // Mark as handled
+      }
+    }
+    
+    // Create the test component
+    const testComponent = new TestComponent();
+    
+    // Root handler for unhandled commands
+    class RootHandler {
+      constructor() {
+        this.unregisterHandler = messageBus.registerGlobalHandler(this.handleCommand.bind(this), this);
+      }
+      
+      handleCommand(command, data, sender) {
+        // Only handle commands that weren't handled by anyone else
+        if (!command.startsWith('Edit:')) {
+          logMessage('handled', `RootHandler handled: ${command}`);
+          statusBar.textContent = `Executed: ${command}`;
+          return true;
+        }
+        
+        logMessage('unhandled', `Unhandled command: ${command}`);
+        return false;
+      }
+    }
+    
+    // Create the root handler
+    const rootHandler = new RootHandler();
+    
+    // Log initial message
+    logMessage('info', 'Message System Test initialized');
+  </script>
+</body>
+</html>

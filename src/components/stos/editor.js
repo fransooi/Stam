@@ -9,10 +9,9 @@ class STOSEditor {
 
   // Prepare the container with STOS-specific styling
   prepareContainer() {
-    // Create a styled container for STOS Basic
+    // Create a styled container for STOS Basic without the header
     this.container.innerHTML = `
       <div class="stos-editor">
-        <div class="stos-header">STOS Basic Editor</div>
         <div id="stos-editor-container" class="stos-content"></div>
       </div>
     `;

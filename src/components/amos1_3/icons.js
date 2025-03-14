@@ -1,9 +1,8 @@
 // AMOS 1.3 Icon Bar component - Inspired by the original AMOS 1.3 from 1988 for Amiga
 
 class AMOS13Icons {
-  constructor(container, onActionCallback) {
+  constructor(container) {
     this.container = container;
-    this.onActionCallback = onActionCallback;
     this.shiftPressed = false;
     
     // Define function keys for normal state (F1-F10)
@@ -177,89 +176,8 @@ class AMOS13Icons {
   
   handleFunctionKeyClick(key, action) {
     console.log(`AMOS Function Key clicked: ${key} - ${action}`);
-    
-    // Handle specific function key actions
-    switch (key) {
-      case 'F1':
-        this.handleHelp();
-        break;
-      case 'F2':
-        this.handleDirectMode();
-        break;
-      case 'F3':
-        this.handleRun();
-        break;
-      case 'F4':
-        this.handleStep();
-        break;
-      case 'F5':
-        this.handleEdit();
-        break;
-      case 'F6':
-        this.handleProcedures();
-        break;
-      case 'F7':
-        this.handleFiles();
-        break;
-      case 'F8':
-        this.handleMenuEditor();
-        break;
-      case 'F9':
-        this.handleSettings();
-        break;
-      case 'F10':
-        this.handleExit();
-        break;
-      default:
-        console.log(`Action not implemented for key: ${key}`);
-    }
-    
-    // Call the callback if provided
-    if (this.onActionCallback) {
-      this.onActionCallback(`${key}:${action}`);
-    }
   }
   
-  // Handler methods for each function key
-  handleHelp() {
-    console.log('F1: Help command');
-  }
-  
-  handleDirectMode() {
-    console.log('F2: Direct Mode command');
-  }
-  
-  handleRun() {
-    console.log('F3: Run command');
-  }
-  
-  handleStep() {
-    console.log('F4: Step command');
-  }
-  
-  handleEdit() {
-    console.log('F5: Edit command');
-  }
-  
-  handleProcedures() {
-    console.log('F6: Procedures command');
-  }
-  
-  handleFiles() {
-    console.log('F7: Files command');
-  }
-  
-  handleMenuEditor() {
-    console.log('F8: Menu Editor command');
-  }
-  
-  handleSettings() {
-    console.log('F9: Settings command');
-  }
-  
-  handleExit() {
-    console.log('F10: Exit command');
-  }
 }
 
 export default AMOS13Icons;

@@ -1,6 +1,12 @@
+import BaseComponent from '../utils/BaseComponent.js';
+
 // IconBar.js - Component for the icon area with buttons
-class IconBar {
+class IconBar extends BaseComponent {
   constructor(containerId, onModeChangeCallback, currentMode = 'modern') {
+    // Hello this is Francois
+    // Initialize the base component with component name
+    super('IconBar');
+    
     this.container = document.getElementById(containerId);
     this.onModeChangeCallback = onModeChangeCallback;
     this.currentMode = currentMode;
@@ -55,7 +61,7 @@ class IconBar {
       }
       
       // Create and render the mode-specific icons
-      this.modeSpecificIcons = new IconsModule.default(iconContainer, this.handleIconAction.bind(this));
+      this.modeSpecificIcons = new IconsModule.default(iconContainer, this.handleIconClick.bind(this));
       this.modeSpecificIcons.render();
       
       // Store the icon bar instance on the container element for external access
@@ -69,23 +75,36 @@ class IconBar {
     }
   }
   
-  handleIconAction(action) {
+  handleIconClick(action) {
     console.log(`Icon action: ${action} in ${this.currentMode} mode`);
-    // Handle icon actions here or pass to a callback
+    
+    // Send the action message down toward the root
+    this.sendMessageDown('ICON_ACTION', {
+      action: action,
+      mode: this.currentMode
+    });    
   }
   
   setMode(mode) {
     this.currentMode = mode;
+    this.loadModeSpecificIcons();
   }
   
-  // Method to expose the mode-specific icons instance
-  setEditorInstance(editorInstance) {
-    if (this.modeSpecificIcons && typeof this.modeSpecificIcons.setEditorInstance === 'function') {
-      console.log('Connecting icon bar to editor instance');
-      this.modeSpecificIcons.setEditorInstance(editorInstance);
-    } else {
-      console.warn('Cannot connect icon bar to editor: setEditorInstance method not available');
+  // Override the handleMessage method from BaseComponent
+  handleMessage(messageType, messageData, sender) {
+    console.log(`IconBar received message: ${messageType}`, messageData);
+    
+    switch (messageType) {
+      case 'MODE_CHANGE':
+        if (messageData.data && messageData.data.mode) {
+          this.setMode(messageData.data.mode);
+          return true;
+        }
+        break;
+        
     }
+    
+    return false; // Message not handled
   }
 }
 
