@@ -37,9 +37,14 @@ class TVSideWindow extends SideWindow {
   }
   
   /**
-   * Initialize the content of the TV window
+   * Override render to add custom buttons and set up content resize listener
+   * @param {HTMLElement} parentContainer - The parent container
+   * @returns {HTMLElement} - The rendered window element
    */
-  initContent() {
+  render(parentContainer) {
+    // Call parent render method
+    const container = super.render(parentContainer);
+    
     // Add clip selector button to the header
     this.addClipSelectorButton();
     
@@ -47,11 +52,49 @@ class TVSideWindow extends SideWindow {
     this.addEditButton();
     
     // Initialize the current clip
-    this.clips[this.currentClipType].initContent(this.content);
+    this.clips[this.currentClipType].render(this.content);
     
-    // Add playlist controls if playing a playlist
-    if (this.isPlayingPlaylist && this.currentPlaylist) {
-      this.addPlaylistControls();
+    // Add event listener for content height changes
+    this.content.addEventListener('contentHeightChanged', (event) => {
+      this.handleContentHeightChanged(event.detail.height);
+    });
+    
+    // Initial content height update
+    this.updateContentHeight();
+    
+    // Force an immediate resize after a short delay to ensure proper rendering
+    setTimeout(() => {
+      // Get the current container height and recalculate
+      if (this.container && this.header && !this.minimized) {
+        const containerHeight = this.container.offsetHeight;
+        const headerHeight = this.header.offsetHeight;
+        const availableHeight = containerHeight - headerHeight;
+        
+        if (availableHeight > 0) {
+          this.handleContentHeightChanged(availableHeight);
+        }
+      }
+    }, 100);
+    
+    return container;
+  }
+  
+  /**
+   * Handle content height changes
+   * @param {number} height - New content height
+   */
+  handleContentHeightChanged(height) {
+    // Update the current clip's iframe or content size
+    const currentClip = this.clips[this.currentClipType];
+    if (currentClip && typeof currentClip.resize === 'function') {
+      currentClip.resize(height);
+    } else {
+      // Fallback: find and resize iframe directly
+      const iframe = this.content.querySelector('iframe');
+      if (iframe) {
+        iframe.style.height = `${height}px`;
+        iframe.style.width = '100%';
+      }
     }
   }
   
@@ -355,7 +398,7 @@ class TVSideWindow extends SideWindow {
     this.content.innerHTML = '';
     
     // Initialize new clip
-    this.clips[clipTypeId].initContent(this.content);
+    this.clips[clipTypeId].render(this.content);
   }
   
   /**
@@ -420,7 +463,7 @@ class TVSideWindow extends SideWindow {
       this.content.innerHTML = '';
       
       // Initialize the clip content
-      this.clips[this.currentClipType].initContent(this.content);
+      this.clips[this.currentClipType].render(this.content);
       
       // Set the URL after the content is initialized
       this.setUrl(currentClip.url);
@@ -546,6 +589,14 @@ class TVSideWindow extends SideWindow {
     
     // Call the parent close method
     super.close();
+  }
+  
+  /**
+   * Update the content height
+   */
+  updateContentHeight() {
+    const contentHeight = this.content.offsetHeight;
+    this.handleContentHeightChanged(contentHeight);
   }
 }
 

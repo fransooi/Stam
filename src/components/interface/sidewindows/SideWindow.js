@@ -1,7 +1,12 @@
 // SideWindow.js - Base class for all side windows in the sidebar
+import BaseComponent from '../../../utils/BaseComponent.js';
 
-class SideWindow {
+class SideWindow extends BaseComponent {
   constructor(id, title, initialHeight = 200) {
+    // Initialize BaseComponent with component name and parent ID
+    // We'll use 'sidewindow-' + id as the component name
+    super('sidewindow-' + id, 'sidebar');
+    
     this.id = id;
     this.title = title;
     this.height = initialHeight;
@@ -9,6 +14,48 @@ class SideWindow {
     this.content = null;
     this.header = null;
     this.isVisible = true;
+    this.minimized = false;
+    this.originalHeight = initialHeight;
+    this.headerHeight = 30; // Approximate height of the header
+  }
+
+  /**
+   * Handle incoming messages
+   * 
+   * @param {string} messageType - Type of message received
+   * @param {Object} messageData - Data associated with the message
+   * @param {Object} sender - Component that sent the message
+   * @returns {boolean} - True if the message was handled
+   */
+  handleMessage(messageType, messageData, sender) {
+    console.log(`SideWindow ${this.id} received message: ${messageType}`, messageData);
+    
+    // Handle common SideWindow messages
+    switch (messageType) {
+      case 'WINDOW_TOGGLE':
+        if (messageData.windowId === this.id) {
+          this.toggle();
+          return true;
+        }
+        break;
+        
+      case 'WINDOW_CLOSE':
+        if (messageData.windowId === this.id) {
+          this.close();
+          return true;
+        }
+        break;
+        
+      case 'WINDOW_RESIZE':
+        if (messageData.windowId === this.id && messageData.height) {
+          this.resize(messageData.height);
+          return true;
+        }
+        break;
+    }
+    
+    // Not handled by SideWindow base class
+    return false;
   }
 
   /**
@@ -17,123 +64,257 @@ class SideWindow {
    * @returns {HTMLElement} The created window element
    */
   render(parentContainer) {
-    // Create the main container for this window
+    // Create the container element
     this.container = document.createElement('div');
-    this.container.className = 'side-window';
     this.container.id = `side-window-${this.id}`;
-    this.container.style.height = `${this.height}px`;
+    this.container.className = 'side-window';
     
     // Create the header
     this.header = document.createElement('div');
     this.header.className = 'side-window-header';
     
-    const titleElement = document.createElement('div');
-    titleElement.className = 'side-window-title';
-    titleElement.textContent = this.title;
+    // Create the title
+    const title = document.createElement('div');
+    title.className = 'side-window-title';
+    title.textContent = this.title;
     
-    const controlsElement = document.createElement('div');
-    controlsElement.className = 'side-window-controls';
+    // Create the buttons container
+    const buttons = document.createElement('div');
+    buttons.className = 'side-window-buttons';
     
-    // Add minimize/maximize button
+    // Create toggle button
     const toggleButton = document.createElement('button');
     toggleButton.className = 'side-window-toggle';
-    toggleButton.innerHTML = '▲';
-    toggleButton.title = 'Minimize';
+    toggleButton.innerHTML = this.minimized ? '▼' : '▲';
+    toggleButton.title = this.minimized ? 'Maximize' : 'Minimize';
     toggleButton.addEventListener('click', () => this.toggle());
     
-    // Add close button
+    // Create close button
     const closeButton = document.createElement('button');
     closeButton.className = 'side-window-close';
     closeButton.innerHTML = '×';
     closeButton.title = 'Close';
     closeButton.addEventListener('click', () => this.close());
     
-    controlsElement.appendChild(toggleButton);
-    controlsElement.appendChild(closeButton);
+    // Add buttons to the buttons container
+    buttons.appendChild(toggleButton);
+    buttons.appendChild(closeButton);
     
-    this.header.appendChild(titleElement);
-    this.header.appendChild(controlsElement);
+    // Add title and buttons to the header
+    this.header.appendChild(title);
+    this.header.appendChild(buttons);
     
-    // Create content area
+    // Create the content area
     this.content = document.createElement('div');
     this.content.className = 'side-window-content';
     
-    // Append elements to the container
+    // Add header and content to the container
     this.container.appendChild(this.header);
     this.container.appendChild(this.content);
     
-    // Add to parent
-    if (parentContainer) {
-      parentContainer.appendChild(this.container);
-    }
+    // Add the container to the parent
+    parentContainer.appendChild(this.container);
     
-    // Initialize content
-    this.initContent();
+    // Set initial height
+    if (this.minimized) {
+      this.container.classList.add('minimized');
+      this.content.style.display = 'none';
+    } else {
+      this.updateContentHeight();
+    }
     
     return this.container;
   }
-  
+
   /**
-   * Initialize the content of this window - to be overridden by subclasses
-   */
-  initContent() {
-    // Default implementation - to be overridden by subclasses
-    this.content.innerHTML = `<div class="side-window-placeholder">Content for ${this.title}</div>`;
-  }
-  
-  /**
-   * Set the height of this window
-   * @param {number} height - The new height in pixels
-   */
-  setHeight(height) {
-    this.height = height;
-    if (this.container) {
-      this.container.style.height = `${height}px`;
-    }
-  }
-  
-  /**
-   * Toggle the visibility of the window content (minimize/maximize)
+   * Toggle the window between minimized and normal state
    */
   toggle() {
-    if (this.content.style.display === 'none') {
-      // Maximize
-      this.content.style.display = '';
-      this.container.style.height = `${this.height}px`;
-      this.header.querySelector('.side-window-toggle').innerHTML = '▲';
-      this.header.querySelector('.side-window-toggle').title = 'Minimize';
-    } else {
-      // Minimize
-      this.content.style.display = 'none';
-      this.container.style.height = 'auto';
-      this.header.querySelector('.side-window-toggle').innerHTML = '▼';
-      this.header.querySelector('.side-window-toggle').title = 'Maximize';
+    if (!this.container) return;
+    
+    // Get the sidebar element
+    const sidebarContainer = this.container.closest('.side-windows-container');
+    if (!sidebarContainer) return;
+    
+    // Get all side windows in the sidebar
+    const sideWindowWrappers = Array.from(sidebarContainer.querySelectorAll('.side-window-wrapper'));
+    
+    // Find this window's wrapper
+    const thisWrapper = this.container.closest('.side-window-wrapper');
+    if (!thisWrapper) return;
+    
+    // Find the index of this window wrapper
+    const index = sideWindowWrappers.indexOf(thisWrapper);
+    
+    // Check if this is the only visible window
+    const visibleWrappers = sideWindowWrappers.filter(wrapper => {
+      const sideWindow = wrapper.querySelector('.side-window');
+      return sideWindow && !sideWindow.classList.contains('minimized') && sideWindow !== this.container;
+    });
+    
+    // If this is the only window or the only visible window, don't allow minimizing
+    if ((sideWindowWrappers.length === 1 || visibleWrappers.length === 0) && !this.minimized) {
+      console.log('Cannot minimize the only visible window');
+      return;
     }
+    
+    // Toggle minimized state
+    this.minimized = !this.minimized;
+    
+    if (this.minimized) {
+      // Save original height before minimizing
+      this.originalHeight = this.height;
+      
+      // Minimize: collapse to just show the header
+      this.container.classList.add('minimized');
+      this.content.style.display = 'none';
+      
+      // Update the wrapper's flex properties
+      thisWrapper.style.height = `${this.headerHeight}px`;
+      thisWrapper.style.minHeight = `${this.headerHeight}px`;
+      thisWrapper.style.flex = '0 0 auto';
+      
+      // Update toggle button
+      const toggleButton = this.container.querySelector('.side-window-toggle');
+      if (toggleButton) {
+        toggleButton.innerHTML = '▼';
+        toggleButton.title = 'Maximize';
+      }
+    } else {
+      // Maximize: restore to original height
+      this.container.classList.remove('minimized');
+      this.content.style.display = 'block';
+      
+      // Update the wrapper's flex properties
+      thisWrapper.style.height = `${this.originalHeight}px`;
+      thisWrapper.style.minHeight = `${this.headerHeight}px`;
+      thisWrapper.style.flex = '1 1 auto';
+      
+      // Update toggle button
+      const toggleButton = this.container.querySelector('.side-window-toggle');
+      if (toggleButton) {
+        toggleButton.innerHTML = '▲';
+        toggleButton.title = 'Minimize';
+      }
+      
+      // Update content height to match new container size
+      this.updateContentHeight();
+    }
+    
+    // Notify that window state has changed
+    this.sendMessageTo('sidebar', 'SIDEBAR_LAYOUT_CHANGED', {
+      windowId: this.id,
+      minimized: this.minimized
+    });
   }
   
   /**
-   * Close this window
+   * Close the window
    */
   close() {
-    if (this.container && this.container.parentNode) {
-      this.container.parentNode.removeChild(this.container);
-      this.isVisible = false;
+    if (!this.container) return;
+    
+    // Remove the window from the DOM
+    const wrapper = this.container.closest('.side-window-wrapper');
+    if (wrapper) {
+      wrapper.remove();
+    } else {
+      this.container.remove();
+    }
+    
+    // Dispatch an event to notify that the window has been closed
+    const event = new CustomEvent('sideWindowClosed', {
+      detail: { id: this.id }
+    });
+    document.dispatchEvent(event);
+  }
+  
+  /**
+   * Set the height of the window
+   * @param {number} height - New height in pixels
+   */
+  setHeight(height) {
+    if (!this.container) return;
+    
+    this.height = height;
+    
+    // Update the wrapper's height
+    const wrapper = this.container.closest('.side-window-wrapper');
+    if (wrapper && !this.minimized) {
+      this.originalHeight = height;
+      wrapper.style.height = `${height}px`;
       
-      // Dispatch a custom event to notify the sidebar that this window was closed
-      const event = new CustomEvent('sideWindowClosed', {
-        detail: { id: this.id }
-      });
-      document.dispatchEvent(event);
+      // Update content height to match new container size
+      this.updateContentHeight();
     }
   }
   
   /**
+   * Get the current height of the window
+   * @returns {number} - Current height in pixels
+   */
+  getHeight() {
+    return this.minimized ? this.headerHeight : this.height;
+  }
+  
+  /**
+   * Check if the window is minimized
+   * @returns {boolean} - True if minimized
+   */
+  isMinimized() {
+    return this.minimized;
+  }
+
+  /**
    * Update the window with new data
-   * @param {any} data - The data to update the window with
+   * @param {Object} data - Data to update the window with
    */
   update(data) {
     // Default implementation - to be overridden by subclasses
     console.log(`Updating ${this.title} with data:`, data);
+  }
+  
+  /**
+   * Resize the window to a new height
+   * @param {number} height - The new height in pixels
+   */
+  resize(height) {
+    this.setHeight(height);
+  }
+  
+  /**
+   * Update the content area height to match the available space
+   */
+  updateContentHeight() {
+    if (!this.container || !this.content || !this.header || this.minimized) return;
+    
+    // Calculate available height (container height minus header height)
+    const containerHeight = this.container.offsetHeight;
+    const headerHeight = this.header.offsetHeight;
+    const availableHeight = containerHeight - headerHeight;
+    
+    // Set content height
+    if (availableHeight > 0) {
+      this.content.style.height = `${availableHeight}px`;
+      
+      // Trigger a custom event that subclasses can listen for
+      const event = new CustomEvent('contentHeightChanged', {
+        detail: { height: availableHeight }
+      });
+      this.content.dispatchEvent(event);
+    }
+  }
+  
+  /**
+   * Get the SideWindow object associated with a DOM element
+   * @param {HTMLElement} element - The DOM element
+   * @returns {SideWindow|null} - The SideWindow object or null if not found
+   */
+  getWindowObjectFromElement(element) {
+    const windowId = element.id.replace('side-window-', '');
+    // This is a simplified approach - in a real implementation, you might
+    // want to use a registry or other mechanism to look up window objects
+    return null; // Placeholder - will be implemented by SideBar
   }
 }
 

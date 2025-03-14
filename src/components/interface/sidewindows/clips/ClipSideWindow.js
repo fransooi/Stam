@@ -9,14 +9,18 @@ class ClipSideWindow {
     this.iframe = null;
     this.modalContainer = null;
     this.iframeContainer = null;
+    this.content = null;
   }
   
   /**
-   * Initialize the content of the clip window
-   * @param {HTMLElement} contentElement - The content element to initialize
+   * Render the content of the clip window
+   * @param {HTMLElement} contentElement - The content element to render into
    */
-  initContent(contentElement) {
+  render(contentElement) {
     this.content = contentElement;
+    
+    // Clear existing content
+    contentElement.innerHTML = '';
     
     this.initIframeContainer(contentElement);
     
@@ -190,6 +194,31 @@ class ClipSideWindow {
    */
   getUrlHelpText() {
     return 'Enter a valid URL';
+  }
+  
+  /**
+   * Resize the iframe to fit the available space
+   * @param {number} height - The available height for the iframe
+   */
+  resize(height) {
+    if (!this.iframe || !this.iframeContainer) return;
+    
+    // Ensure height is a positive number
+    const iframeHeight = Math.max(height, 10);
+    
+    // Set iframe height
+    this.iframe.style.height = `${iframeHeight}px`;
+    this.iframe.style.width = '100%';
+    
+    // Set container height
+    this.iframeContainer.style.height = `${iframeHeight}px`;
+    this.iframeContainer.style.width = '100%';
+    
+    // Force layout recalculation
+    this.iframeContainer.style.display = 'none';
+    // This forces a reflow
+    void this.iframeContainer.offsetHeight;
+    this.iframeContainer.style.display = 'block';
   }
   
   /**
