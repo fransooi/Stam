@@ -7,8 +7,8 @@ import StatusBar from './components/StatusBar.js';
 import Editor from './components/Editor.js';
 import IconBar from './components/IconBar.js';
 import SideBar from './components/SideBar.js';
-import BaseComponent from './utils/BaseComponent.js';
-import messageBus from './utils/MessageBus.js';
+import BaseComponent, { PREFERENCE_MESSAGES } from './utils/BaseComponent.js';
+import PreferenceDialog from './components/PreferenceDialog.js';
 
 // Main application class
 class PCOSApp extends BaseComponent {
@@ -25,6 +25,7 @@ class PCOSApp extends BaseComponent {
     this.editor = null;
     this.iconBar = null;
     this.sideBar = null;
+    this.preferenceDialog = null;
     
     // Initialize the application
     this.init();
@@ -41,11 +42,14 @@ class PCOSApp extends BaseComponent {
   
   initComponents() {
     // Initialize all components
-    this.menuBar = new MenuBar('menu-bar', this.currentMode);
+    this.menuBar = new MenuBar('menu-bar', (mode) => this.handleModeChange(mode), this.currentMode);
     this.statusBar = new StatusBar('status-line');
     this.editor = new Editor('editor-area', this.currentMode);
     this.iconBar = new IconBar('icon-area', null, this.currentMode);
     this.sideBar = new SideBar('info-area');
+    
+    // Initialize preference dialog
+    this.preferenceDialog = new PreferenceDialog(this.getComponentID());
     
     // Register components in the component tree
     this.registerComponentInTree(this.menuBar.getComponentID(), this.getComponentID());
@@ -53,6 +57,19 @@ class PCOSApp extends BaseComponent {
     this.registerComponentInTree(this.editor.getComponentID(), this.getComponentID());
     this.registerComponentInTree(this.iconBar.getComponentID(), this.getComponentID());
     this.registerComponentInTree(this.sideBar.getComponentID(), this.getComponentID());
+    this.registerComponentInTree(this.preferenceDialog.getComponentID(), this.getComponentID());
+    
+    // Set up mode selector
+    const modeSelector = document.getElementById('mode-selector');
+    if (modeSelector) {
+      modeSelector.value = this.currentMode;
+      modeSelector.addEventListener('change', (event) => {
+        this.handleModeChange(event.target.value);
+      });
+    }
+    
+    // Load any saved layout
+    this.loadLayout();
     
     // Render all components
     this.menuBar.render();
@@ -79,122 +96,142 @@ class PCOSApp extends BaseComponent {
     document.body.classList.add(`${mode}-mode`);
     
     // Broadcast mode change messages to components
-    this.broadcastMessageUp('MODE_CHANGE', { mode });
+    this.broadcast('MODE_CHANGE', { mode });
     
     return true; // Command handled
   }
   
-  // Override the handleMessage method from BaseComponent
+  /**
+   * Handle incoming messages
+   * @param {string} messageType - Type of message received
+   * @param {Object} messageData - Data associated with the message
+   * @param {Object} sender - Component that sent the message
+   * @returns {boolean} - True if the message was handled
+   */
   handleMessage(messageType, messageData, sender) {
     console.log(`PCOSApp received message: ${messageType}`, messageData, sender);
     
+    // Handle specific message types
     switch (messageType) {
+      case 'COMMAND':
+        // Handle commands
+        if (messageData && messageData.command) {
+          return this.handleCommand(messageData.command, messageData.params);
+        }
+        return false;
+        
+      case 'MODE_CHANGE':
+        this.handleModeChange(messageData.data.mode);
+        return true;
+        
+      case PREFERENCE_MESSAGES.SAVE_LAYOUT:
+        this.saveLayout();
+        return true;
+        
       case 'MENU_ACTION':
         return this.handleMenuAction(messageData, sender);
         
       case 'ICON_ACTION':
         return this.handleIconAction(messageData, sender);
         
-      case 'MODE_CHANGE_REQUEST':
-        if (messageData.data && messageData.data.mode) {
-          this.handleModeChange(messageData.data.mode);
-          return true;
-        }
-        return false;
-        
       // Add more message types as needed
     }
     
-    return false; // Message not handled
+    // If we get here, the message wasn't handled
+    return super.handleMessage(messageType, messageData, sender);
   }
   
-  // Handle menu actions from MenuBar
-  handleMenuAction(messageData, sender) {
-    if (!messageData.data) return false;
+  /**
+   * Handle menu actions from MenuBar
+   * @param {Object} action - Action data
+   * @param {Object} sender - Component that sent the action
+   * @returns {boolean} - True if the action was handled
+   */
+  handleMenuAction(action, sender) {
+    console.log('Menu action:', action);
     
-    const { menuName, option, action } = messageData.data;
-    console.log(`PCOSApp handling menu action: ${action}`);
-    
-    // Map menu actions to component messages
-    switch (action) {
-      // File menu
-      case 'File:New':
+    // Handle specific menu actions
+    switch (action.data.option.toLowerCase()) {
+      case 'new':
+        // Handle new file action
+        console.log('New file action');
         return true;
         
-      case 'File:Open':
+      case 'open':
+        // Handle open file action
+        console.log('Open file action');
         return true;
         
-      case 'File:Save':
+      case 'save':
+        // Handle save file action
+        console.log('Save file action');
         return true;
         
-      case 'File:Save As':
+      case 'preferences':
+        // Show preferences dialog
+        this.showPreferences();
         return true;
         
-      case 'File:Exit':
-        return true;
-        
-      // Edit menu
-      case 'Edit:Undo':
-        return true;
-        
-      case 'Edit:Redo':
-        return true;
-        
-      case 'Edit:Cut':
-        return true;
-        
-      case 'Edit:Copy':
-        return true;
-        
-      case 'Edit:Paste':
-        return true;
-        
-      case 'Edit:Find':
-        return true;
-        
-      case 'Edit:Replace':
-        return true;
-        
-      // View menu
-      case 'View:Zoom In':
-        return true;
-        
-      case 'View:Zoom Out':
-        return true;
-        
-      case 'View:Reset Zoom':
-        return true;
-        
-      case 'View:Toggle Output':
-        return true;
-        
-      // Run menu
-      case 'Run:Run':
-        return true;
-        
-      case 'Run:Debug':
-        return true;
-        
-      case 'Run:Stop':
-        return true;
-        
-      case 'Run:Build':
-        return true;
-        
-      // Help menu
-      case 'Help:Documentation':
-        return true;
-        
-      case 'Help:About':
-        return true;
+      // Add more menu actions as needed
     }
     
-    // If we get here, the action wasn't handled
-    console.log(`Unhandled menu action: ${action}`);
+    console.log(`Unhandled menu action: ${action.action}`);
     return false;
   }
   
-  // Handle icon actions from IconBar
+  /**
+   * Show the preferences dialog
+   */
+  showPreferences() {
+    if (this.preferenceDialog) {
+      this.sendMessageTo(this.preferenceDialog.getComponentID(), PREFERENCE_MESSAGES.SHOW_PREFERENCES);
+    }
+  }
+  
+  /**
+   * Save the current layout
+   * @returns {Promise<string>} - Promise that resolves with the layout JSON
+   */
+  saveLayout() {
+    if (!this.preferenceDialog) return Promise.resolve('{}');
+    
+    return this.preferenceDialog.saveLayout()
+      .then(layoutJson => {
+        console.log('Layout saved:', layoutJson);
+        // Here you would typically save the layout to localStorage or a file
+        localStorage.setItem('pcos-layout', layoutJson);
+        return layoutJson;
+      })
+      .catch(error => {
+        console.error('Error saving layout:', error);
+        return '{}';
+      });
+  }
+  
+  /**
+   * Load a saved layout
+   * @returns {Promise<boolean>} - Promise that resolves with success status
+   */
+  loadLayout() {
+    if (!this.preferenceDialog) return Promise.resolve(false);
+    
+    try {
+      const layoutJson = localStorage.getItem('pcos-layout');
+      if (!layoutJson) return Promise.resolve(false);
+      
+      return Promise.resolve(this.preferenceDialog.loadLayout(layoutJson));
+    } catch (error) {
+      console.error('Error loading layout:', error);
+      return Promise.resolve(false);
+    }
+  }
+  
+  /**
+   * Handle icon actions from IconBar
+   * @param {Object} messageData - Data associated with the message
+   * @param {Object} sender - Component that sent the message
+   * @returns {boolean} - True if the action was handled
+   */
   handleIconAction(messageData, sender) {
     if (!messageData.data || !messageData.data.action) return false;
     

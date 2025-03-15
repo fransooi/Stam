@@ -1,5 +1,5 @@
 /**
- * MessageBus.js - A bidirectional messaging system for command handling
+ * MessageBus.mjs - A bidirectional messaging system for command handling
  * 
  * This class provides a centralized way to send and handle commands throughout the application.
  * Commands can flow up from child components to parent components (bubbling),
@@ -48,7 +48,7 @@ class MessageBus {
         }
       }
     };
-  }
+  };
   
   /**
    * Register a global handler that will receive all commands
@@ -70,7 +70,7 @@ class MessageBus {
         this.globalHandlers.splice(index, 1);
       }
     };
-  }
+  };
   
   /**
    * Register a component to receive addressed messages
@@ -94,7 +94,7 @@ class MessageBus {
         this.addressedHandlers.delete(componentID);
       }
     };
-  }
+  };
   
   /**
    * Register a component in the component tree for message routing
@@ -115,7 +115,7 @@ class MessageBus {
     }
     
     return componentId;
-  }
+  };
   
   /**
    * Unregister a component from the component tree
@@ -137,7 +137,7 @@ class MessageBus {
     
     // Remove this component from the registry
     delete this.componentRegistry[componentId];
-  }
+  };
   
   
   /**
@@ -146,32 +146,33 @@ class MessageBus {
    * @param {string} targetID - The ID of the target component
    * @param {string} message - The message to send
    * @param {Object} data - Additional data to send with the message
-   * @param {Object} sender - The component that sent the message
+   * @param {string} senderId - The ID of the component that sent the message
    * @returns {boolean} - True if the message was delivered to the target
    */
-  sendMessage(targetID, message, data = {}, sender = null) {
+  sendMessage(targetID, message, data = {}, senderId = null) {
     // Check if we have a handler for this component ID
     if (this.addressedHandlers.has(targetID)) {
       const { handler, context } = this.addressedHandlers.get(targetID);
       
       // Call the handler with the message
-      handler.call(context, message, data, sender);
+      handler.call(context, message, data, senderId);
       return true;
     }
     
     return false;
-  }
+  };
   
   /**
-   * Broadcast a message to all registered components
+   * Broadcast a message to all registered handlers without traversing the component tree
+   * This simply calls all registered handler functions directly with the message
    * 
-   * @param {string} message - The message to broadcast
+   * @param {string} message - The message to send
    * @param {Object} data - Additional data to send with the message
-   * @param {Object} sender - The component that sent the message
-   * @param {Array} excludeIDs - Array of component IDs to exclude from the broadcast
+   * @param {string} senderId - The ID of the component that sent the message
+   * @param {Array} excludeIDs - Array of component IDs to exclude from receiving the message
    * @returns {number} - Number of components that received the message
    */
-  broadcastMessage(message, data = {}, sender = null, excludeIDs = []) {
+  broadcastToHandlers(message, data = {}, senderId = null, excludeIDs = []) {
     let deliveryCount = 0;
     
     // Convert excludeIDs to a Set for faster lookups
@@ -187,12 +188,67 @@ class MessageBus {
       const { handler, context } = handlerInfo;
       
       // Call the handler with the message
-      handler.call(context, message, data, sender);
+      handler.call(context, message, data, senderId);
       deliveryCount++;
     }
     
     return deliveryCount;
-  }
+  };
+  
+  /**
+   * Broadcast a message to all components in the component tree, excluding the sender
+   * This traverses the entire component tree and sends the message to each component
+   * Unlike broadcastToHandlers, this follows the component hierarchy
+   * 
+   * @param {string} fromComponentId - The source component ID
+   * @param {Object} message - The message to send
+   * @returns {number} - Number of components that received the message
+   */
+  broadcast(fromComponentId, message) {
+    let deliveryCount = 0;
+    
+    // Find the root component (PCOSApp)
+    let rootId = null;
+    for (const id in this.componentRegistry) {
+      if (!this.componentRegistry[id].parentId) {
+        rootId = id;
+        break;
+      }
+    }
+    
+    if (!rootId) return 0;
+    
+    // Send to all components starting from the root, excluding the sender
+    const sendToAllExceptSender = (componentId) => {
+      
+      let count = 0;
+      
+      // Send to this component
+      if (componentId !== fromComponentId) {
+        const delivered = this.sendMessage(componentId, message.type || 'MESSAGE', {
+          ...message,
+          from: fromComponentId
+        }, fromComponentId);
+        
+        if (delivered) {
+        count++;
+      }
+      
+      // Send to all children recursively
+      const component = this.componentRegistry[componentId];
+      if (component && component.children.length) {
+        component.children.forEach(childId => {
+          count += sendToAllExceptSender(childId);
+        });
+      }
+      
+      return count;
+    };
+    
+    deliveryCount = sendToAllExceptSender(rootId);
+    
+    return deliveryCount;
+  };
   
   /**
    * Find a route from source to target component
@@ -221,7 +277,7 @@ class MessageBus {
     
     // Try to find a common ancestor and build a route through it
     return this._findRouteViaCommonAncestor(sourceId, targetId);
-  }
+  };
   
   /**
    * Find route going up from source to target (source is closer to root than target)
@@ -260,7 +316,7 @@ class MessageBus {
     }
     
     return null;
-  }
+  };
   
   /**
    * Find route going down from source to target (source is further from root than target)
@@ -288,7 +344,7 @@ class MessageBus {
     }
     
     return null;
-  }
+  };
   
   /**
    * Find route via common ancestor when direct up/down routes don't exist
@@ -340,7 +396,7 @@ class MessageBus {
     }
     
     return `${downRoute}:${upPath.join(':')}`;
-  }
+  };
   
   /**
    * Get path from component to root
@@ -359,7 +415,7 @@ class MessageBus {
     }
     
     return path;
-  }
+  };
   
   /**
    * Build route going down from source to ancestor
@@ -385,7 +441,7 @@ class MessageBus {
     
     path.push(ancestorId);
     return path.join(':');
-  }
+  };
   
   /**
    * Send message down toward the root (from branches to root)
@@ -411,7 +467,7 @@ class MessageBus {
     }
     
     return delivered;
-  }
+  };
   
   /**
    * Send message up toward specific branches (from root/parent to specific children)
@@ -442,7 +498,7 @@ class MessageBus {
     });
     
     return anyDelivered;
-  }
+  };
   
   /**
    * Send message up to all branches (from a node to all its children)
@@ -472,7 +528,46 @@ class MessageBus {
     });
     
     return deliveryCount;
-  }
+  };
+  
+  /**
+   * Broadcast a message up the component tree, from a node to all its ancestors
+   * This traverses the component tree upward from the source component
+   * 
+   * @param {string} fromComponentId - The source component ID
+   * @param {Object} message - The message to send
+   * @returns {number} - Number of components that received the message
+   */
+  broadcastUp(fromComponentId, message) {
+    let deliveryCount = 0;
+    
+    // Get the component from the registry
+    const component = this.componentRegistry[fromComponentId];
+    if (!component) return 0;
+    
+    // Start with the parent and go up the tree
+    let currentId = component.parentId;
+    
+    while (currentId) {
+      // Send to this component
+      const delivered = this.sendMessage(currentId, message.type || 'MESSAGE', {
+        ...message,
+        from: fromComponentId
+      }, fromComponentId);
+      
+      if (delivered) {
+        deliveryCount++;
+      }
+      
+      // Move up to the parent
+      const currentComponent = this.componentRegistry[currentId];
+      if (!currentComponent) break;
+      
+      currentId = currentComponent.parentId;
+    }
+    
+    return deliveryCount;
+  };
   
   /**
    * Send message via a specific route
@@ -494,7 +589,7 @@ class MessageBus {
       route: route,
       direction: routeParts.length > 1 ? 'route' : 'direct'
     }, fromComponentId);
-  }
+  };
   
   /**
    * Clear all handlers
@@ -504,10 +599,10 @@ class MessageBus {
     this.globalHandlers = [];
     this.addressedHandlers.clear();
     this.componentRegistry = {};
-  }
+  };
 }
 
 // Create a singleton instance
-const messageBus = new MessageBus();
+var messageBus = new MessageBus();
 
 export default messageBus;

@@ -87,7 +87,7 @@ class MenuBar extends BaseComponent {
       const newMode = e.target.value;
       
       // Send mode change message DOWN toward the root (PCOSApp)
-      this.sendMessageDown('MODE_CHANGE_REQUEST', {
+      this.sendMessageDown('MODE_CHANGE', {
         mode: newMode
       });
       
@@ -103,7 +103,7 @@ class MenuBar extends BaseComponent {
   getDefaultMenuStructure() {
     return {
       'File': ['New', 'Open', 'Save', 'Save As', 'Exit'],
-      'Edit': ['Undo', 'Redo', 'Cut', 'Copy', 'Paste', 'Find', 'Replace'],
+      'Edit': ['Undo', 'Redo', 'Cut', 'Copy', 'Paste', 'Find', 'Replace', 'Preferences'],
       'View': ['Zoom In', 'Zoom Out', 'Reset Zoom', 'Toggle Output'],
       'Run': ['Run', 'Debug', 'Stop', 'Build'],
       'Help': ['Documentation', 'About']
@@ -162,12 +162,17 @@ class MenuBar extends BaseComponent {
   handleMenuAction(menuName, option) {
     console.log(`Menu action: ${menuName} > ${option}`);
     
-    // Send the menu action message DOWN toward the root (PCOSApp)
+    // Create the action string (e.g., "File:New")
+    const action = `${menuName}:${option}`;
+    
+    // Send the menu action message
     this.sendMessageDown('MENU_ACTION', {
+      action: option.toLowerCase().replace(/\s+/g, ''),
       menuName: menuName,
-      option: option,
-      action: `${menuName}:${option}`
+      option: option
     });
+    
+    return true;
   }
   
   setMenuStructure(structure) {

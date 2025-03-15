@@ -581,6 +581,24 @@ class TVSideWindow extends SideWindow {
   }
   
   /**
+   * Override getLayoutInfo to include TVSideWindow-specific information
+   * @returns {Object} Layout information for this TVSideWindow
+   */
+  getLayoutInfo() {
+    // Get base layout information from parent class
+    const layoutInfo = super.getLayoutInfo();
+    
+    // Add TVSideWindow-specific information
+    if (this.currentPlaylist) {
+      layoutInfo.currentClip = this.currentPlaylist.getCurrentClip();
+      layoutInfo.playlist = this.currentPlaylist;
+      layoutInfo.isPlaying = this.isPlayingPlaylist;
+    }
+    
+    return layoutInfo;
+  }
+  
+  /**
    * Clean up resources when the window is closed
    */
   close() {

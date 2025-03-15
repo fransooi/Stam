@@ -7,7 +7,16 @@
  */
 
 import { generateComponentID, registerComponentInstance, unregisterComponent } from './ComponentID.js';
-import messageBus from './MessageBus.js';
+import messageBus from './MessageBus.mjs';
+
+// Define message types for preference handling
+export const PREFERENCE_MESSAGES = {
+  SHOW_PREFERENCES: 'SHOW_PREFERENCES',
+  HIDE_PREFERENCES: 'HIDE_PREFERENCES',
+  GET_LAYOUT_INFO: 'GET_LAYOUT_INFO',
+  LAYOUT_INFO: 'LAYOUT_INFO',
+  SAVE_LAYOUT: 'SAVE_LAYOUT'
+};
 
 export default class BaseComponent {
   /**
@@ -72,13 +81,58 @@ export default class BaseComponent {
    * 
    * @param {string} messageType - Type of message received
    * @param {Object} messageData - Data associated with the message
-   * @param {Object} sender - Component that sent the message
+   * @param {string} senderId - ID of the component that sent the message
    * @returns {boolean} - True if the message was handled
    */
-  handleMessage(messageType, messageData, sender) {
+  handleMessage(messageType, messageData, senderId) {
     console.log(`${this.componentId} received message: ${messageType}`, messageData);
+    
+    // Handle layout information request
+    if (messageType === PREFERENCE_MESSAGES.GET_LAYOUT_INFO) {
+      // Get layout information for this component
+      const layoutInfo = this.getLayoutInfo();
+      
+      // Send layout information back to the sender
+      this.sendMessageTo(senderId, PREFERENCE_MESSAGES.LAYOUT_INFO, layoutInfo);
+      return true;
+    }
+    
     // Subclasses should override this method
     return false; // Not handled by default
+  }
+  
+  /**
+   * Get layout information for this component
+   * Used for layout persistence
+   * 
+   * @returns {Object} - Layout information for this component
+   */
+  getLayoutInfo() {
+    // Base layout information that all components should provide
+    const layoutInfo = {
+      componentId: this.componentId,
+      componentName: this.componentName
+    };
+    
+    // If the component has position and size information, include it
+    if (this.element) {
+      const rect = this.element.getBoundingClientRect();
+      layoutInfo.position = {
+        x: rect.left,
+        y: rect.top
+      };
+      layoutInfo.size = {
+        width: rect.width,
+        height: rect.height
+      };
+    }
+    
+    // If the component has visibility information, include it
+    if (this.element) {
+      layoutInfo.visible = this.element.style.display !== 'none';
+    }
+    
+    return layoutInfo;
   }
   
   /**
@@ -111,13 +165,45 @@ export default class BaseComponent {
   }
   
   /**
-   * Broadcast message up to all branches
+   * Send a message to all registered handlers without traversing the component tree
+   * This simply calls all registered handler functions directly with the message
+   * 
+   * @param {string} messageType - Type of message to send
+   * @param {Object} messageData - Data to send with the message
+   * @param {Array} excludeIDs - Array of component IDs to exclude from receiving the message
+   * @returns {number} - Number of components that received the message
+   */
+  broadcastToHandlers(messageType, messageData = {}, excludeIDs = []) {
+    return messageBus.broadcastToHandlers(messageType, {
+      ...messageData,
+      sender: this.componentId
+    }, this.componentId, excludeIDs);
+  }
+  
+  /**
+   * Broadcast message to all components in the component tree, excluding the sender
+   * This traverses the entire component tree and sends the message to each component
+   * Use this for messages that need to reach all components regardless of their position in the tree
    * 
    * @param {string} messageType - Type of message to send
    * @param {Object} messageData - Data to send with the message
    * @returns {number} - Number of components that received the message
    */
-  broadcastMessageUp(messageType, messageData = {}) {
+  broadcast(messageType, messageData = {}) {
+    return messageBus.broadcast(this.componentId, {
+      type: messageType,
+      data: messageData
+    });
+  }
+  
+  /**
+   * Broadcast message up to all branches (from a node to all its children)
+   * 
+   * @param {string} messageType - Type of message to send
+   * @param {Object} messageData - Data to send with the message
+   * @returns {number} - Number of components that received the message
+   */
+  broadcastUp(messageType, messageData = {}) {
     return messageBus.broadcastUp(this.componentId, {
       type: messageType,
       data: messageData
@@ -150,7 +236,7 @@ export default class BaseComponent {
   }
   
   /**
-   * Send message directly to a target component
+   * Send a message to a specific component
    * 
    * @param {string} targetComponentId - ID of the target component
    * @param {string} messageType - Type of message to send
@@ -158,13 +244,10 @@ export default class BaseComponent {
    * @returns {boolean} - True if the message was delivered
    */
   sendMessageTo(targetComponentId, messageType, messageData = {}) {
-    const route = this.findRouteTo(targetComponentId);
-    if (route !== null) {
-      return this.sendMessageViaRoute(route, messageType, messageData);
-    } else {
-      console.warn(`No route found from ${this.componentId} to ${targetComponentId}`);
-      return false;
-    }
+    return messageBus.sendMessage(targetComponentId, messageType, {
+      ...messageData,
+      sender: this.componentId
+    }, this.componentId);
   }
   
   /**

@@ -263,7 +263,7 @@
   <script type="module">
     import PCOSApp from './src/main.js';
     import { getAllComponents } from './src/utils/ComponentID.js';
-    import messageBus from './src/utils/MessageBus.js';
+    import messageBus from './src/utils/MessageBus.mjs';
     
     // Initialize the application
     const app = new PCOSApp();
@@ -374,7 +374,7 @@
       
       if (targetID === 'broadcast') {
         // Broadcast message to all components
-        const count = messageBus.broadcastMessage(messageType, messageData, null);
+        const count = messageBus.broadcastToHandlers(messageType, messageData, null);
         addLogEntry(`Broadcast message "${messageType}" to ${count} components`, 'message');
       } else {
         // Send message to specific component
@@ -402,7 +402,7 @@
       }
       
       // Broadcast message to all components
-      const count = messageBus.broadcastMessage(messageType, messageData, null);
+      const count = messageBus.broadcastToHandlers(messageType, messageData, null);
       addLogEntry(`Broadcast message "${messageType}" to ${count} components`, 'message');
     });
     

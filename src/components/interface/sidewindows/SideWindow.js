@@ -336,6 +336,22 @@ class SideWindow extends BaseComponent {
       buttonsContainer.appendChild(buttonElement);
     }
   }
+  
+  /**
+   * Override getLayoutInfo to include SideWindow-specific information
+   * @returns {Object} Layout information for this SideWindow
+   */
+  getLayoutInfo() {
+    // Get base layout information from parent class
+    const layoutInfo = super.getLayoutInfo();
+    
+    // Add SideWindow-specific information
+    layoutInfo.minimized = this.isMinimized;
+    layoutInfo.height = this.height;
+    layoutInfo.windowId = this.id;
+    
+    return layoutInfo;
+  }
 }
 
 export default SideWindow;

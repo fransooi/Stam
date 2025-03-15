@@ -7,7 +7,6 @@
  */
 
 import BaseComponent from '../utils/BaseComponent.js';
-import MessageBus from '../utils/MessageBus.js'; // Added missing import
 
 // Track active menus
 const activeMenus = {

@@ -132,6 +132,35 @@ class SideBar extends BaseComponent {
   }
 
   /**
+   * Override getLayoutInfo to include SideBar-specific information
+   * @returns {Object} Layout information for this SideBar
+   */
+  getLayoutInfo() {
+    // Get base layout information from parent class
+    const layoutInfo = super.getLayoutInfo();
+    
+    // Add SideBar-specific information
+    layoutInfo.windows = this.windows.map(window => {
+      return {
+        id: window.id,
+        type: window.constructor.name,
+        height: window.height,
+        minimized: window.isMinimized
+      };
+    });
+    
+    // Add information about the active window
+    const activeWindow = this.windows.find(window => window.element && 
+      window.element.classList.contains('active'));
+    
+    if (activeWindow) {
+      layoutInfo.activeWindow = activeWindow.id;
+    }
+    
+    return layoutInfo;
+  }
+  
+  /**
    * Create a separator element for resizing windows
    * @param {number} index - Index of the separator
    * @returns {HTMLElement} - The created separator element

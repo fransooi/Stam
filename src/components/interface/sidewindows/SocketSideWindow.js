@@ -728,6 +728,21 @@ class SocketSideWindow extends SideWindow {
       this.receiveIndicator.title = `Receive Indicator: ${this.messagesReceived} message${this.messagesReceived !== 1 ? 's' : ''} received since connection`;
     }
   }
+  
+  /**
+   * Override getLayoutInfo to include SocketSideWindow-specific information
+   * @returns {Object} Layout information for this SocketSideWindow
+   */
+  getLayoutInfo() {
+    // Get base layout information from parent class
+    const layoutInfo = super.getLayoutInfo();
+    
+    // Add SocketSideWindow-specific information
+    layoutInfo.userKey = this.userKey;
+    layoutInfo.isConnected = this.isConnected;
+    
+    return layoutInfo;
+  }
 }
 
 export default SocketSideWindow;
