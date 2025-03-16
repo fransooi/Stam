@@ -243,7 +243,28 @@ class MenuBar extends BaseComponent {
         break;
     }
     
-    return false; // Message not handled
+    return super.handleMessage(messageType, messageData, sender);
+  }
+  
+  /**
+   * Override getLayoutInfo to include MenuBar-specific information
+   * @returns {Object} Layout information for this MenuBar
+   */
+  getLayoutInfo() {
+    // Get base layout information from parent class
+    const layoutInfo = super.getLayoutInfo();
+    
+    // Add MenuBar-specific information
+    layoutInfo.currentMode = this.currentMode;
+    layoutInfo.menuStructure = this.menuStructure;
+    
+    // Get height information if available
+    if (this.container) {
+      const rect = this.container.getBoundingClientRect();
+      layoutInfo.height = rect.height;
+    }
+    
+    return layoutInfo;
   }
 }
 

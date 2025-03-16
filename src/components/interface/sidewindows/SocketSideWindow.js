@@ -53,11 +53,6 @@ class SocketSideWindow extends SideWindow {
    * @returns {boolean} - True if the message was handled
    */
   handleMessage(messageType, messageData, sender) {
-    // First, let the parent class try to handle the message
-    if (super.handleMessage(messageType, messageData, sender)) {
-      return true;
-    }
-    
     // Handle socket-specific messages
     switch (messageType) {
       case 'SOCKET_CONNECT':
@@ -73,7 +68,7 @@ class SocketSideWindow extends SideWindow {
         return this.handleSocketSetUserKeyMessage(messageData);
     }
     
-    return false;
+    return super.handleMessage(messageType, messageData, sender);
   }
   
   /**

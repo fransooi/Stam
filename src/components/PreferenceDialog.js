@@ -156,8 +156,8 @@ class PreferenceDialog extends BaseComponent {
     // Handle layout information messages
     if (messageType === PREFERENCE_MESSAGES.LAYOUT_INFO) {
       // Store the layout information from this component
-      if (sender && sender.componentId) {
-        this.layoutInfo[sender.componentId] = messageData.data || messageData;
+      if (sender) {
+        this.layoutInfo[sender] = messageData.data || messageData;
         console.log(`Received layout info from ${sender.componentId}`);
       }
       return true;
@@ -204,7 +204,7 @@ class PreferenceDialog extends BaseComponent {
         // Convert layout information to JSON
         const layoutJson = JSON.stringify(layout, null, 2);
         resolve(layoutJson);
-      }, 500); // Wait 500ms for components to respond
+      }, 2500); // Wait 500ms for components to respond
     });
   }
   
@@ -215,7 +215,7 @@ class PreferenceDialog extends BaseComponent {
   loadLayout(layoutJson) {
     try {
       const layout = JSON.parse(layoutJson);
-      this.sendMessageToAll(PREFERENCE_MESSAGES.LOAD_LAYOUT, layout);
+      this.broadcast(PREFERENCE_MESSAGES.LOAD_LAYOUT, layout);
       return true;
     } catch (error) {
       console.error('Error loading layout:', error);

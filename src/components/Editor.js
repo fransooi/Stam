@@ -311,7 +311,41 @@ class Editor extends BaseComponent {
         return true;
     }
     
-    return false; // Message not handled
+    return super.handleMessage(messageType, messageData, sender);
+  }
+  
+  /**
+   * Override getLayoutInfo to include Editor-specific information
+   * @returns {Object} Layout information for this Editor
+   */
+  getLayoutInfo() {
+    // Get base layout information from parent class
+    const layoutInfo = super.getLayoutInfo();
+    
+    // Add Editor-specific information
+    layoutInfo.currentMode = this.currentMode;
+    
+    // Add editor content if it's not too large
+    const content = this.getContent();
+    if (content && content.length < 10000) { // Only save if content is not too large
+      layoutInfo.content = content;
+    }
+    
+    // Get dimensions if available
+    if (this.container) {
+      const rect = this.container.getBoundingClientRect();
+      layoutInfo.dimensions = {
+        width: rect.width,
+        height: rect.height
+      };
+    }
+    
+    // Add mode-specific layout information if available
+    if (this.editorInstance && typeof this.editorInstance.getLayoutInfo === 'function') {
+      layoutInfo.modeSpecific = this.editorInstance.getLayoutInfo();
+    }
+    
+    return layoutInfo;
   }
 }
 

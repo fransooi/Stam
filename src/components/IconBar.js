@@ -104,7 +104,35 @@ class IconBar extends BaseComponent {
         
     }
     
-    return false; // Message not handled
+    return super.handleMessage(messageType, messageData, sender);
+  }
+  
+  /**
+   * Override getLayoutInfo to include IconBar-specific information
+   * @returns {Object} Layout information for this IconBar
+   */
+  getLayoutInfo() {
+    // Get base layout information from parent class
+    const layoutInfo = super.getLayoutInfo();
+    
+    // Add IconBar-specific information
+    layoutInfo.currentMode = this.currentMode;
+    
+    // Get height information if available
+    if (this.container) {
+      const rect = this.container.getBoundingClientRect();
+      layoutInfo.height = rect.height;
+    }
+    
+    // Add mode-specific icon information if available
+    if (this.modeSpecificIcons && typeof this.modeSpecificIcons.getIconInfo === 'function') {
+      layoutInfo.icons = this.modeSpecificIcons.getIconInfo();
+    } else {
+      // If no getIconInfo method is available, just store the mode
+      layoutInfo.icons = { mode: this.currentMode };
+    }
+    
+    return layoutInfo;
   }
 }
 

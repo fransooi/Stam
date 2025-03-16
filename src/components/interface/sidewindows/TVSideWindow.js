@@ -589,11 +589,47 @@ class TVSideWindow extends SideWindow {
     const layoutInfo = super.getLayoutInfo();
     
     // Add TVSideWindow-specific information
-    if (this.currentPlaylist) {
-      layoutInfo.currentClip = this.currentPlaylist.getCurrentClip();
-      layoutInfo.playlist = this.currentPlaylist;
-      layoutInfo.isPlaying = this.isPlayingPlaylist;
+    layoutInfo.currentClipType = this.currentClipType;
+    
+    // Save current URL for the active clip
+    layoutInfo.currentUrl = this.getUrl();
+    
+    // Save all clip URLs
+    layoutInfo.clipUrls = {};
+    Object.keys(this.clips).forEach(clipType => {
+      layoutInfo.clipUrls[clipType] = this.clips[clipType].url;
+    });
+    
+    // Add playlist information if playing a playlist
+    if (this.isPlayingPlaylist && this.currentPlaylist) {
+      layoutInfo.playlist = {
+        id: this.currentPlaylist.id,
+        name: this.currentPlaylist.name,
+        currentIndex: this.currentPlaylist.currentIndex,
+        itemCount: this.currentPlaylist.items.length
+      };
+      
+      // Add the current clip from the playlist
+      const currentClip = this.currentPlaylist.getCurrentClip();
+      if (currentClip) {
+        layoutInfo.currentPlaylistClip = {
+          clipType: currentClip.clipType,
+          url: currentClip.url,
+          metadata: currentClip.metadata || {}
+        };
+      }
+      
+      layoutInfo.isPlayingPlaylist = true;
+    } else {
+      layoutInfo.isPlayingPlaylist = false;
     }
+    
+    // Add all available playlists (just IDs and names)
+    layoutInfo.availablePlaylists = this.playlistManager.getPlaylists().map(playlist => ({
+      id: playlist.id,
+      name: playlist.name,
+      itemCount: playlist.items.length
+    }));
     
     return layoutInfo;
   }

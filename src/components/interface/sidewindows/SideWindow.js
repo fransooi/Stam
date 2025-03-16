@@ -55,7 +55,7 @@ class SideWindow extends BaseComponent {
     }
     
     // Not handled by SideWindow base class
-    return false;
+    return super.handleMessage(messageType, messageData, sender);
   }
 
   /**

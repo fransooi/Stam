@@ -397,7 +397,7 @@ export default class PopupMenu extends BaseComponent {
         return true;
     }
     
-    return false; // Message not handled
+    return super.handleMessage(messageType, messageData, sender);
   }
   
   /**

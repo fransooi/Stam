@@ -66,7 +66,27 @@ class StatusBar extends BaseComponent {
         break;
     }
     
-    return false; // Message not handled
+    return super.handleMessage(messageType, messageData, sender);
+  }
+  
+  /**
+   * Override getLayoutInfo to include StatusBar-specific information
+   * @returns {Object} Layout information for this StatusBar
+   */
+  getLayoutInfo() {
+    // Get base layout information from parent class
+    const layoutInfo = super.getLayoutInfo();
+    
+    // Add StatusBar-specific information
+    layoutInfo.status = this.status;
+    
+    // Get height information if available
+    if (this.container) {
+      const rect = this.container.getBoundingClientRect();
+      layoutInfo.height = rect.height;
+    }
+    
+    return layoutInfo;
   }
 }
 

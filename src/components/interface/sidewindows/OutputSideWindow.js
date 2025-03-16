@@ -163,7 +163,7 @@ class OutputSideWindow extends SideWindow {
         return true;
     }
     
-    return false;
+    return super.handleMessage(messageType, messageData, sender);
   }
 }
 
