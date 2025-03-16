@@ -126,8 +126,8 @@ class SocketSideWindow extends SideWindow {
     indicatorContainer.appendChild(this.sendIndicator);
     indicatorContainer.appendChild(this.receiveIndicator);
     
-    // Add container to the title bar
-    this.addCustomTitleBarButton(indicatorContainer);
+    // Add container to the title bar (using true to place it before all controls)
+    this.addCustomTitleBarButton(indicatorContainer, true);
     
     // Add styles for indicators
     this.addIndicatorStyles();

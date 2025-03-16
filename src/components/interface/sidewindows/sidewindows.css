@@ -122,6 +122,24 @@
   background-color: #3b82f6;
 }
 
+.side-window-enlarge {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  color: #FFFFFF;
+}
+
+.side-window-enlarge:hover {
+  background-color: #3b82f6;
+}
+
 .indicator-container {
   display: flex;
   align-items: center;
@@ -765,6 +783,89 @@
 
 .url-modal button[type="submit"]:hover {
   background-color: #2563eb;
+}
+
+/* Enlarged Dialog Styles */
+.side-window-enlarged-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.side-window-enlarged-container {
+  background-color: #1a1a1a;
+  border-radius: 6px;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+  width: 80%;
+  height: 80%;
+  max-width: 1200px;
+  max-height: 800px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.side-window-enlarged-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  background-color: #2a2a2a;
+  border-bottom: 1px solid #333;
+}
+
+.side-window-enlarged-title {
+  font-weight: bold;
+  font-size: 16px;
+  color: #FFFFFF;
+}
+
+.side-window-enlarged-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 20px;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  color: #FFFFFF;
+}
+
+.side-window-enlarged-close:hover {
+  background-color: #3b82f6;
+}
+
+.side-window-enlarged-content {
+  flex: 1;
+  overflow: auto;
+  padding: 0;
+  background-color: #1a1a1a;
+}
+
+/* Placeholder for the original content area when enlarged */
+.side-window-content-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #1a1a1a;
+  color: #888;
+  font-style: italic;
+  text-align: center;
+  padding: 20px;
+}
+
+.placeholder-message {
+  max-width: 80%;
 }
 
 /* Placeholder for empty windows */
