@@ -4,6 +4,7 @@ import OutputSideWindow from './interface/sidewindows/OutputSideWindow.js';
 import TVSideWindow from './interface/sidewindows/TVSideWindow.js';
 import SocketSideWindow from './interface/sidewindows/SocketSideWindow.js';
 import BaseComponent, { PREFERENCE_MESSAGES } from '../utils/BaseComponent.js';
+import messageBus from '../utils/MessageBus.mjs';
 
 class SideBar extends BaseComponent {
   constructor(containerId) {
@@ -336,7 +337,24 @@ class SideBar extends BaseComponent {
    * @param {SideWindow} window - The window to add
    */
   addWindow(window) {
+    // Add the window to the windows array
     this.windows.push(window);
+    
+    // Establish parent-child relationship in the component tree
+    // This ensures that messages will propagate correctly
+    if (window.componentId) {
+      console.log(`SideBar: Adding window ${window.id} (${window.componentId}) as child`);
+      
+      // Update the window's parentId to point to this SideBar
+      window.parentId = this.componentId;
+      
+      // Register the parent-child relationship in the message bus
+      messageBus.registerComponentInTree(window.componentId, this.componentId);
+      
+      console.log(`SideBar: Window ${window.id} added as child of ${this.componentId}`);
+    } else {
+      console.warn(`SideBar: Window ${window.id} has no componentId, cannot establish parent-child relationship`);
+    }
   }
   
   /**
