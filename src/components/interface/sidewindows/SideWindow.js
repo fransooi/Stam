@@ -15,6 +15,8 @@ class SideWindow extends BaseComponent {
     this.header = null;
     this.isVisible = true;
     this.minimized = false;
+    this.enlarged = false;
+    this.enlargedDialog = null;
     this.originalHeight = initialHeight;
     this.headerHeight = 34; // Approximate height of the header
   }
@@ -52,6 +54,13 @@ class SideWindow extends BaseComponent {
           return true;
         }
         break;
+
+      case 'WINDOW_ENLARGE':
+        if (messageData.windowId === this.id) {
+          this.toggleEnlarge();
+          return true;
+        }
+        break;
     }
     
     // Not handled by SideWindow base class
@@ -82,6 +91,13 @@ class SideWindow extends BaseComponent {
     const buttons = document.createElement('div');
     buttons.className = 'side-window-controls';
     
+    // Create enlarge button
+    const enlargeButton = document.createElement('button');
+    enlargeButton.className = 'side-window-enlarge';
+    enlargeButton.innerHTML = '⤢';
+    enlargeButton.title = 'Enlarge';
+    enlargeButton.addEventListener('click', () => this.toggleEnlarge());
+    
     // Create toggle button
     const toggleButton = document.createElement('button');
     toggleButton.className = 'side-window-toggle';
@@ -97,6 +113,7 @@ class SideWindow extends BaseComponent {
     closeButton.addEventListener('click', () => this.close());
     
     // Add buttons to the buttons container
+    buttons.appendChild(enlargeButton);
     buttons.appendChild(toggleButton);
     buttons.appendChild(closeButton);
     
@@ -207,12 +224,132 @@ class SideWindow extends BaseComponent {
       minimized: this.minimized
     });
   }
+
+  /**
+   * Toggle the window between enlarged and normal state
+   */
+  toggleEnlarge() {
+    if (!this.container) return;
+    
+    // Toggle enlarged state
+    this.enlarged = !this.enlarged;
+    
+    if (this.enlarged) {
+      // Create enlarged dialog if it doesn't exist
+      this.createEnlargedDialog();
+    } else {
+      // Close the enlarged dialog
+      this.closeEnlargedDialog();
+    }
+  }
+
+  /**
+   * Create the enlarged dialog
+   */
+  createEnlargedDialog() {
+    // Create the dialog overlay
+    this.enlargedDialog = document.createElement('div');
+    this.enlargedDialog.className = 'side-window-enlarged-overlay';
+    this.enlargedDialog.id = `enlarged-${this.id}`;
+    
+    // Create the dialog container
+    const dialogContainer = document.createElement('div');
+    dialogContainer.className = 'side-window-enlarged-container';
+    
+    // Create the dialog header
+    const dialogHeader = document.createElement('div');
+    dialogHeader.className = 'side-window-enlarged-header';
+    
+    // Create the dialog title
+    const dialogTitle = document.createElement('div');
+    dialogTitle.className = 'side-window-enlarged-title';
+    dialogTitle.textContent = this.title;
+    
+    // Create the close button
+    const closeButton = document.createElement('button');
+    closeButton.className = 'side-window-enlarged-close';
+    closeButton.innerHTML = '×';
+    closeButton.title = 'Close';
+    closeButton.addEventListener('click', () => this.toggleEnlarge());
+    
+    // Add title and close button to header
+    dialogHeader.appendChild(dialogTitle);
+    dialogHeader.appendChild(closeButton);
+    
+    // Create the dialog content
+    const dialogContent = document.createElement('div');
+    dialogContent.className = 'side-window-enlarged-content';
+    
+    // Store references to the original content and its parent
+    this.originalContentParent = this.content.parentNode;
+    this.originalContentRect = this.content.getBoundingClientRect();
+    
+    // Instead of moving the content directly, we'll create a placeholder in the dialog
+    // and use the placeholder in the original location
+    this.contentPlaceholder = document.createElement('div');
+    this.contentPlaceholder.className = 'side-window-content side-window-content-placeholder';
+    this.contentPlaceholder.innerHTML = '<div class="placeholder-message">Content is currently enlarged. Close the enlarged view to restore.</div>';
+    
+    // Replace the original content with the placeholder
+    this.originalContentParent.replaceChild(this.contentPlaceholder, this.content);
+    
+    // Add the original content to the dialog
+    dialogContent.appendChild(this.content);
+    
+    // Add header and content to the dialog container
+    dialogContainer.appendChild(dialogHeader);
+    dialogContainer.appendChild(dialogContent);
+    
+    // Add the dialog container to the overlay
+    this.enlargedDialog.appendChild(dialogContainer);
+    
+    // Add the overlay to the document body
+    document.body.appendChild(this.enlargedDialog);
+    
+    // Update the enlarge button
+    const enlargeButton = this.container.querySelector('.side-window-enlarge');
+    if (enlargeButton) {
+      enlargeButton.innerHTML = '⤓';
+      enlargeButton.title = 'Restore';
+    }
+  }
+
+  /**
+   * Close the enlarged dialog
+   */
+  closeEnlargedDialog() {
+    if (!this.enlargedDialog) return;
+    
+    // Replace the placeholder with the original content
+    if (this.contentPlaceholder && this.contentPlaceholder.parentNode) {
+      this.originalContentParent.replaceChild(this.content, this.contentPlaceholder);
+    }
+    
+    // Remove the dialog from the DOM
+    this.enlargedDialog.remove();
+    this.enlargedDialog = null;
+    
+    // Update the enlarge button
+    const enlargeButton = this.container.querySelector('.side-window-enlarge');
+    if (enlargeButton) {
+      enlargeButton.innerHTML = '⤢';
+      enlargeButton.title = 'Enlarge';
+    }
+    
+    // Update content height to match container size
+    this.updateContentHeight();
+  }
   
   /**
    * Close the window
    */
   close() {
     if (!this.container) return;
+    
+    // If the window is enlarged, close the enlarged dialog first
+    if (this.enlarged) {
+      this.closeEnlargedDialog();
+    }
     
     // Remove the window from the DOM
     const wrapper = this.container.closest('.side-window-wrapper');
@@ -263,6 +400,14 @@ class SideWindow extends BaseComponent {
    */
   isMinimized() {
     return this.minimized;
+  }
+
+  /**
+   * Check if the window is enlarged
+   * @returns {boolean} - True if enlarged
+   */
+  isEnlarged() {
+    return this.enlarged;
   }
 
   /**
@@ -320,20 +465,31 @@ class SideWindow extends BaseComponent {
   /**
    * Add a custom button to the title bar
    * @param {HTMLElement} buttonElement - The button element to add
+   * @param {boolean} beforeControls - If true, add before standard controls; if false, add after any custom buttons but before standard controls
    */
-  addCustomTitleBarButton(buttonElement) {
+  addCustomTitleBarButton(buttonElement, beforeControls = false) {
     if (!this.header) return;
     
     // Get the buttons container
     const buttonsContainer = this.header.querySelector('.side-window-controls');
     if (!buttonsContainer) return;
     
-    // Insert the button before the toggle button
-    const toggleButton = buttonsContainer.querySelector('.side-window-toggle');
-    if (toggleButton) {
-      buttonsContainer.insertBefore(buttonElement, toggleButton);
+    if (beforeControls) {
+      // Insert at the beginning of the controls container
+      buttonsContainer.insertBefore(buttonElement, buttonsContainer.firstChild);
     } else {
-      buttonsContainer.appendChild(buttonElement);
+      // Insert before the standard controls (enlarge, toggle, close)
+      const enlargeButton = buttonsContainer.querySelector('.side-window-enlarge');
+      if (enlargeButton) {
+        buttonsContainer.insertBefore(buttonElement, enlargeButton);
+      } else {
+        const toggleButton = buttonsContainer.querySelector('.side-window-toggle');
+        if (toggleButton) {
+          buttonsContainer.insertBefore(buttonElement, toggleButton);
+        } else {
+          buttonsContainer.appendChild(buttonElement);
+        }
+      }
     }
   }
   
