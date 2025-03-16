@@ -7,7 +7,8 @@ import StatusBar from './components/StatusBar.js';
 import Editor from './components/Editor.js';
 import IconBar from './components/IconBar.js';
 import SideBar from './components/SideBar.js';
-import BaseComponent, { PREFERENCE_MESSAGES } from './utils/BaseComponent.js';
+import BaseComponent from './utils/BaseComponent.js';
+import { PREFERENCE_MESSAGES } from './utils/BaseComponent.js';
 import PreferenceDialog from './components/PreferenceDialog.js';
 
 // Main application class
@@ -16,6 +17,9 @@ class PCOSApp extends BaseComponent {
     // Initialize the base component with component name
     super('PCOSApp');
     
+    // Storage for layout information from components
+    this.layoutInfo = {};
+
     // Initialize mode
     this.currentMode = 'modern'; // Default mode: 'modern', 'stos', 'amos1_3', 'amosPro', 'c64'
     
@@ -134,7 +138,13 @@ class PCOSApp extends BaseComponent {
       case 'ICON_ACTION':
         return this.handleIconAction(messageData, sender);
         
-      // Add more message types as needed
+      case PREFERENCE_MESSAGES.LAYOUT_INFO:
+        // Store the layout information from this component
+        if (sender) {
+          this.layoutInfo[sender] = messageData.data || messageData;
+          console.log(`Received layout info from ${sender}`);
+        }
+      return true;
     }
     
     // If we get here, the message wasn't handled
@@ -172,11 +182,67 @@ class PCOSApp extends BaseComponent {
         this.showPreferences();
         return true;
         
+      case 'debug1':
+        // Call saveLayout function
+        this.debug1();
+        return true;
+        
+      case 'debug2':
+        // Call loadLayout function
+        this.debug2();
+        return true;
+        
       // Add more menu actions as needed
     }
     
     console.log(`Unhandled menu action: ${action.action}`);
     return false;
+  }
+  
+  /**
+   * Debug2 function - Load the saved layout
+   */
+  loadLayout() {
+    console.log('Loading interface layout...');
+    this.loadStorage('pcos-layout')
+      .then(data => {
+        if (data) {
+          this.recreateInterface(data);
+        }
+      })
+      .catch(error => {
+        console.error('Debug2: Error loading layout:', error);
+      });
+  }
+  
+  /**
+   * Save the current layout
+   */
+  saveLayout() {
+    console.log('Saving interface layout...');
+    this.getLayout()
+      .then(layoutJson => {
+        if (layoutJson) {
+          this.saveStorage('pcos-layout', layoutJson);
+        } 
+      })
+      .catch(error => {
+        console.error('Error saving layout:', error);
+      });
+  }
+
+  /**
+   * Debug1 function - Save the current layout
+   */
+  debug1() {
+    this.saveLayout();
+  }
+
+  /**
+   * Debug2 function - Load the saved layout
+   */
+  debug2() {
+    console.log('Debug2');
   }
   
   /**
@@ -189,39 +255,107 @@ class PCOSApp extends BaseComponent {
   }
   
   /**
-   * Save the current layout
+   * Returns the current layout JSON string
    * @returns {Promise<string>} - Promise that resolves with the layout JSON
    */
-  saveLayout() {
-    if (!this.preferenceDialog) return Promise.resolve('{}');
+  getLayout() {
+    // Clear any existing layout information
+    this.layoutInfo = {};
     
-    return this.preferenceDialog.saveLayout()
-      .then(layoutJson => {
-        console.log('Layout saved:', layoutJson);
-        // Here you would typically save the layout to localStorage or a file
-        localStorage.setItem('pcos-layout', layoutJson);
-        return layoutJson;
-      })
-      .catch(error => {
-        console.error('Error saving layout:', error);
-        return '{}';
-      });
+    // Request layout information from all components
+    this.broadcast(PREFERENCE_MESSAGES.GET_LAYOUT_INFO);
+    
+    // Return a promise that resolves with the layout JSON
+    return new Promise((resolve) => {
+      // Wait for components to respond with their layout information
+      setTimeout(() => {
+        // Create the final layout object
+        const layout = {
+          version: '1.0',
+          timestamp: new Date().toISOString(),
+          components: this.layoutInfo
+        };
+        
+        // Convert layout information to JSON
+        const layoutJson = JSON.stringify(layout, null, 2);
+        resolve(layoutJson);
+      }, 250); // Wait 500ms for components to respond
+    });
+  }
+  
+  /**
+   * Save data to localStorage
+   * @param {string} name - Name of the data
+   * @param {string} data - Data to save
+   * @returns {Promise<boolean>} - Promise that resolves with success status
+   */
+  saveStorage(name, data) {
+    
+    try {
+        localStorage.setItem(name, data);
+        return Promise.resolve(true);
+      }
+    catch(error) {
+        console.error('Error saving :' + name, error);
+        return Promise.resolve(false);
+      };
   }
   
   /**
    * Load a saved layout
    * @returns {Promise<boolean>} - Promise that resolves with success status
    */
-  loadLayout() {
-    if (!this.preferenceDialog) return Promise.resolve(false);
+  loadStorage(name) {
+    try {
+      const data = localStorage.getItem(name);
+      if (!data) return Promise.resolve(false);
+      return Promise.resolve(data);
+    } catch (error) {
+      console.error('Error loading ' + name + ':', error);
+      return Promise.resolve(false);
+    }
+  }
+  
+  /**
+   * Recreate the interface from a saved layout
+   * This function loads the layout from localStorage and recreates the interface
+   * @returns {Promise<boolean>} - Promise that resolves with success status
+   */
+  recreateInterface(layoutJson) {
+    console.log('Recreating interface from saved layout...');
     
     try {
-      const layoutJson = localStorage.getItem('pcos-layout');
-      if (!layoutJson) return Promise.resolve(false);
+      // Parse the layout JSON
+      const layout = JSON.parse(layoutJson);
+      console.log('Loaded layout:', layout);
       
-      return Promise.resolve(this.preferenceDialog.loadLayout(layoutJson));
+      // Validate the layout
+      if (!layout || !layout.components) {
+        console.error('Invalid layout format');
+        return Promise.resolve(false);
+      }
+      
+      // Process each component in the layout
+      Object.values(layout.components).forEach(componentInfo => {
+        if (!componentInfo || !componentInfo.componentName) {
+          console.error('Invalid component info:', componentInfo);
+          return;
+        }
+        
+        console.log(`Broadcasting layout to ${componentInfo.componentName}`);
+        
+        // Broadcast the layout info to all components
+        // Each component will check if the layout is for them and apply it
+        this.broadcast(PREFERENCE_MESSAGES.LOAD_LAYOUT, {
+          componentName: componentInfo.componentName,
+          layoutInfo: componentInfo
+        });
+      });
+      
+      console.log('Interface recreated successfully');
+      return Promise.resolve(true);
     } catch (error) {
-      console.error('Error loading layout:', error);
+      console.error('Error recreating interface:', error);
       return Promise.resolve(false);
     }
   }

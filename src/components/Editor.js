@@ -3,7 +3,7 @@ import { basicSetup } from 'codemirror'
 import { EditorState } from '@codemirror/state'
 import { EditorView, keymap } from '@codemirror/view'
 import { defaultKeymap } from '@codemirror/commands'
-import BaseComponent from '../utils/BaseComponent.js'
+import BaseComponent, { PREFERENCE_MESSAGES } from '../utils/BaseComponent.js'
 
 class Editor extends BaseComponent {
   constructor(containerId, currentMode = 'modern') {
@@ -278,7 +278,13 @@ class Editor extends BaseComponent {
     this.render();  
   }
   
-  // Override the handleMessage method from BaseComponent
+  /**
+   * Handle message
+   * @param {string} messageType - Type of message
+   * @param {Object} messageData - Message data
+   * @param {string} sender - Sender ID
+   * @returns {boolean} - Whether the message was handled
+   */
   handleMessage(messageType, messageData, sender) {
     console.log(`Editor received message: ${messageType}`, messageData);
     
@@ -309,9 +315,45 @@ class Editor extends BaseComponent {
       case 'DEBUG_PROGRAM':
         this.debugProgram();
         return true;
+        
+      case 'LOAD_LAYOUT':
+        // Check if this layout is for us
+        if (messageData.data && 
+            (messageData.data.componentName === 'Editor' || 
+             messageData.data.componentName === this.componentName)) {
+          this.applyLayout(messageData.data.layoutInfo);
+          return true;
+        }
+        break;
     }
     
     return super.handleMessage(messageType, messageData, sender);
+  }
+  
+  /**
+   * Apply layout information to restore the Editor state
+   * @param {Object} layoutInfo - Layout information for this Editor
+   */
+  applyLayout(layoutInfo) {
+    console.log('Editor applying layout:', layoutInfo);
+    
+    // Set mode if specified
+    if (layoutInfo.currentMode) {
+      this.setMode(layoutInfo.currentMode);
+    }
+    
+    // Set content if specified
+    if (layoutInfo.content) {
+      this.setContent(layoutInfo.content);
+    }
+    
+    // Apply dimensions if specified
+    if (layoutInfo.dimensions && this.container) {
+      // Only apply height, not width to allow horizontal resizing
+      if (layoutInfo.dimensions.height) {
+        this.container.style.height = `${layoutInfo.dimensions.height}px`;
+      }
+    }
   }
   
   /**

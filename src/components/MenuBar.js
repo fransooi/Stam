@@ -1,4 +1,4 @@
-import BaseComponent from '../utils/BaseComponent.js';
+import BaseComponent, { PREFERENCE_MESSAGES } from '../utils/BaseComponent.js';
 import PopupMenu from './PopupMenu.js';
 
 class MenuBar extends BaseComponent {
@@ -106,7 +106,7 @@ class MenuBar extends BaseComponent {
       'Edit': ['Undo', 'Redo', 'Cut', 'Copy', 'Paste', 'Find', 'Replace', 'Preferences'],
       'View': ['Zoom In', 'Zoom Out', 'Reset Zoom', 'Toggle Output'],
       'Run': ['Run', 'Debug', 'Stop', 'Build'],
-      'Help': ['Documentation', 'About']
+      'Help': ['Documentation', 'About', 'Debug1', 'Debug2']
     };
   }
   
@@ -209,11 +209,31 @@ class MenuBar extends BaseComponent {
     }
   }
   
-  // Override the handleMessage method from BaseComponent
+  /**
+   * Handle message
+   * @param {string} messageType - Type of message
+   * @param {Object} messageData - Message data
+   * @param {string} sender - Sender ID
+   * @returns {boolean} - Whether the message was handled
+   */
   handleMessage(messageType, messageData, sender) {
     console.log(`MenuBar received message: ${messageType}`, messageData);
     
     switch (messageType) {
+      case 'SET_MODE':
+        this.setMode(messageData.data.mode);
+        return true;
+        
+      case 'LOAD_LAYOUT':
+        // Check if this layout is for us
+        if (messageData.data && 
+            (messageData.data.componentName === 'MenuBar' || 
+             messageData.data.componentName === this.componentName)) {
+          this.applyLayout(messageData.data.layoutInfo);
+          return true;
+        }
+        break;
+        
       case 'MODE_CHANGE':
         if (messageData.data && messageData.data.mode) {
           this.setMode(messageData.data.mode);
@@ -244,6 +264,25 @@ class MenuBar extends BaseComponent {
     }
     
     return super.handleMessage(messageType, messageData, sender);
+  }
+  
+  /**
+   * Apply layout information to restore the MenuBar state
+   * @param {Object} layoutInfo - Layout information for this MenuBar
+   */
+  applyLayout(layoutInfo) {
+    console.log('MenuBar applying layout:', layoutInfo);
+    
+    // Set mode if specified
+    if (layoutInfo.currentMode) {
+      this.setMode(layoutInfo.currentMode);
+    }
+    
+    // Set menu structure if specified
+    if (layoutInfo.menuStructure) {
+      this.menuStructure = layoutInfo.menuStructure;
+      this.render();
+    }
   }
   
   /**

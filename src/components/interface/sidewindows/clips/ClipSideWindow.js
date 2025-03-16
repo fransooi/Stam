@@ -36,6 +36,9 @@ class ClipSideWindow {
     // Create iframe container
     this.iframeContainer = document.createElement('div');
     this.iframeContainer.className = 'clip-iframe-container';
+    this.iframeContainer.style.width = '100%';
+    this.iframeContainer.style.position = 'relative';
+    this.iframeContainer.style.paddingTop = '56.25%'; // 16:9 aspect ratio
     
     // Create iframe
     this.iframe = document.createElement('iframe');
@@ -45,6 +48,13 @@ class ClipSideWindow {
     this.iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
     this.iframe.referrerPolicy = 'no-referrer-when-downgrade';
     this.iframe.sandbox = 'allow-same-origin allow-scripts allow-popups allow-forms allow-presentation';
+    
+    // Set iframe to fill container
+    this.iframe.style.position = 'absolute';
+    this.iframe.style.top = '0';
+    this.iframe.style.left = '0';
+    this.iframe.style.width = '100%';
+    this.iframe.style.height = '100%';
     
     // Set the URL
     this.setUrl(this.url);
@@ -201,24 +211,9 @@ class ClipSideWindow {
    * @param {number} height - The available height for the iframe
    */
   resize(height) {
-    if (!this.iframe || !this.iframeContainer) return;
-    
-    // Ensure height is a positive number
-    const iframeHeight = Math.max(height, 10);
-    
-    // Set iframe height
-    this.iframe.style.height = `${iframeHeight}px`;
-    this.iframe.style.width = '100%';
-    
-    // Set container height
-    this.iframeContainer.style.height = `${iframeHeight}px`;
-    this.iframeContainer.style.width = '100%';
-    
-    // Force layout recalculation
-    this.iframeContainer.style.display = 'none';
-    // This forces a reflow
-    void this.iframeContainer.offsetHeight;
-    this.iframeContainer.style.display = 'block';
+    // We don't need to do anything here as the iframe is set to maintain
+    // its aspect ratio and always use 100% width of its container
+    // The height will be determined by the aspect ratio (16:9)
   }
   
   /**

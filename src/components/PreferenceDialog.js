@@ -14,10 +14,7 @@ class PreferenceDialog extends BaseComponent {
    */
   constructor(parentId = null) {
     super('PreferenceDialog', parentId);
-    
-    // Storage for layout information from components
-    this.layoutInfo = {};
-    
+        
     // Create the dialog element
     this.element = document.createElement('div');
     this.element.className = 'preference-dialog';
@@ -109,17 +106,8 @@ class PreferenceDialog extends BaseComponent {
    * Handle OK button click
    */
   handleOkClick() {
-    // Save preferences
-    this.saveLayout()
-      .then(layoutJson => {
-        console.log('Layout saved:', layoutJson);
-        // Store in localStorage
-        localStorage.setItem('pcos-layout', layoutJson);
-        this.hide();
-      })
-      .catch(error => {
-        console.error('Error saving layout:', error);
-      });
+    // Just hide the dialog without saving layout
+    this.hide();
   }
   
   /**
@@ -153,16 +141,6 @@ class PreferenceDialog extends BaseComponent {
   handleMessage(messageType, messageData, sender) {
     console.log(`PreferenceDialog received message: ${messageType}`, messageData);
     
-    // Handle layout information messages
-    if (messageType === PREFERENCE_MESSAGES.LAYOUT_INFO) {
-      // Store the layout information from this component
-      if (sender) {
-        this.layoutInfo[sender] = messageData.data || messageData;
-        console.log(`Received layout info from ${sender.componentId}`);
-      }
-      return true;
-    }
-    
     // Handle show preferences message
     if (messageType === PREFERENCE_MESSAGES.SHOW_PREFERENCES) {
       this.show();
@@ -178,50 +156,8 @@ class PreferenceDialog extends BaseComponent {
     // Pass to parent handler if not handled here
     return super.handleMessage(messageType, messageData, sender);
   }
+
   
-  /**
-   * Save the current layout
-   * @returns {Promise<string>} - Promise that resolves with the layout JSON
-   */
-  saveLayout() {
-    // Clear any existing layout information
-    this.layoutInfo = {};
-    
-    // Request layout information from all components
-    this.broadcast(PREFERENCE_MESSAGES.GET_LAYOUT_INFO);
-    
-    // Return a promise that resolves with the layout JSON
-    return new Promise((resolve) => {
-      // Wait for components to respond with their layout information
-      setTimeout(() => {
-        // Create the final layout object
-        const layout = {
-          version: '1.0',
-          timestamp: new Date().toISOString(),
-          components: this.layoutInfo
-        };
-        
-        // Convert layout information to JSON
-        const layoutJson = JSON.stringify(layout, null, 2);
-        resolve(layoutJson);
-      }, 2500); // Wait 500ms for components to respond
-    });
-  }
-  
-  /**
-   * Load a saved layout
-   * @param {string} layoutJson - The layout JSON to load
-   */
-  loadLayout(layoutJson) {
-    try {
-      const layout = JSON.parse(layoutJson);
-      this.broadcast(PREFERENCE_MESSAGES.LOAD_LAYOUT, layout);
-      return true;
-    } catch (error) {
-      console.error('Error loading layout:', error);
-      return false;
-    }
-  }
 }
 
 export default PreferenceDialog;

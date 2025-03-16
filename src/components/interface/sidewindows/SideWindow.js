@@ -346,7 +346,7 @@ class SideWindow extends BaseComponent {
     const layoutInfo = super.getLayoutInfo();
     
     // Add SideWindow-specific information
-    layoutInfo.minimized = this.isMinimized;
+    layoutInfo.minimized = this.minimized;
     layoutInfo.height = this.height;
     layoutInfo.windowId = this.id;
     

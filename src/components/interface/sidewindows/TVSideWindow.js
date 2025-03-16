@@ -646,11 +646,97 @@ class TVSideWindow extends SideWindow {
   }
   
   /**
+   * Apply layout information to restore the TVSideWindow state
+   * @param {Object} layoutInfo - Layout information for this TVSideWindow
+   */
+  applyLayout(layoutInfo) {
+    console.log('TVSideWindow applying layout:', layoutInfo);
+    
+    // Call parent applyLayout if it exists
+    if (super.applyLayout) {
+      super.applyLayout(layoutInfo);
+    }
+    
+    // Set current clip type if specified
+    if (layoutInfo.currentClipType && this.clips[layoutInfo.currentClipType]) {
+      this.currentClipType = layoutInfo.currentClipType;
+    }
+    
+    // Set URLs for all clips if specified
+    if (layoutInfo.clipUrls) {
+      Object.keys(layoutInfo.clipUrls).forEach(clipType => {
+        if (this.clips[clipType]) {
+          this.clips[clipType].setUrl(layoutInfo.clipUrls[clipType]);
+        }
+      });
+    }
+    
+    // Set current URL if specified
+    if (layoutInfo.currentUrl && this.clips[this.currentClipType]) {
+      this.clips[this.currentClipType].setUrl(layoutInfo.currentUrl);
+    }
+    
+    // Restore playlist if specified
+    if (layoutInfo.isPlayingPlaylist && layoutInfo.playlist) {
+      // Find the playlist by ID
+      const playlist = this.playlistManager.getPlaylistById(layoutInfo.playlist.id);
+      if (playlist) {
+        this.currentPlaylist = playlist;
+        this.isPlayingPlaylist = true;
+        
+        // Set current index if specified
+        if (layoutInfo.playlist.currentIndex !== undefined) {
+          this.currentPlaylist.currentIndex = layoutInfo.playlist.currentIndex;
+        }
+        
+        // Load the current clip from the playlist
+        this.loadCurrentPlaylistClip();
+      }
+    }
+    
+    // Render the current clip
+    this.renderCurrentClip();
+  }
+  
+  /**
    * Update the content height
    */
   updateContentHeight() {
     const contentHeight = this.content.offsetHeight;
     this.handleContentHeightChanged(contentHeight);
+  }
+  
+  /**
+   * Load the current clip from the playlist
+   */
+  loadCurrentPlaylistClip() {
+    const currentClip = this.currentPlaylist.getCurrentClip();
+    if (currentClip) {
+      // Change to the clip type of the current clip
+      if (this.currentClipType !== currentClip.clipType) {
+        this.changeClipType(currentClip.clipType);
+      }
+      
+      // Clear content
+      this.content.innerHTML = '';
+      
+      // Initialize the clip content
+      this.clips[this.currentClipType].render(this.content);
+      
+      // Set the URL after the content is initialized
+      this.setUrl(currentClip.url);
+    }
+  }
+  
+  /**
+   * Render the current clip
+   */
+  renderCurrentClip() {
+    // Clear content
+    this.content.innerHTML = '';
+    
+    // Initialize the clip content
+    this.clips[this.currentClipType].render(this.content);
   }
 }
 

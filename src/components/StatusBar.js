@@ -1,6 +1,6 @@
 // StatusBar.js - Default component for the application status bar
 
-import BaseComponent from '../utils/BaseComponent.js';
+import BaseComponent, { PREFERENCE_MESSAGES } from '../utils/BaseComponent.js';
 
 class StatusBar extends BaseComponent {
   constructor(containerId) {
@@ -45,7 +45,13 @@ class StatusBar extends BaseComponent {
     }, duration);
   }
   
-  // Override the handleMessage method from BaseComponent
+  /**
+   * Handle message
+   * @param {string} messageType - Type of message
+   * @param {Object} messageData - Message data
+   * @param {string} sender - Sender ID
+   * @returns {boolean} - Whether the message was handled
+   */
   handleMessage(messageType, messageData, sender) {
     console.log(`StatusBar received message: ${messageType}`, messageData);
     
@@ -64,9 +70,37 @@ class StatusBar extends BaseComponent {
           return true;
         }
         break;
+        
+      case PREFERENCE_MESSAGES.LOAD_LAYOUT:
+        // Check if this layout is for us
+        if (messageData.data && 
+            (messageData.data.componentName === 'StatusBar' || 
+             messageData.data.componentName === this.componentName)) {
+          this.applyLayout(messageData.data.layoutInfo);
+          return true;
+        }
+        break;
     }
     
     return super.handleMessage(messageType, messageData, sender);
+  }
+  
+  /**
+   * Apply layout information to restore the StatusBar state
+   * @param {Object} layoutInfo - Layout information for this StatusBar
+   */
+  applyLayout(layoutInfo) {
+    console.log('StatusBar applying layout:', layoutInfo);
+    
+    // Set status if specified
+    if (layoutInfo.status) {
+      this.setStatus(layoutInfo.status);
+    }
+    
+    // Apply height if specified
+    if (layoutInfo.height && this.container) {
+      this.container.style.height = `${layoutInfo.height}px`;
+    }
   }
   
   /**

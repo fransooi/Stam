@@ -3,7 +3,7 @@ import ProjectSideWindow from './interface/sidewindows/ProjectSideWindow.js';
 import OutputSideWindow from './interface/sidewindows/OutputSideWindow.js';
 import TVSideWindow from './interface/sidewindows/TVSideWindow.js';
 import SocketSideWindow from './interface/sidewindows/SocketSideWindow.js';
-import BaseComponent from '../utils/BaseComponent.js';
+import BaseComponent, { PREFERENCE_MESSAGES } from '../utils/BaseComponent.js';
 
 class SideBar extends BaseComponent {
   constructor(containerId) {
@@ -141,11 +141,16 @@ class SideBar extends BaseComponent {
     
     // Add SideBar-specific information
     layoutInfo.windows = this.windows.map(window => {
+      // Get the window's own layout info
+      const windowLayoutInfo = window.getLayoutInfo ? window.getLayoutInfo() : {};
+      
+      // Ensure we have the basic window properties
       return {
         id: window.id,
         type: window.constructor.name,
         height: window.height,
-        minimized: window.isMinimized
+        minimized: window.minimized,
+        ...windowLayoutInfo // Include all window-specific properties
       };
     });
     
@@ -158,6 +163,140 @@ class SideBar extends BaseComponent {
     }
     
     return layoutInfo;
+  }
+  
+  /**
+   * Apply layout information to restore the sidebar state
+   * @param {Object} layoutInfo - Layout information for this SideBar
+   */
+  applyLayout(layoutInfo) {
+    console.log('SideBar applying layout:', layoutInfo);
+    
+    // Check if we have window configuration
+    if (layoutInfo.windows && Array.isArray(layoutInfo.windows)) {
+      // Store current windows temporarily
+      const existingWindows = [...this.windows];
+      
+      // Clear the windows array
+      this.windows = [];
+      
+      // Process each window in the layout
+      layoutInfo.windows.forEach(windowInfo => {
+        // Find matching window from existing windows
+        const existingWindow = existingWindows.find(w => w.id === windowInfo.id);
+        
+        if (existingWindow) {
+          // Update existing window properties
+          existingWindow.height = windowInfo.height || existingWindow.height;
+          
+          // Set minimized state if specified
+          if (windowInfo.minimized !== undefined) {
+            existingWindow.minimized = windowInfo.minimized;
+          }
+          
+          // Add the window to the windows array
+          this.windows.push(existingWindow);
+        } else {
+          // Create a new window based on type
+          let newWindow;
+          
+          switch (windowInfo.type) {
+            case 'ProjectSideWindow':
+              newWindow = new ProjectSideWindow(windowInfo.height || 250);
+              break;
+            case 'OutputSideWindow':
+              newWindow = new OutputSideWindow(windowInfo.height || 180);
+              break;
+            case 'TVSideWindow':
+              newWindow = new TVSideWindow(windowInfo.height || 200);
+              break;
+            case 'SocketSideWindow':
+              newWindow = new SocketSideWindow(windowInfo.height || 200);
+              break;
+            default:
+              console.warn(`Unknown window type: ${windowInfo.type}`);
+              return;
+          }
+          
+          // Set window ID
+          newWindow.id = windowInfo.id;
+          
+          // Set minimized state if specified
+          if (windowInfo.minimized !== undefined) {
+            newWindow.minimized = windowInfo.minimized;
+          }
+          
+          // Add the new window to the windows array
+          this.windows.push(newWindow);
+        }
+      });
+      
+      // Re-render the windows
+      this.renderWindows();
+      
+      // Apply minimized state to rendered windows
+      this.windows.forEach(window => {
+        if (window.minimized && window.container) {
+          // Ensure the window is minimized in the DOM
+          window.container.classList.add('minimized');
+          if (window.content) {
+            window.content.style.display = 'none';
+          }
+          
+          // Find the wrapper element
+          const wrapper = window.container.closest('.side-window-wrapper');
+          if (wrapper) {
+            wrapper.style.height = `${window.headerHeight || 34}px`;
+            wrapper.style.minHeight = `${window.headerHeight || 34}px`;
+            wrapper.style.flex = '0 0 auto';
+          }
+          
+          // Update toggle button
+          const toggleButton = window.container.querySelector('.side-window-toggle');
+          if (toggleButton) {
+            toggleButton.innerHTML = '▼';
+            toggleButton.title = 'Maximize';
+          }
+        }
+      });
+      
+      // Set active window if specified
+      if (layoutInfo.activeWindow) {
+        const activeWindow = this.windows.find(w => w.id === layoutInfo.activeWindow);
+        if (activeWindow && activeWindow.element) {
+          activeWindow.element.classList.add('active');
+        }
+      }
+    }
+  }
+  
+  /**
+   * Override handleMessage to handle layout-related messages
+   * @param {string} messageType - Type of message
+   * @param {Object} messageData - Message data
+   * @param {string} sender - Sender ID
+   * @returns {boolean} - Whether the message was handled
+   */
+  handleMessage(messageType, messageData, sender) {
+    console.log(`SideBar received message: ${messageType}`, messageData);
+    
+    switch (messageType) {
+      case 'SIDEBAR_LAYOUT_CHANGED':
+        this.handleLayoutChanged(messageData.data);
+        return true;
+      
+      case 'LOAD_LAYOUT':
+        // Check if this layout is for us
+        if (messageData.data && 
+            (messageData.data.componentName === 'SideBar' || 
+             messageData.data.componentName === this.componentName)) {
+          this.applyLayout(messageData.data.layoutInfo);
+          return true;
+        }
+        break;
+    }
+    
+    return super.handleMessage(messageType, messageData, sender);
   }
   
   /**

@@ -1,4 +1,4 @@
-import BaseComponent from '../utils/BaseComponent.js';
+import BaseComponent, { PREFERENCE_MESSAGES } from '../utils/BaseComponent.js';
 
 // IconBar.js - Component for the icon area with buttons
 class IconBar extends BaseComponent {
@@ -90,7 +90,13 @@ class IconBar extends BaseComponent {
     this.loadModeSpecificIcons();
   }
   
-  // Override the handleMessage method from BaseComponent
+  /**
+   * Handle message
+   * @param {string} messageType - Type of message
+   * @param {Object} messageData - Message data
+   * @param {string} sender - Sender ID
+   * @returns {boolean} - Whether the message was handled
+   */
   handleMessage(messageType, messageData, sender) {
     console.log(`IconBar received message: ${messageType}`, messageData);
     
@@ -101,10 +107,37 @@ class IconBar extends BaseComponent {
           return true;
         }
         break;
+      case 'SET_MODE':
+        this.setMode(messageData.data.mode);
+        return true;
         
+      case PREFERENCE_MESSAGES.LOAD_LAYOUT:
+        // Check if this layout is for us
+        if (messageData.data && 
+            (messageData.data.componentName === 'IconBar' || 
+             messageData.data.componentName === this.componentName)) {
+          this.applyLayout(messageData.data.layoutInfo);
+          return true;
+        }
+        break;
     }
     
     return super.handleMessage(messageType, messageData, sender);
+  }
+  
+  /**
+   * Apply layout information to restore the IconBar state
+   * @param {Object} layoutInfo - Layout information for this IconBar
+   */
+  applyLayout(layoutInfo) {
+    console.log('IconBar applying layout:', layoutInfo);
+    
+    // Set mode if specified
+    if (layoutInfo.currentMode) {
+      this.setMode(layoutInfo.currentMode);
+    }
+    
+    // We don't need to apply height as it's defined by the mode-specific IconBars
   }
   
   /**
@@ -118,11 +151,7 @@ class IconBar extends BaseComponent {
     // Add IconBar-specific information
     layoutInfo.currentMode = this.currentMode;
     
-    // Get height information if available
-    if (this.container) {
-      const rect = this.container.getBoundingClientRect();
-      layoutInfo.height = rect.height;
-    }
+    // We don't need to save height as it's defined by the mode-specific IconBars
     
     // Add mode-specific icon information if available
     if (this.modeSpecificIcons && typeof this.modeSpecificIcons.getIconInfo === 'function') {
