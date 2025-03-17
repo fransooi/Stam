@@ -236,6 +236,18 @@ class OutputSideWindow extends SideWindow {
       }
     }
     
+    // Handle layout loading message
+    if (messageType === 'LOAD_LAYOUT') {
+      console.log('OutputSideWindow received LOAD_LAYOUT message:', messageData);
+      
+      // Check if this layout is for this component
+      if (messageData && messageData.data && messageData.data.componentName === this.componentName) {
+        console.log(`OutputSideWindow: Layout info is for this component, applying layout`);
+        this.setLayout(messageData.data.layoutInfo);
+        return true;
+      }
+    }
+    
     // Delegate to mode implementation for output-specific messages
     if (this.modeImplementation) {
       switch (messageType) {
@@ -346,6 +358,47 @@ class OutputSideWindow extends SideWindow {
     if (this.modeImplementation && layoutInfo) {
       this.modeImplementation.applyLayout(layoutInfo);
     }
+  }
+  
+  /**
+   * Set the layout from saved information
+   * @param {Object} layoutInfo - The layout information to apply
+   */
+  setLayout(layoutInfo) {
+    console.log('OutputSideWindow.setLayout called with:', layoutInfo);
+    
+    // Store the mode from layout info
+    if (layoutInfo && layoutInfo.currentMode) {
+      console.log(`OutputSideWindow: Restoring mode ${layoutInfo.currentMode} from saved layout`);
+      this.currentMode = layoutInfo.currentMode;
+      
+      // Load the mode-specific implementation
+      this.loadModeSpecificImplementation(this.currentMode)
+        .then(() => {
+          // If we have a content element and mode implementation, re-render the content
+          if (this.content && this.modeImplementation) {
+            // First, clear the content
+            this.content.innerHTML = '';
+            
+            // Set the content element for the mode implementation
+            this.modeImplementation.content = this.content;
+            
+            // Create the mode-specific output UI
+            console.log(`Re-creating output UI for ${this.currentMode} mode`);
+            this.modeImplementation.createOutputUI();
+            
+            // If the mode implementation has a setLayout method, call it
+            if (this.modeImplementation.setLayout) {
+              this.modeImplementation.setLayout(layoutInfo);
+            }
+          }
+        })
+        .catch(error => {
+          console.error(`Error loading mode implementation for ${this.currentMode}:`, error);
+        });
+    }
+    
+    return true;
   }
 }
 

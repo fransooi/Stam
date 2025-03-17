@@ -24,12 +24,6 @@ class Editor extends BaseComponent {
     // Load mode-specific configuration
     await this.loadModeSpecificConfig();
     
-    // If this is the C64 mode, delegate to the C64 editor
-    if (this.currentMode === 'c64') {
-      await this.loadC64Editor();
-      return;
-    }
-    
     // Create the CodeMirror editor with mode-specific configuration
     this.createEditor();
     
@@ -78,27 +72,6 @@ class Editor extends BaseComponent {
     }
   }
   
-  async loadC64Editor() {
-    try {
-      console.log('Loading C64 editor');
-      
-      // For C64, we delegate completely to the C64Editor
-      if (this.editorInstance && typeof this.editorInstance.render === 'function') {
-        this.editorInstance.render();
-        
-        // Connect to icon bar
-        this.connectToIconBar();
-      } else {
-        console.error('C64 editor instance not properly initialized');
-        this.container.innerHTML = `<div class="error-message">Failed to load C64 editor: Editor instance not properly initialized</div>`;
-      }
-      
-    } catch (error) {
-      console.error('Error loading C64 editor:', error);
-      this.container.innerHTML = `<div class="error-message">Failed to load C64 editor: ${error.message || 'Unknown error'}</div>`;
-    }
-  }
-  
   createEditor() {
     try {
       console.log('Creating CodeMirror editor with mode-specific configuration');
@@ -140,6 +113,9 @@ class Editor extends BaseComponent {
         this.editorInstance.setEditorView(this.editorView);
       }
       
+      // Connect to icon bar
+      this.connectToIconBar();
+      
       console.log('CodeMirror editor created successfully');
       
     } catch (error) {
@@ -152,8 +128,7 @@ class Editor extends BaseComponent {
   // Core editor methods that all modes can use
   
   getContent() {
-    // For C64, delegate to the C64 editor
-    if (this.currentMode === 'c64' && this.editorInstance) {
+    if (this.editorInstance && this.editorInstance.getContent) {
       return this.editorInstance.getContent();
     }
     
@@ -166,8 +141,7 @@ class Editor extends BaseComponent {
   }
   
   setContent(content) {
-    // For C64, delegate to the C64 editor
-    if (this.currentMode === 'c64' && this.editorInstance) {
+    if (this.editorInstance && this.editorInstance.setContent) {
       this.editorInstance.setContent(content);
       return;
     }
@@ -207,8 +181,8 @@ class Editor extends BaseComponent {
       return;
     }
     
-    // Default implementation - could add file picker in the future
-    alert('Open file functionality not implemented for this mode');
+    // Default implementation
+    alert('Open file not implemented for this mode');
   }
   
   saveFile() {
@@ -219,8 +193,8 @@ class Editor extends BaseComponent {
       return;
     }
     
-    // Default implementation - could add file save in the future
-    alert('Save file functionality not implemented for this mode');
+    // Default implementation
+    alert('Save file not implemented for this mode');
   }
   
   runProgram() {
@@ -232,7 +206,7 @@ class Editor extends BaseComponent {
     }
     
     // Default implementation
-    alert('Run functionality not implemented for this mode');
+    alert('Run program not implemented for this mode');
   }
   
   debugProgram() {
@@ -244,19 +218,7 @@ class Editor extends BaseComponent {
     }
     
     // Default implementation
-    alert('Debug functionality not implemented for this mode');
-  }
-  
-  shareCode() {
-    console.log('Sharing code');
-    // Mode-specific share operation
-    if (this.editorInstance && this.editorInstance.shareCode) {
-      this.editorInstance.shareCode();
-      return;
-    }
-    
-    // Default implementation
-    alert('Share functionality not implemented for this mode');
+    alert('Debug program not implemented for this mode');
   }
   
   showHelp() {
@@ -268,14 +230,25 @@ class Editor extends BaseComponent {
     }
     
     // Default implementation
-    alert('Help functionality not implemented for this mode');
+    alert('Help not implemented for this mode');
   }
   
-  setMode(mode) {
-    console.log(`Changing editor mode from ${this.currentMode} to ${mode}`);
-    this.currentMode = mode;
-    this.loadModeSpecificConfig();
-    this.render();  
+  // Connect to the icon bar
+  connectToIconBar() {
+    console.log('Connecting editor to icon bar');
+    
+    // Find the icon bar instance
+    const iconBar = this.container.iconBar;
+    
+    if (!iconBar) {
+      console.log('Icon bar not found, skipping connection');
+      return;
+    }
+    
+    // Connect the icon bar to the editor
+    iconBar.connectToEditor(this);
+    
+    console.log('Editor connected to icon bar successfully');
   }
   
   /**
@@ -388,6 +361,13 @@ class Editor extends BaseComponent {
     }
     
     return layoutInfo;
+  }
+  
+  setMode(mode) {
+    console.log(`Changing editor mode from ${this.currentMode} to ${mode}`);
+    this.currentMode = mode;
+    this.loadModeSpecificConfig();
+    this.render();  
   }
 }
 

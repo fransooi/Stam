@@ -1,149 +1,151 @@
-// Commodore 64 Editor component with Vicii-ous emulator integration
+// Commodore 64 Editor component
+import { EditorView } from '@codemirror/view';
 
 class C64Editor {
   constructor(container) {
     this.container = container;
-    this.iframe = null;
+    this.editorView = null;
   }
 
-  render() {
-    try {
-      // Clear the container
-      this.container.innerHTML = '';
-      
-      console.log('Rendering C64 editor with Vicii-ous emulator');
-      
-      // Create a container for the C64 emulator
-      const emulatorContainer = document.createElement('div');
-      emulatorContainer.className = 'c64-emulator';
-      
-      // Create the iframe to load the Vicii-ous emulator
-      this.iframe = document.createElement('iframe');
-      this.iframe.className = 'c64-iframe';
-      this.iframe.src = '/c64/viciious/index.html';
-      this.iframe.setAttribute('frameborder', '0');
-      this.iframe.setAttribute('allowfullscreen', 'true');
-      this.iframe.setAttribute('allow', 'autoplay; fullscreen');
-      
-      // Add error handling for iframe loading
-      this.iframe.onerror = (error) => {
-        console.error('Error loading C64 emulator iframe:', error);
-        this.container.innerHTML = `<div class="error-message">Failed to load C64 emulator: ${error.message || 'Unknown error'}</div>`;
-      };
-      
-      // Add load event to confirm successful loading
-      this.iframe.onload = () => {
-        console.log('C64 emulator iframe loaded successfully');
-      };
-      
-      // Add the iframe directly to the container
-      emulatorContainer.appendChild(this.iframe);
-      this.container.appendChild(emulatorContainer);
-      
-      // Add custom styles for C64 emulator iframe
-      const style = document.createElement('style');
-      style.textContent = `
-        .c64-emulator {
-          display: flex;
-          flex-direction: column;
-          height: 100%;
-          width: 100%;
-          background-color: #000000;
-          overflow: hidden;
-          border: none;
-        }
-        .c64-iframe {
-          flex: 1;
-          width: 100%;
-          height: 100%;
-          border: none;
-          background-color: #000000;
-          padding: 0;
-          margin: 0;
-        }
-        .error-message {
-          color: #FF0000;
-          padding: 20px;
-          font-weight: bold;
-          background-color: #000000;
-        }
-      `;
-      document.head.appendChild(style);
-      
-      // Set up communication with the iframe
-      this.setupIframeMessaging();
-      
-      console.log('C64 editor rendered successfully');
-    } catch (error) {
-      console.error('Error rendering C64 editor:', error);
-      this.container.innerHTML = `<div class="error-message">Failed to render C64 editor: ${error.message || 'Unknown error'}</div>`;
-    }
+  // Prepare the container with C64-specific styling
+  prepareContainer() {
+    // Create a styled container for C64 editor
+    this.container.innerHTML = `
+      <div class="c64-editor">
+        <div id="c64-editor-container" class="c64-content"></div>
+      </div>
+    `;
   }
   
-  setupIframeMessaging() {
-    // Listen for messages from the iframe
-    window.addEventListener('message', (event) => {
-      // Make sure the message is from our iframe
-      if (this.iframe && event.source === this.iframe.contentWindow) {
-        console.log('Message from C64 emulator:', event.data);
-        
-        // Handle different message types
-        if (event.data.type === 'c64_ready') {
-          console.log('C64 emulator is ready');
-        } else if (event.data.type === 'c64_error') {
-          console.error('C64 emulator error:', event.data.error);
-        }
+  // Return the parent element for the editor
+  getEditorParent() {
+    return document.getElementById('c64-editor-container');
+  }
+
+  // Provide configuration for the main Editor component
+  getConfig() {
+    // Custom theme for C64 based on the Commodore 64 color palette
+    const c64Theme = EditorView.theme({
+      "&": {
+        backgroundColor: "#4040e0", // C64 blue background
+        color: "#a0a0ff", // Light blue text
+        fontFamily: "'C64 Pro Mono', 'C64 Pro', 'Courier New', monospace",
+        fontSize: "16px",
+        height: "100%"
+      },
+      ".cm-content": {
+        caretColor: "#a0a0ff" // Light blue cursor
+      },
+      ".cm-cursor": {
+        borderLeftColor: "#a0a0ff",
+        borderLeftWidth: "2px"
+      },
+      ".cm-line": {
+        paddingLeft: "2em"
+      },
+      ".cm-gutters": {
+        backgroundColor: "#2020a0", // Darker blue for gutters
+        color: "#8080ff", // Medium blue line numbers
+        border: "none"
+      },
+      ".cm-gutter.cm-lineNumbers .cm-gutterElement": {
+        paddingLeft: "8px",
+        paddingRight: "8px"
+      },
+      ".cm-keyword": {
+        color: "#ffffff" // White for keywords
+      },
+      ".cm-string": {
+        color: "#ffff80" // Light yellow for strings
+      },
+      ".cm-number": {
+        color: "#80ff80" // Light green for numbers
+      },
+      ".cm-comment": {
+        color: "#ff8080" // Light red for comments
       }
     });
+    
+    return {
+      extensions: [c64Theme],
+      initialDoc: '10 REM COMMODORE 64 BASIC V2\n20 PRINT "HELLO FROM C64 BASIC!"\n30 FOR I=1 TO 10\n40 PRINT "LOOP: ";I\n50 NEXT I\n60 END'
+    };
   }
   
-  // Method to send commands to the emulator
-  sendCommand(command, params = {}) {
-    if (this.iframe && this.iframe.contentWindow) {
-      this.iframe.contentWindow.postMessage({
-        type: 'c64_command',
-        command: command,
-        params: params
-      }, '*');
-    }
+  // Store the editor view instance
+  setEditorView(editorView) {
+    this.editorView = editorView;
   }
   
   // Public methods that might be called from outside
   getContent() {
-    // In a real implementation, this would get the content from the emulator
-    // For now, return an empty string
+    if (this.editorView) {
+      return this.editorView.state.doc.toString();
+    }
     return '';
   }
   
   setContent(content) {
-    // In a real implementation, this would set the content in the emulator
-    // For now, do nothing
+    if (this.editorView) {
+      this.editorView.dispatch({
+        changes: {
+          from: 0,
+          to: this.editorView.state.doc.length,
+          insert: content
+        }
+      });
+    }
   }
   
   // Methods that can be called from the icon bar
   runProgram() {
     console.log('C64: Running program');
-    this.sendCommand('run');
+    // In the future, this will send the code to the emulator
+    // For now, just log the code
+    console.log('Code to run:', this.getContent());
+    
+    // Broadcast a message that could be picked up by the output window
+    if (window.messageBus) {
+      window.messageBus.broadcast('C64_RUN_PROGRAM', {
+        code: this.getContent()
+      }, 'c64-editor');
+    }
   }
   
   stopProgram() {
     console.log('C64: Stopping program');
-    this.sendCommand('stop');
+    // In the future, this will send a stop command to the emulator
+    
+    // Broadcast a message that could be picked up by the output window
+    if (window.messageBus) {
+      window.messageBus.broadcast('C64_STOP_PROGRAM', {}, 'c64-editor');
+    }
   }
   
   resetEmulator() {
     console.log('C64: Resetting emulator');
-    this.sendCommand('reset');
+    // In the future, this will send a reset command to the emulator
+    
+    // Broadcast a message that could be picked up by the output window
+    if (window.messageBus) {
+      window.messageBus.broadcast('C64_RESET_EMULATOR', {}, 'c64-editor');
+    }
   }
   
   loadProgram(program) {
     console.log('C64: Loading program', program);
-    this.sendCommand('load', { program: program });
+    // In the future, this will load a program into the editor
+    
+    // For now, just set some sample content
+    this.setContent('10 REM LOADED PROGRAM\n20 PRINT "PROGRAM LOADED!"\n30 END');
   }
   
   saveProgram() {
     console.log('C64: Saving program');
-    this.sendCommand('save');
+    // In the future, this will save the program
+    
+    // For now, just log the code
+    console.log('Code to save:', this.getContent());
   }
   
   // Additional methods to match the interface expected by the main Editor component
@@ -154,12 +156,12 @@ class C64Editor {
   
   showHelp() {
     console.log('C64: Showing help');
-    alert('C64 Help:\n\nBasic Commands:\nLOAD - Load a program\nSAVE - Save a program\nRUN - Run the program\nLIST - List the program\nNEW - Clear the program\n\nUse the icon bar for common operations.');
+    alert('C64 BASIC Help:\n\nBasic Commands:\nLOAD - Load a program\nSAVE - Save a program\nRUN - Run the program\nLIST - List the program\nNEW - Clear the program\n\nUse the icon bar for common operations.');
   }
   
   newFile() {
     console.log('C64: Creating new file');
-    this.sendCommand('new');
+    this.setContent('10 REM NEW C64 BASIC PROGRAM\n20 PRINT "HELLO WORLD!"\n30 END');
   }
   
   openFile() {

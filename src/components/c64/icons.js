@@ -1,8 +1,10 @@
 // Commodore 64 Icon Bar component
+import messageBus from '../../utils/MessageBus.mjs';
 
 class C64Icons {
-  constructor(container) {
+  constructor(container, onIconClickCallback) {
     this.container = container;
+    this.onIconClickCallback = onIconClickCallback;
   }
 
   render() {
@@ -66,7 +68,99 @@ class C64Icons {
   
   handleButtonClick(action) {
     console.log(`C64 Button clicked: ${action}`);
-  }  
+    
+    // Call the callback if provided
+    if (typeof this.onIconClickCallback === 'function') {
+      this.onIconClickCallback(action.toLowerCase());
+    }
+    
+    // Handle the action based on button type
+    switch (action.toLowerCase()) {
+      case 'run':
+        this.sendCommandToEmulator('RUN');
+        break;
+      case 'stop':
+        this.sendCommandToEmulator('STOP');
+        break;
+      case 'reset':
+        this.sendCommandToEmulator('RESET');
+        break;
+      case 'load':
+        this.handleLoadAction();
+        break;
+      case 'save':
+        this.handleSaveAction();
+        break;
+      default:
+        console.warn(`Unknown C64 action: ${action}`);
+    }
+  }
+  
+  /**
+   * Send a command to the C64 emulator via MessageBus
+   * @param {string} command - The command to send
+   * @param {Object} params - Additional parameters for the command
+   */
+  sendCommandToEmulator(command, params = {}) {
+    // Use the forward method to send the message to all C64OutputSideWindow instances
+    messageBus.forward(command, 'C64OutputSideWindow', params);
+  }
+  
+  /**
+   * Handle the Load button action
+   */
+  handleLoadAction() {
+    // Create a file input element
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.prg,.d64,.t64,.s64';
+    fileInput.style.display = 'none';
+    document.body.appendChild(fileInput);
+    
+    // Handle file selection
+    fileInput.addEventListener('change', (event) => {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const data = new Uint8Array(e.target.result);
+          this.sendCommandToEmulator('LOAD_PRG', {
+            data: data,
+            fileName: file.name,
+            autoStart: false
+          });
+        };
+        reader.readAsArrayBuffer(file);
+      }
+      
+      // Remove the file input element
+      document.body.removeChild(fileInput);
+    });
+    
+    // Trigger the file selection dialog
+    fileInput.click();
+  }
+  
+  /**
+   * Handle the Save button action
+   */
+  handleSaveAction() {
+    // For now, just log that this feature is not implemented
+    console.log('C64 Save functionality not implemented yet');
+    
+    // In a future implementation, this could request a snapshot from the emulator
+    // and then offer it as a download to the user
+  }
+  
+  /**
+   * Get information about the C64 icon bar for layout saving
+   * @returns {Object} Icon information
+   */
+  getIconInfo() {
+    return {
+      mode: 'c64'
+    };
+  }
 }
 
 export default C64Icons;

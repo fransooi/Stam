@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <title>C64 Emulator Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f0f0f0;
+    }
+    
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background-color: #fff;
+      padding: 20px;
+      border-radius: 5px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    
+    h1 {
+      color: #333;
+    }
+    
+    .button-container {
+      margin: 20px 0;
+    }
+    
+    button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      margin-right: 10px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    
+    button:hover {
+      background-color: #45a049;
+    }
+    
+    #emulator-container {
+      width: 100%;
+      height: 400px;
+      background-color: #000;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    #canvas {
+      display: block;
+      width: 92%;
+      height: 100%;
+      margin-left: auto;
+      margin-right: auto;
+      transform: scale(1.094,1);
+    }
+    
+    #status {
+      color: #fff;
+      padding: 5px;
+      text-align: center;
+    }
+    
+    progress {
+      width: 100%;
+      height: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>C64 Emulator Test</h1>
+    
+    <div class="button-container">
+      <button onclick="resetEmulator()">Reset</button>
+      <button onclick="runBasicCommand('LIST')">LIST</button>
+      <button onclick="runBasicCommand('RUN')">RUN</button>
+    </div>
+    
+    <div id="emulator-container">
+      <div id="status">Downloading...</div>
+      <div><progress value="0" max="100" id="progress" hidden=0></progress></div>
+      <div>
+        <canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    // Helper function to type a command into the emulator
+    function typeCommand(command) {
+      return new Promise((resolve, reject) => {
+        if (!window.Module) {
+          reject('Module not initialized');
+          return;
+        }
+        
+        // Clear the current line first
+        window.Module.ccall('js_setKey', 'number', ['number', 'number'], [20, 1]); // HOME key
+        setTimeout(() => {
+          window.Module.ccall('js_setKey', 'number', ['number', 'number'], [20, 0]);
+          
+          // Type each character of the command
+          let i = 0;
+          
+          function typeNextChar() {
+            if (i >= command.length) {
+              // Press Enter when done
+              window.Module.ccall('js_setKey', 'number', ['number', 'number'], [13, 1]);
+              setTimeout(() => {
+                window.Module.ccall('js_setKey', 'number', ['number', 'number'], [13, 0]);
+                resolve();
+              }, 50);
+              return;
+            }
+            
+            const char = command.charAt(i);
+            const keyCode = getKeyCodeForChar(char);
+            
+            if (keyCode) {
+              // Press the key
+              window.Module.ccall('js_setKey', 'number', ['number', 'number'], [keyCode, 1]);
+              
+              // Release the key after a short delay
+              setTimeout(() => {
+                window.Module.ccall('js_setKey', 'number', ['number', 'number'], [keyCode, 0]);
+                i++;
+                setTimeout(typeNextChar, 100);
+              }, 50);
+            } else {
+              i++;
+              setTimeout(typeNextChar, 100);
+            }
+          }
+          
+          // Start typing
+          typeNextChar();
+        }, 100);
+      });
+    }
+    
+    // Map characters to key codes
+    function getKeyCodeForChar(char) {
+      const charMap = {
+        'A': 65, 'B': 66, 'C': 67, 'D': 68, 'E': 69, 'F': 70, 'G': 71, 'H': 72,
+        'I': 73, 'J': 74, 'K': 75, 'L': 76, 'M': 77, 'N': 78, 'O': 79, 'P': 80,
+        'Q': 81, 'R': 82, 'S': 83, 'T': 84, 'U': 85, 'V': 86, 'W': 87, 'X': 88,
+        'Y': 89, 'Z': 90, '0': 48, '1': 49, '2': 50, '3': 51, '4': 52, '5': 53,
+        '6': 54, '7': 55, '8': 56, '9': 57, ' ': 32, '.': 190, ',': 188, ';': 186,
+        '=': 187, '-': 189, '/': 191, '\\': 220, '[': 219, ']': 221, "'": 222
+      };
+      
+      return charMap[char.toUpperCase()] || null;
+    }
+    
+    // Function to reset the emulator
+    function resetEmulator() {
+      if (window.Module) {
+        window.Module.ccall('js_reset', 'number', ['number'], [0]);
+        console.log('C64 emulator reset performed');
+      } else {
+        console.warn('Module not initialized yet');
+      }
+    }
+    
+    // Function to run a BASIC command
+    function runBasicCommand(command) {
+      if (window.Module) {
+        typeCommand(command)
+          .then(() => {
+            console.log(`Command executed: ${command}`);
+          })
+          .catch(error => {
+            console.error('Error executing command:', error);
+          });
+      } else {
+        console.warn('Module not initialized yet');
+      }
+    }
+    
+    // Initialize the C64 emulator
+    var Module = {
+      error: function(v) {
+        console.log(v);
+      },
+      startSequence: 0,
+      preRun: [function() { Module.c64preRun(); }],
+      postRun: [function() { Module.c64postRun(); }],
+      c64preRun: function() {
+        FS.mkdir('/data');
+        FS.mount(IDBFS, {}, '/data');
+        FS.syncfs(true, function(err) {
+          Module.c64FsSync();
+        });
+      },
+      c64postRun: function() {
+        Module.startSequence |= 1;
+        if (Module.startSequence == 3) Module.c64startup();
+      },
+      c64FsSync: function() {
+        Module.startSequence |= 2;
+        if (Module.startSequence == 3) Module.c64startup();
+      },
+      c64startup: function() {
+        // Start with a clean BASIC screen
+        Module.ccall('js_reset', 'number', ['number'], [0]);
+      },
+      canvas: document.getElementById('canvas'),
+      progressElement: document.getElementById('progress'),
+      statusElement: document.getElementById('status'),
+      setStatus: function(text) {
+        if (!Module.setStatus.last) Module.setStatus.last = { time: Date.now(), text: '' };
+        if (text === Module.setStatus.text) return;
+        var m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
+        var now = Date.now();
+        if (m && now - Date.now() < 30) return; // if this is a progress update, skip it if too soon
+        if (m) {
+          text = m[1];
+          Module.progressElement.value = parseInt(m[2])*100;
+          Module.progressElement.max = parseInt(m[4])*100;
+          Module.progressElement.hidden = false;
+        } else {
+          Module.progressElement.value = null;
+          Module.progressElement.max = null;
+          Module.progressElement.hidden = true;
+        }
+        Module.statusElement.innerHTML = text;
+      },
+      totalDependencies: 0,
+      monitorRunDependencies: function(left) {
+        this.totalDependencies = Math.max(this.totalDependencies, left);
+        Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies-left) + '/' + this.totalDependencies + ')' : 'All downloads complete.');
+      }
+    };
+    
+    Module.setStatus('Downloading...');
+    
+    // Handle keyboard events
+    var arrowKeysHandler = function(e) {
+      switch(e.keyCode) {
+        case 37: case 39: case 38: case 40: // Arrow keys
+        case 32: case 17: case 112: case 114: case 116: case 118: // Space, Ctrl, F1, F3, F5, F7
+          e.preventDefault();
+          break;
+        default:
+          break;
+      }
+    };
+    
+    window.addEventListener("keydown", arrowKeysHandler, false);
+    window.addEventListener("keyup", arrowKeysHandler, false);
+  </script>
+  
+  <script type="text/javascript" src="/c64/c64_main.js"></script>
+  <script async type="text/javascript" src="/c64/c64_tiny.js"></script>
+</body>
+</html>

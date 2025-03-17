@@ -542,6 +542,62 @@ class MessageBus {
   };
   
   /**
+   * Get all component IDs that are instances of a specific class
+   * 
+   * @param {string} className - The class name to find instances of
+   * @returns {Array} - Array of component IDs that are instances of the specified class
+   */
+  getComponentsByClassName(className) {
+    const matchingComponents = [];
+    
+    // Iterate through all registered components
+    for (const [componentID, component] of this.addressedHandlers.entries()) {
+      // Get the actual component instance from the registry
+      const componentInstance = component.context;
+      
+      // Check if the component is an instance of the specified class
+      // This checks both the constructor name and any parent class names in the prototype chain
+      if (componentInstance && 
+          (componentInstance.constructor.name === className || 
+           componentInstance.componentName === className)) {
+        matchingComponents.push(componentID);
+      }
+    }
+    
+    return matchingComponents;
+  }
+  
+  /**
+   * Forward a message to all components of a specific class type
+   * 
+   * @param {string} action - The action/message type to send
+   * @param {string} className - The class name to forward the message to
+   * @param {Object} messageData - The message data to send
+   * @param {string} senderId - The ID of the component that sent the message
+   * @returns {number} - Number of components that received the message
+   */
+  forward(action, className, messageData = {}, senderId = null) {
+    // Get all components of the specified class
+    const targetComponents = this.getComponentsByClassName(className);
+    let deliveryCount = 0;
+    
+    // Send the message to each matching component
+    for (const componentID of targetComponents) {
+      const delivered = this.sendMessage(componentID, action, {
+        ...messageData,
+        forwarded: true,
+        originalSender: senderId
+      }, senderId);
+      
+      if (delivered) {
+        deliveryCount++;
+      }
+    }
+    
+    return deliveryCount;
+  }
+  
+  /**
    * Clear all handlers
    */
   clear() {

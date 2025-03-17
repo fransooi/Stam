@@ -38,14 +38,60 @@ class PCOSApp extends BaseComponent {
   init() {
     // Wait for DOM to be fully loaded
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', () => this.initComponents());
+      document.addEventListener('DOMContentLoaded', () => this.initApplication());
     } else {
-      this.initComponents();
+      this.initApplication();
     }
   }
   
+  /**
+   * Initialize the application, checking for saved layout first
+   */
+  async initApplication() {
+    console.log('Initializing PCOS application...');
+    
+    // Check for saved layout first to determine the initial mode
+    try {
+      const layoutData = await this.loadStorage('pcos-layout');
+      
+      if (layoutData) {
+        console.log('Found saved layout, extracting mode before initialization');
+        
+        try {
+          // Parse the layout JSON
+          const layout = JSON.parse(layoutData);
+          
+          // Validate the layout
+          if (layout && layout.components) {
+            // First, check if the IconBar component has a saved mode
+            const iconBarInfo = Object.values(layout.components).find(
+              component => component.componentName === 'IconBar'
+            );
+            
+            // If we found the IconBar info and it has a currentMode, set it first
+            if (iconBarInfo && iconBarInfo.currentMode) {
+              console.log(`Setting initial application mode to ${iconBarInfo.currentMode} from saved layout`);
+              this.currentMode = iconBarInfo.currentMode;
+            }
+          }
+        } catch (error) {
+          console.error('Error parsing saved layout:', error);
+          // Continue with default mode if there's an error
+        }
+      }
+    } catch (error) {
+      console.error('Error checking for saved layout:', error);
+      // Continue with default mode if there's an error
+    }
+    
+    // Now initialize components with the correct mode
+    this.initComponents();
+  }
+  
   initComponents() {
-    // Initialize all components
+    // Initialize all components with the correct mode from the start
+    console.log(`Initializing components in ${this.currentMode} mode`);
+    
     this.menuBar = new MenuBar('menu-bar', (mode) => this.handleModeChange(mode), this.currentMode);
     this.statusBar = new StatusBar('status-line');
     this.editor = new Editor('editor-area', this.currentMode);
@@ -72,15 +118,15 @@ class PCOSApp extends BaseComponent {
       });
     }
     
-    // Load any saved layout
-    this.loadLayout();
-    
     // Render all components
     this.menuBar.render();
     this.statusBar.render();
     this.iconBar.render();
     this.sideBar.render();
     this.editor.render();
+    
+    // Apply saved layout if it exists (after components are initialized)
+    this.loadLayout();
     
     // Set initial status
     this.statusBar.setStatus(`Mode: ${this.currentMode}`);
@@ -211,7 +257,7 @@ class PCOSApp extends BaseComponent {
         }
       })
       .catch(error => {
-        console.error('Debug2: Error loading layout:', error);
+        console.error('Error loading layout:', error);
       });
   }
   
@@ -333,6 +379,17 @@ class PCOSApp extends BaseComponent {
       if (!layout || !layout.components) {
         console.error('Invalid layout format');
         return Promise.resolve(false);
+      }
+      
+      // First, check if the IconBar component has a saved mode
+      const iconBarInfo = Object.values(layout.components).find(
+        component => component.componentName === 'IconBar'
+      );
+      
+      // If we found the IconBar info and it has a currentMode, set it first
+      if (iconBarInfo && iconBarInfo.currentMode) {
+        console.log(`Setting application mode to ${iconBarInfo.currentMode} from saved layout`);
+        this.handleModeChange(iconBarInfo.currentMode);
       }
       
       // Process each component in the layout

@@ -102,22 +102,42 @@ class IconBar extends BaseComponent {
     
     switch (messageType) {
       case 'MODE_CHANGE':
-        if (messageData.data && messageData.data.mode) {
-          this.setMode(messageData.data.mode);
+        // Extract mode from messageData - handle both formats
+        // Format 1: { mode: 'modeName' }
+        // Format 2: { data: { mode: 'modeName' } }
+        const mode = messageData.mode || (messageData.data && messageData.data.mode);
+        
+        if (mode) {
+          console.log(`IconBar: Changing mode to ${mode}`);
+          this.setMode(mode);
+          return true;
+        } else {
+          console.error('IconBar: MODE_CHANGE message received but no mode found in data:', messageData);
+        }
+        break;
+        
+      case 'SET_MODE':
+        const setMode = messageData.mode || (messageData.data && messageData.data.mode);
+        if (setMode) {
+          this.setMode(setMode);
           return true;
         }
         break;
-      case 'SET_MODE':
-        this.setMode(messageData.data.mode);
-        return true;
         
       case PREFERENCE_MESSAGES.LOAD_LAYOUT:
-        // Check if this layout is for us
-        if (messageData.data && 
-            (messageData.data.componentName === 'IconBar' || 
-             messageData.data.componentName === this.componentName)) {
-          this.applyLayout(messageData.data.layoutInfo);
-          return true;
+        console.log('IconBar received LOAD_LAYOUT message:', messageData);
+        
+        // Check if this layout is for this component - handle both formats
+        if ((messageData.componentName === this.getComponentID()) || 
+            (messageData.data && messageData.data.componentName === this.getComponentID())) {
+          
+          const layoutInfo = messageData.layoutInfo || (messageData.data && messageData.data.layoutInfo);
+          
+          if (layoutInfo) {
+            console.log(`IconBar: Layout info is for this component, applying layout`);
+            this.applyLayout(layoutInfo);
+            return true;
+          }
         }
         break;
     }
@@ -134,7 +154,17 @@ class IconBar extends BaseComponent {
     
     // Set mode if specified
     if (layoutInfo.currentMode) {
-      this.setMode(layoutInfo.currentMode);
+      console.log(`IconBar: Setting mode to ${layoutInfo.currentMode} from layout`);
+      
+      // Update the current mode
+      this.currentMode = layoutInfo.currentMode;
+      
+      // Update body class for mode-specific styling (in case this hasn't been done yet)
+      document.body.classList.remove('modern-mode', 'stos-mode', 'amos1_3-mode', 'amosPro-mode', 'c64-mode');
+      document.body.classList.add(`${this.currentMode}-mode`);
+      
+      // Load the mode-specific icons
+      this.loadModeSpecificIcons();
     }
     
     // We don't need to apply height as it's defined by the mode-specific IconBars
