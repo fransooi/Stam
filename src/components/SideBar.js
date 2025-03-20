@@ -3,15 +3,14 @@ import ProjectSideWindow from './interface/sidewindows/ProjectSideWindow.js';
 import OutputSideWindow from './interface/sidewindows/OutputSideWindow.js';
 import TVSideWindow from './interface/sidewindows/TVSideWindow.js';
 import SocketSideWindow from './interface/sidewindows/SocketSideWindow.js';
-import BaseComponent, { PREFERENCE_MESSAGES } from '../utils/BaseComponent.js';
+import BaseComponent, { MESSAGES } from '../utils/BaseComponent.js';
 import messageBus from '../utils/MessageBus.mjs';
 
 class SideBar extends BaseComponent {
-  constructor(containerId) {
+  constructor(parentId,containerId) {
     // Initialize the base component with component name
-    super('SideBar');
+    super('SideBar',parentId,containerId);
     
-    this.container = document.getElementById(containerId);
     this.windows = [];
     this.separators = [];
     this.isDragging = false;
@@ -35,15 +34,16 @@ class SideBar extends BaseComponent {
    */
   render() {
     // Clear the container
+    this.container=document.getElementById(this.containerId);
     this.container.innerHTML = '';
     
     // Add default windows if none exist
     if (this.windows.length === 0) {
       // Order: TV, Socket, Output, Project (from top to bottom)
-      this.addWindow(new ProjectSideWindow(250));
-      this.addWindow(new OutputSideWindow(180));
-      this.addWindow(new TVSideWindow(200, 'https://www.youtube.com/embed/BxGPwYwlAfM'));
-      this.addWindow(new SocketSideWindow(200));
+      this.addWindow(new ProjectSideWindow(this.componentId,this.containerId, 300));
+      this.addWindow(new OutputSideWindow(this.componentId,this.containerId, 300));
+      this.addWindow(new TVSideWindow(this.componentId,this.containerId, 300,'https://www.youtube.com/embed/BxGPwYwlAfM'));
+      this.addWindow(new SocketSideWindow(this.componentId,this.containerId, 300));
     }
 
     // Render all windows and separators
@@ -87,8 +87,8 @@ class SideBar extends BaseComponent {
         windowWrapper.style.flex = '1 1 auto';
       }
       
-      // Render the window into its wrapper
-      window.render(windowWrapper);
+      // Add the container to the parent
+      windowWrapper.appendChild(window.render());    
       
       // Register the window element for lookup
       this.windowRegistry.set(windowWrapper.querySelector('.side-window'), window);
@@ -203,16 +203,16 @@ class SideBar extends BaseComponent {
           
           switch (windowInfo.type) {
             case 'ProjectSideWindow':
-              newWindow = new ProjectSideWindow(windowInfo.height || 250);
+              newWindow = new ProjectSideWindow(windowInfo.height || 250,this);
               break;
             case 'OutputSideWindow':
-              newWindow = new OutputSideWindow(windowInfo.height || 180);
+              newWindow = new OutputSideWindow(windowInfo.height || 180,this);
               break;
             case 'TVSideWindow':
-              newWindow = new TVSideWindow(windowInfo.height || 200);
+              newWindow = new TVSideWindow(windowInfo.height || 200,this);
               break;
             case 'SocketSideWindow':
-              newWindow = new SocketSideWindow(windowInfo.height || 200);
+              newWindow = new SocketSideWindow(windowInfo.height || 200,this);
               break;
             default:
               console.warn(`Unknown window type: ${windowInfo.type}`);
@@ -282,11 +282,11 @@ class SideBar extends BaseComponent {
     console.log(`SideBar received message: ${messageType}`, messageData);
     
     switch (messageType) {
-      case 'SIDEBAR_LAYOUT_CHANGED':
-        this.handleLayoutChanged(messageData.data);
-        return true;
+//      case MESSAGES.MODE_CHANGE:
+//        this.handleLayoutChanged(messageData.data);
+//        return true;
       
-      case 'LOAD_LAYOUT':
+      case MESSAGES.LOAD_LAYOUT:
         // Check if this layout is for us
         if (messageData.data && 
             (messageData.data.componentName === 'SideBar' || 
@@ -343,15 +343,7 @@ class SideBar extends BaseComponent {
     // Establish parent-child relationship in the component tree
     // This ensures that messages will propagate correctly
     if (window.componentId) {
-      console.log(`SideBar: Adding window ${window.id} (${window.componentId}) as child`);
-      
-      // Update the window's parentId to point to this SideBar
-      window.parentId = this.componentId;
-      
-      // Register the parent-child relationship in the message bus
-      messageBus.registerComponentInTree(window.componentId, this.componentId);
-      
-      console.log(`SideBar: Window ${window.id} added as child of ${this.componentId}`);
+      console.log(`SideBar: Adding window ${window.id} (${window.componentId}) as child`);      
     } else {
       console.warn(`SideBar: Window ${window.id} has no componentId, cannot establish parent-child relationship`);
     }
@@ -482,44 +474,7 @@ class SideBar extends BaseComponent {
       
       document.body.style.userSelect = '';
     }
-  }
-  
-  /**
-   * Resize windows based on separator position
-   * @param {number} separatorIndex - Index of the separator
-   * @param {number} newY - New Y position of the separator
-   */
-  resizeWindows(separatorIndex, newY) {
-    // Calculate the delta Y from the start position
-    const deltaY = newY - this.startY;
-    
-    // Get the windows above and below the separator
-    const windowAbove = this.windows[separatorIndex];
-    const windowBelow = this.windows[separatorIndex + 1];
-    
-    if (!windowAbove || !windowBelow) return;
-    
-    // Calculate new heights ensuring minimum heights
-    const minHeight = 80;
-    const newHeightAbove = Math.max(minHeight, this.startHeightAbove + deltaY);
-    const newHeightBelow = Math.max(minHeight, this.startHeightBelow - deltaY);
-    
-    // Update the heights
-    windowAbove.height = newHeightAbove;
-    windowBelow.height = newHeightBelow;
-    
-    // Update the window wrapper heights
-    const wrapperAbove = windowAbove.container.closest('.side-window-wrapper');
-    const wrapperBelow = windowBelow.container.closest('.side-window-wrapper');
-    
-    if (wrapperAbove) {
-      wrapperAbove.style.height = `${newHeightAbove}px`;
-    }
-    
-    if (wrapperBelow) {
-      wrapperBelow.style.height = `${newHeightBelow}px`;
-    }
-  }
+  }  
 }
 
 export default SideBar;

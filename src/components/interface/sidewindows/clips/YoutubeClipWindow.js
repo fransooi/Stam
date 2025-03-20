@@ -1,7 +1,7 @@
 // YoutubeClipWindow.js - YouTube clip window implementation
-import ClipSideWindow from './ClipSideWindow.js';
+import ClipWindow from './ClipWindow.js';
 
-class YoutubeClipWindow extends ClipSideWindow {
+class YoutubeClipWindow extends ClipWindow {
   constructor(initialUrl = '') {
     super('youtube', 'YouTube', initialUrl);
   }

@@ -23,7 +23,7 @@ var Module = {
 		if( Module.startSequence == 3 ) Module.c64startup();
 	},
 	c64startup: function() {
-		Module.loadSnapshot('Joystick_Test.s64');
+		//Module.loadSnapshot('Joystick_Test.s64');
 	},
 	canvas: document.getElementById('canvas'),
 	diskBoxCombo: document.getElementById('diskbox_combo'),

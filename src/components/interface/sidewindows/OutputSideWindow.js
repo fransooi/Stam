@@ -1,15 +1,17 @@
 // OutputSideWindow.js - Factory for mode-specific output console windows
 import SideWindow from './SideWindow.js';
-import BaseOutputSideWindow from './BaseOutputSideWindow.js';
+import BaseOutput from './BaseOutput.js';
 
 class OutputSideWindow extends SideWindow {
-  constructor(initialHeight = 200) {
-    super('output', 'Output', initialHeight);
+  constructor(parentId, containerId, initialHeight = 200) {
+    super('Output', 'Application', parentId, containerId, initialHeight);
     
     // Current mode and mode-specific implementation
-    this.currentMode = 'modern'; // Default mode
     this.modeImplementation = null;
     this.initializationPromise = null;
+    
+    // Cache for mode implementations to maintain references
+    this.modeImplementationsCache = {};
     
     // Initialize with the default mode, but don't wait for it
     // The render method will handle the case where initialization is not complete
@@ -47,7 +49,6 @@ class OutputSideWindow extends SideWindow {
       
       // Add debug logging
       console.log(`OutputSideWindow initialized with mode: ${this.currentMode}`);
-      console.log(`Mode implementation:`, this.modeImplementation);
       
     } catch (error) {
       console.error(`Error initializing output for mode ${this.currentMode}:`, error);
@@ -66,6 +67,19 @@ class OutputSideWindow extends SideWindow {
     console.log(`Loading mode-specific implementation for ${mode}`);
     
     try {
+      // Check if we already have this implementation in the cache
+      if (this.modeImplementationsCache[mode]) {
+        console.log(`Using cached implementation for ${mode} mode`);
+        this.modeImplementation = this.modeImplementationsCache[mode];
+        
+        // Set the content element if we have one
+        if (this.content) {
+          this.modeImplementation.content = this.content;
+        }
+        
+        return;
+      }
+      
       // Dynamically import the output module for the specified mode
       let OutputImplementation;
       
@@ -101,7 +115,10 @@ class OutputSideWindow extends SideWindow {
       }
       
       // Create a new instance of the mode-specific implementation
-      this.modeImplementation = new OutputImplementation(this.height);
+      this.modeImplementation = new OutputImplementation(this.componentId,this.containerId,this.height);
+      
+      // Cache the implementation for future use
+      this.modeImplementationsCache[mode] = this.modeImplementation;
       
       // Set the content element if we have one
       if (this.content) {
@@ -114,6 +131,7 @@ class OutputSideWindow extends SideWindow {
       console.error(`Error loading output implementation for mode ${mode}:`, error);
       // Fallback to base implementation
       this.modeImplementation = new BaseOutputSideWindow(this.height);
+      this.modeImplementationsCache[mode] = this.modeImplementation;
     }
   }
   
@@ -122,18 +140,18 @@ class OutputSideWindow extends SideWindow {
    * @param {HTMLElement} parentContainer - The parent container
    * @returns {HTMLElement} - The rendered window element
    */
-  render(parentContainer) {
+  render() {
     console.log('OutputSideWindow.render called');
     
     // First, let the parent class handle the basic window rendering
-    const windowElement = super.render(parentContainer);
+    const windowElement = super.render();
     
     // Check if we have a mode implementation
     if (!this.modeImplementation) {
       console.log('OutputSideWindow.render: No mode implementation available yet, initializing...');
       
       // Create a temporary implementation while we wait for the async initialization
-      const tempImplementation = new BaseOutputSideWindow(this.height);
+      const tempImplementation = new BaseOutput(this.componentId,this.containerId,this.height);
       tempImplementation.content = this.content;
       tempImplementation.createOutputUI();
       
@@ -213,6 +231,8 @@ class OutputSideWindow extends SideWindow {
    * @returns {boolean} - True if the message was handled
    */
   handleMessage(messageType, messageData, sender) {
+    console.log(`OutputSideWindow received message: ${messageType}`, messageData);
+
     // First, let the parent class try to handle the message
     if (super.handleMessage(messageType, messageData, sender)) {
       return true;
@@ -220,7 +240,6 @@ class OutputSideWindow extends SideWindow {
     
     // Handle mode change message
     if (messageType === 'MODE_CHANGE') {
-      console.log('OutputSideWindow received MODE_CHANGE message:', messageData);
       
       // Extract mode from messageData - handle both formats
       // Format 1: { mode: 'modeName' }
@@ -228,7 +247,6 @@ class OutputSideWindow extends SideWindow {
       const mode = messageData.mode || (messageData.data && messageData.data.mode);
       
       if (mode) {
-        console.log(`OutputSideWindow: Extracted mode ${mode} from message`);
         this.handleModeChange(mode);
         return true;
       } else {
@@ -237,12 +255,9 @@ class OutputSideWindow extends SideWindow {
     }
     
     // Handle layout loading message
-    if (messageType === 'LOAD_LAYOUT') {
-      console.log('OutputSideWindow received LOAD_LAYOUT message:', messageData);
-      
+    if (messageType === 'LOAD_LAYOUT') {      
       // Check if this layout is for this component
       if (messageData && messageData.data && messageData.data.componentName === this.componentName) {
-        console.log(`OutputSideWindow: Layout info is for this component, applying layout`);
         this.setLayout(messageData.data.layoutInfo);
         return true;
       }
@@ -303,12 +318,12 @@ class OutputSideWindow extends SideWindow {
       console.log(`Re-creating output UI for ${mode} mode`);
       this.modeImplementation.createOutputUI();
       
-      // Force a redraw by adding and removing a class
+/*      // Force a redraw by adding and removing a class
       this.container.classList.add('mode-changed');
       setTimeout(() => {
         this.container.classList.remove('mode-changed');
       }, 10);
-      
+  */    
       console.log(`Mode change complete. New implementation:`, this.modeImplementation);
     } else {
       console.error('Failed to update UI after mode change - missing content or implementation');

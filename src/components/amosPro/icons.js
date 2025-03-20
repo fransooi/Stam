@@ -1,8 +1,9 @@
 // AMOS Pro Icon Bar component
+import BaseComponent from '../../utils/BaseComponent.js';
 
-class AMOSProIcons {
-  constructor(container) {
-    this.container = container;
+class AMOSProIcons extends BaseComponent {
+  constructor(parentId,containerId) {
+    super('AMOSProIcons', parentId, containerId);
     this.buttonStates = {}; // Track button states (up/down)
     
     // Define original button widths (approximate pixel widths from original images)

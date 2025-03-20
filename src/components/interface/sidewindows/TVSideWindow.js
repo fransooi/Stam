@@ -3,13 +3,12 @@ import SideWindow from './SideWindow.js';
 import YoutubeClipWindow from './clips/YoutubeClipWindow.js';
 import SpotifyClipWindow from './clips/SpotifyClipWindow.js';
 import BrowserClipWindow from './clips/BrowserClipWindow.js';
-import Playlist from './playlists/Playlist.js';
 import PlaylistManager from './playlists/PlaylistManager.js';
 import PlaylistEditorDialog from './playlists/PlaylistEditorDialog.js';
 
 class TVSideWindow extends SideWindow {
-  constructor(initialHeight = 300, initialUrl = '') {
-    super('tv', 'TV', initialHeight);
+  constructor(parentId, containerId, initialHeight = 300, initialUrl = '') {
+    super('TV', 'TV', parentId, containerId, initialHeight);
     
     // Available clip types
     this.clipTypes = [
@@ -41,9 +40,9 @@ class TVSideWindow extends SideWindow {
    * @param {HTMLElement} parentContainer - The parent container
    * @returns {HTMLElement} - The rendered window element
    */
-  render(parentContainer) {
+  render() {
     // Call parent render method
-    const container = super.render(parentContainer);
+    const container = super.render();
     
     // Add clip selector button to the header
     this.addClipSelectorButton();

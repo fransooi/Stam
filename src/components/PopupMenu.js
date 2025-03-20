@@ -6,7 +6,7 @@
  * supports nested submenus.
  */
 
-import BaseComponent from '../utils/BaseComponent.js';
+import BaseComponent, { MESSAGES } from '../utils/BaseComponent.js';
 
 // Track active menus
 const activeMenus = {
@@ -25,11 +25,10 @@ export default class PopupMenu extends BaseComponent {
    * @param {string} options.className - Additional CSS class name (optional)
    * @param {string} options.level - Menu level ('main' or 'sub') (optional)
    * @param {string} options.menuContext - Context identifier for the menu (e.g., 'File', 'Edit') (optional)
-   * @param {string} options.parentId - Parent component ID (optional)
    */
-  constructor(options = {}) {
+  constructor(parentId,options = {}) {
     // Initialize the base component with component name and parent ID
-    super('PopupMenu', options.parentId || null);
+    super('PopupMenu', parentId);
     
     this.items = options.items || [];
     this.parent = options.parent || document.body;
@@ -249,7 +248,7 @@ export default class PopupMenu extends BaseComponent {
     console.log(`Menu item clicked: ${action}`);
     
     // Send the menu action message DOWN toward the root (PCOSApp)
-    this.sendMessageDown('MENU_ACTION', {
+    this.sendMessageDown(MESSAGES.MENU_ACTION, {
       menuName: this.menuContext,
       option: itemValue,
       action: action
@@ -376,27 +375,6 @@ export default class PopupMenu extends BaseComponent {
    */
   handleMessage(messageType, messageData, sender) {
     console.log(`PopupMenu received message: ${messageType}`, messageData);
-    
-    switch (messageType) {
-      case 'HIDE':
-        this.hide();
-        return true;
-        
-      case 'SHOW':
-        if (messageData.data && messageData.data.position) {
-          this.show(messageData.data.position);
-        } else {
-          this.show();
-        }
-        return true;
-        
-      case 'UPDATE_ITEMS':
-        if (messageData.data && Array.isArray(messageData.data.items)) {
-          this.updateItems(messageData.data.items);
-        }
-        return true;
-    }
-    
     return super.handleMessage(messageType, messageData, sender);
   }
   

@@ -1,7 +1,7 @@
 // SpotifyClipWindow.js - Spotify clip window implementation
-import ClipSideWindow from './ClipSideWindow.js';
+import ClipWindow from './ClipWindow.js';
 
-class SpotifyClipWindow extends ClipSideWindow {
+class SpotifyClipWindow extends ClipWindow {
   constructor(initialUrl = '') {
     super('spotify', 'Spotify', initialUrl || 'https://open.spotify.com');
     this.spotifyController = null;

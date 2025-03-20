@@ -1,7 +1,6 @@
-// ClipSideWindow.js - Base class for all clip windows
-import SideWindow from '../SideWindow.js';
+// ClipWindow.js - Base class for all clip windows
 
-class ClipSideWindow {
+class ClipWindow {
   constructor(id, title, initialUrl = '') {
     this.id = id;
     this.title = title;
@@ -238,4 +237,4 @@ class ClipSideWindow {
   }
 }
 
-export default ClipSideWindow;
+export default ClipWindow;

@@ -1,9 +1,9 @@
 // STOS mode output window implementation
-import BaseOutputSideWindow from '../interface/sidewindows/BaseOutputSideWindow.js';
+import BaseOutput from '../interface/sidewindows/BaseOutput.js';
 
-class STOSOutputSideWindow extends BaseOutputSideWindow {
-  constructor(initialHeight = 200) {
-    super(initialHeight);
+class STOSOutput extends BaseOutput {
+  constructor(parentId,containerId,initialHeight = 200) {
+    super('STOSOutput',parentId,containerId,initialHeight);
     this.modeName = 'stos';
     // Default content for STOS mode - using flexbox to ensure content fits without scrollbars
     this.outputContent = `
@@ -140,4 +140,4 @@ class STOSOutputSideWindow extends BaseOutputSideWindow {
 }
 
 // Make sure to export the class
-export default STOSOutputSideWindow;
+export default STOSOutput;

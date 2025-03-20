@@ -1,16 +1,13 @@
-import BaseComponent, { PREFERENCE_MESSAGES } from '../utils/BaseComponent.js';
+import BaseComponent, { MESSAGES } from '../utils/BaseComponent.js';
 import PopupMenu from './PopupMenu.js';
 
 class MenuBar extends BaseComponent {
-  constructor(containerId, onModeChangeCallback, currentMode = 'modern') {
+  constructor(parentId, containerId) {
     // Initialize the base component with component name
-    super('MenuBar');
+    super('MenuBar', parentId, containerId);
     
-    this.container = document.getElementById(containerId);
     this.activeMenu = null;
     this.menuStructure = this.getDefaultMenuStructure();
-    this.onModeChangeCallback = onModeChangeCallback; // Keep for backward compatibility
-    this.currentMode = currentMode;
     this.menuItems = {}; // Store references to menu title elements
     this.activePopupMenu = null; // Reference to the active popup menu
     
@@ -20,7 +17,8 @@ class MenuBar extends BaseComponent {
 
   render() {
     // Clear the container
-    this.container.innerHTML = '';
+    this.container=document.getElementById(this.containerId);
+    this.container.innerHTML = ''
     
     // Create menu items container (left side)
     const menuItemsContainer = document.createElement('div');
@@ -87,14 +85,9 @@ class MenuBar extends BaseComponent {
       const newMode = e.target.value;
       
       // Send mode change message DOWN toward the root (PCOSApp)
-      this.sendMessageDown('MODE_CHANGE', {
+      this.sendMessageDown('MODE_CHANGED', {
         mode: newMode
       });
-      
-      // Keep the callback for backward compatibility
-      if (this.onModeChangeCallback) {
-        this.onModeChangeCallback(newMode);
-      }
     });
     
     container.appendChild(modeSelector);
@@ -137,11 +130,10 @@ class MenuBar extends BaseComponent {
     };
     
     // Create and show the popup menu
-    this.activePopupMenu = new PopupMenu({
+    this.activePopupMenu = new PopupMenu(this.getComponentID(),{
       items: menuItems,
       position: position,
-      menuContext: menuName,
-      parentId: this.getComponentID()
+      menuContext: menuName
     });
     
     this.activePopupMenu.show();
@@ -166,7 +158,7 @@ class MenuBar extends BaseComponent {
     const action = `${menuName}:${option}`;
     
     // Send the menu action message
-    this.sendMessageDown('MENU_ACTION', {
+    this.sendMessageDown(MESSAGES.MENU_ACTION, {
       action: option.toLowerCase().replace(/\s+/g, ''),
       menuName: menuName,
       option: option
@@ -220,47 +212,21 @@ class MenuBar extends BaseComponent {
     console.log(`MenuBar received message: ${messageType}`, messageData);
     
     switch (messageType) {
-      case 'SET_MODE':
-        this.setMode(messageData.data.mode);
-        return true;
-        
-      case 'LOAD_LAYOUT':
+      case MESSAGES.LOAD_LAYOUT:
         // Check if this layout is for us
         if (messageData.data && 
-            (messageData.data.componentName === 'MenuBar' || 
-             messageData.data.componentName === this.componentName)) {
+            (messageData.data.componentName === 'MenuBar')) {
           this.applyLayout(messageData.data.layoutInfo);
           return true;
         }
         break;
         
-      case 'MODE_CHANGE':
+      case MESSAGES.MODE_CHANGE:
         if (messageData.data && messageData.data.mode) {
           this.setMode(messageData.data.mode);
           return true;
         }
-        break;
-        
-      case 'UPDATE_MENU_STRUCTURE':
-        if (messageData.data && messageData.data.structure) {
-          this.setMenuStructure(messageData.data.structure);
-          return true;
-        }
-        break;
-        
-      case 'ADD_MENU_ITEM':
-        if (messageData.data && messageData.data.menuName && messageData.data.option) {
-          this.addMenuItem(messageData.data.menuName, messageData.data.option);
-          return true;
-        }
-        break;
-        
-      case 'REMOVE_MENU_ITEM':
-        if (messageData.data && messageData.data.menuName && messageData.data.option) {
-          this.removeMenuItem(messageData.data.menuName, messageData.data.option);
-          return true;
-        }
-        break;
+        break;        
     }
     
     return super.handleMessage(messageType, messageData, sender);

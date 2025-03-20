@@ -6,17 +6,39 @@
  * messages in different directions through the component tree.
  */
 
-import { generateComponentID, registerComponentInstance, unregisterComponent } from './ComponentID.js';
+import { generateComponentID, registerComponentInstance, unregisterComponent,getComponentByID } from './ComponentID.js';
 import messageBus from './MessageBus.mjs';
 
 // Define message types for preference handling
-export const PREFERENCE_MESSAGES = {
+export const MESSAGES = {
   SHOW_PREFERENCES: 'SHOW_PREFERENCES',
   HIDE_PREFERENCES: 'HIDE_PREFERENCES',
   GET_LAYOUT_INFO: 'GET_LAYOUT_INFO',
   LAYOUT_INFO: 'LAYOUT_INFO',
   SAVE_LAYOUT: 'SAVE_LAYOUT',
-  LOAD_LAYOUT: 'LOAD_LAYOUT'
+  LOAD_LAYOUT: 'LOAD_LAYOUT',
+  LAYOUT_READY: 'LAYOUT_READY',
+  MODE_CHANGED: 'MODE_CHANGED',
+  MODE_CHANGE: 'MODE_CHANGE',
+  MODE_ENTER: 'MODE_ENTER',
+  MODE_EXIT: 'MODE_EXIT',
+  MENU_ACTION: 'MENU_ACTION',
+  ICON_ACTION: 'ICON_ACTION',
+  RUN_PROGRAM: 'RUN_PROGRAM',
+  DEBUG_PROGRAM: 'DEBUG_PROGRAM',
+  NEW_FILE: 'NEW_FILE',
+  OPEN_FILE: 'OPEN_FILE',
+  SAVE_FILE: 'SAVE_FILE',
+  SIDEBAR_LAYOUT_CHANGED: 'SIDEBAR_LAYOUT_CHANGED',
+  UPDATE_STATUS: 'UPDATE_STATUS',
+  SHOW_TEMPORARY_STATUS: 'SHOW_TEMPORARY_STATUS',
+  WINDOW_TOGGLE: 'WINDOW_TOGGLE',
+  WINDOW_CLOSE: 'WINDOW_CLOSE',
+  WINDOW_RESIZE: 'WINDOW_RESIZE',
+  WINDOW_ENLARGE: 'WINDOW_ENLARGE',
+  OUTPUT_APPEND: 'OUTPUT_APPEND',
+  OUTPUT_CLEAR: 'OUTPUT_CLEAR',
+  OUTPUT_UPDATE: 'OUTPUT_UPDATE'
 };
 
 export default class BaseComponent {
@@ -25,12 +47,30 @@ export default class BaseComponent {
    * 
    * @param {string} componentName - Name of the component (used for ID generation)
    * @param {string|null} parentId - ID of the parent component, or null if root component
+   * @param {string|null} containerId - ID of the container element, or null if no container
    */
-  constructor(componentName, parentId = null) {
+  constructor(componentName='BaseComponent',parentId = null,containerId = null) {
     // Generate a unique ID for this component
     this.componentId = generateComponentID(componentName);
     this.componentName = componentName;
-    this.parentId = parentId;
+    this.container = null;
+    this.nextContainer= null;
+    this.parentId = null;
+    this.root = null;
+    this.parent = null;    
+    if(parentId) {
+      this.parentId = parentId;
+      this.parent = getComponentByID(parentId);
+      this.root = messageBus.getRoot();
+      this.currentMode = this.root.currentMode;
+    }
+    else {
+      this.root = this;
+    }
+    if(containerId) {
+      this.containerId = containerId;
+      this.container = document.getElementById(containerId);
+    }
     
     // Register this component with the ComponentID registry
     registerComponentInstance(this.componentId, this);
@@ -86,15 +126,15 @@ export default class BaseComponent {
    * @returns {boolean} - True if the message was handled
    */
   handleMessage(messageType, messageData, senderId) {
-    console.log(`${this.componentId} received message: ${messageType}`, messageData);
+    //console.log(`${this.componentId} received message: ${messageType}`, messageData);
     
     // Handle layout information request
-    if (messageType === PREFERENCE_MESSAGES.GET_LAYOUT_INFO) {
+    if (messageType === MESSAGES.GET_LAYOUT_INFO) {
       // Get layout information for this component
       const layoutInfo = this.getLayoutInfo();
       
       // Send layout information back to the sender
-      this.sendMessageTo(senderId, PREFERENCE_MESSAGES.LAYOUT_INFO, layoutInfo);
+      this.sendMessageTo(senderId, MESSAGES.LAYOUT_INFO, layoutInfo);
       return true;
     }
     

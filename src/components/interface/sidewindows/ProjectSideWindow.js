@@ -2,19 +2,18 @@
 import SideWindow from './SideWindow.js';
 
 class ProjectSideWindow extends SideWindow {
-  constructor(initialHeight = 300) {
-    super('project', 'Project Files', initialHeight);
+  constructor(parentId, containerId, initialHeight = 300) {
+    super('Project', 'Project Files', parentId, containerId, initialHeight);
     this.projectTree = [];
   }
   
   /**
    * Override render to set up content and event listeners
-   * @param {HTMLElement} parentContainer - The parent container
    * @returns {HTMLElement} - The rendered window element
    */
-  render(parentContainer) {
+  render() {
     // Call parent render method
-    const container = super.render(parentContainer);
+    const container = super.render();
     
     // Create the project UI
     this.createProjectUI();
@@ -23,8 +22,6 @@ class ProjectSideWindow extends SideWindow {
     this.content.addEventListener('contentHeightChanged', (event) => {
       this.handleContentHeightChanged(event.detail.height);
     });
-    
-    // Initial content height update
     this.updateContentHeight();
     
     return container;

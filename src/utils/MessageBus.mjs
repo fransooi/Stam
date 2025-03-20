@@ -113,7 +113,6 @@ class MessageBus {
     if (parentId && this.componentRegistry[parentId]) {
       this.componentRegistry[parentId].children.push(componentId);
     }
-    
     return componentId;
   }
   
@@ -606,6 +605,14 @@ class MessageBus {
     this.addressedHandlers.clear();
     this.componentRegistry = {};
   };
+
+  setRoot(component) {
+    this.root = component;
+  } 
+  
+  getRoot() {
+    return this.root;
+  }
 }
 
 // Create a singleton instance

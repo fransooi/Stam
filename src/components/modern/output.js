@@ -1,9 +1,9 @@
 // Modern mode output window implementation
-import BaseOutputSideWindow from '../interface/sidewindows/BaseOutputSideWindow.js';
+import BaseOutput from '../interface/sidewindows/BaseOutput.js';
 
-class ModernOutputSideWindow extends BaseOutputSideWindow {
-  constructor(initialHeight = 200) {
-    super(initialHeight);
+class ModernOutput extends BaseOutput {
+  constructor(parentId,containerId,initialHeight = 200) {
+    super('ModernOutput',parentId,containerId,initialHeight);
     this.modeName = 'modern';
     // Default content for Modern mode
     this.outputContent = `
@@ -143,5 +143,4 @@ class ModernOutputSideWindow extends BaseOutputSideWindow {
   }
 }
 
-// Make sure to export the class
-export default ModernOutputSideWindow;
+export default ModernOutput;

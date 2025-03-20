@@ -1,9 +1,10 @@
 // BaseOutputSideWindow.js - Base class for output console side windows
-import SideWindow from './SideWindow.js';
+import BaseComponent from '../../../utils/BaseComponent.js';
+import { MESSAGES } from '../../../utils/BaseComponent.js';
 
-class BaseOutputSideWindow extends SideWindow {
-  constructor(initialHeight = 200) {
-    super('output', 'Output', initialHeight);
+class BaseOutput extends BaseComponent {
+  constructor(componentName,parentId,initialHeight = 200) {
+    super(componentName,parentId, initialHeight);
     this.outputContent = '';
     this.outputContainer = null;
   }
@@ -15,7 +16,7 @@ class BaseOutputSideWindow extends SideWindow {
    */
   render(parentContainer) {
     // Call parent render method
-    const container = super.render(parentContainer);
+    super.render(this.container);
     
     // Create the output UI
     this.createOutputUI();
@@ -47,7 +48,7 @@ class BaseOutputSideWindow extends SideWindow {
    * Create the output UI
    */
   createOutputUI() {
-    console.log('BaseOutputSideWindow.createOutputUI called');
+    console.log('BaseOutput.createOutputUI called');
     
     // Create the output container if it doesn't exist
     if (!this.outputContainer) {
@@ -172,18 +173,18 @@ class BaseOutputSideWindow extends SideWindow {
     
     // Handle output-specific messages
     switch (messageType) {
-      case 'OUTPUT_APPEND':
+      case MESSAGES.OUTPUT_APPEND:
         if (messageData.content) {
           this.appendContent(messageData.content);
           return true;
         }
         break;
         
-      case 'OUTPUT_CLEAR':
+      case MESSAGES.OUTPUT_CLEAR:
         this.clearContent();
         return true;
         
-      case 'OUTPUT_UPDATE':
+      case MESSAGES.OUTPUT_UPDATE:
         this.update(messageData);
         return true;
     }
@@ -224,4 +225,4 @@ class BaseOutputSideWindow extends SideWindow {
   }
 }
 
-export default BaseOutputSideWindow;
+export default BaseOutput;

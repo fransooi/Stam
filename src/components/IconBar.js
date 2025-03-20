@@ -1,21 +1,16 @@
-import BaseComponent, { PREFERENCE_MESSAGES } from '../utils/BaseComponent.js';
-
+import BaseComponent, { MESSAGES } from '../utils/BaseComponent.js';
+/*
+import ModernIcons from './modern/icons.js';
+import StosIcons from './modern/icons.js';
+import AMOS1_3Icons from './modern/icons.js';
+import AMOSProIcons from './modern/icons.js';
+import C64Icons from './modern/icons.js';
+*/
 // IconBar.js - Component for the icon area with buttons
 class IconBar extends BaseComponent {
-  constructor(containerId, onModeChangeCallback, currentMode = 'modern') {
-    // Hello this is Francois
-    // Initialize the base component with component name
-    super('IconBar');
-    
-    this.container = document.getElementById(containerId);
-    this.onModeChangeCallback = onModeChangeCallback;
-    this.currentMode = currentMode;
-    this.modeSpecificIcons = null;
-    
-    // Store this instance on the container element for external access
-    if (this.container) {
-      this.container._iconBarInstance = this;
-    }
+  constructor(parentId, containerId) {
+    super('IconBar',parentId,containerId);
+    this.modeSpecificIcons = null;    
   }
 
   async render() {
@@ -23,23 +18,22 @@ class IconBar extends BaseComponent {
     this.container.innerHTML = '';
     
     // Create icon container
-    const iconContainer = document.createElement('div');
-    iconContainer.className = 'icon-container';
-    iconContainer.id = 'mode-specific-icons';
-    this.container.appendChild(iconContainer);
+    this.iconContainer = document.createElement('div');
+    this.iconContainer.className = 'icon-container';
+    this.iconContainer.id = 'mode-specific-icons';
+    this.container.appendChild(this.iconContainer);
+    this.nextContainer = this.iconContainer;
     
     // Load and render mode-specific icons
     await this.loadModeSpecificIcons();
   }
   
   async loadModeSpecificIcons() {
-    const iconContainer = document.getElementById('mode-specific-icons');
-    if (!iconContainer) return;
+    if (!this.iconContainer) return;
     
     try {
       // Dynamically import the icons module for the current mode
       let IconsModule;
-      
       switch (this.currentMode) {
         case 'modern':
           IconsModule = await import('./modern/icons.js');
@@ -61,30 +55,15 @@ class IconBar extends BaseComponent {
       }
       
       // Create and render the mode-specific icons
-      this.modeSpecificIcons = new IconsModule.default(iconContainer, this.handleIconClick.bind(this));
-      this.modeSpecificIcons.render();
-      
-      // Store the icon bar instance on the container element for external access
-      this.container._iconBarInstance = this.modeSpecificIcons;
-      
-      console.log(`Loaded icons for ${this.currentMode} mode`);
+      this.modeSpecificIcons = new IconsModule.default(this.componentId, this.nextContainer.id);
+      this.modeSpecificIcons.render();  
       
     } catch (error) {
       console.error(`Error loading icons for mode ${this.currentMode}:`, error);
       iconContainer.innerHTML = `<div class="error-message">Failed to load icons for ${this.currentMode} mode</div>`;
     }
   }
-  
-  handleIconClick(action) {
-    console.log(`Icon action: ${action} in ${this.currentMode} mode`);
-    
-    // Send the action message down toward the root
-    this.sendMessageDown('ICON_ACTION', {
-      action: action,
-      mode: this.currentMode
-    });    
-  }
-  
+   
   setMode(mode) {
     this.currentMode = mode;
     this.loadModeSpecificIcons();
@@ -101,47 +80,22 @@ class IconBar extends BaseComponent {
     console.log(`IconBar received message: ${messageType}`, messageData);
     
     switch (messageType) {
-      case 'MODE_CHANGE':
-        // Extract mode from messageData - handle both formats
-        // Format 1: { mode: 'modeName' }
-        // Format 2: { data: { mode: 'modeName' } }
-        const mode = messageData.mode || (messageData.data && messageData.data.mode);
+      case MESSAGES.MODE_CHANGE:
+        const mode = messageData.data.mode;        
+        console.log(`IconBar: Changing mode to ${mode}`);
+        this.setMode(mode);
+        return true;
         
-        if (mode) {
-          console.log(`IconBar: Changing mode to ${mode}`);
-          this.setMode(mode);
-          return true;
-        } else {
-          console.error('IconBar: MODE_CHANGE message received but no mode found in data:', messageData);
-        }
-        break;
-        
-      case 'SET_MODE':
-        const setMode = messageData.mode || (messageData.data && messageData.data.mode);
-        if (setMode) {
-          this.setMode(setMode);
-          return true;
-        }
-        break;
-        
-      case PREFERENCE_MESSAGES.LOAD_LAYOUT:
+      case MESSAGES.LOAD_LAYOUT:
         console.log('IconBar received LOAD_LAYOUT message:', messageData);
         
         // Check if this layout is for this component - handle both formats
-        if ((messageData.componentName === this.getComponentID()) || 
-            (messageData.data && messageData.data.componentName === this.getComponentID())) {
-          
-          const layoutInfo = messageData.layoutInfo || (messageData.data && messageData.data.layoutInfo);
-          
-          if (layoutInfo) {
-            console.log(`IconBar: Layout info is for this component, applying layout`);
-            this.applyLayout(layoutInfo);
-            return true;
-          }
+        if ((messageData.data && messageData.data.componentName === 'IconBar')) {          
+          const layoutInfo = messageData.data.layoutInfo;          
+          this.applyLayout(layoutInfo);
+          return true;
         }
-        break;
-    }
-    
+    }    
     return super.handleMessage(messageType, messageData, sender);
   }
   

@@ -3,15 +3,12 @@ import { basicSetup } from 'codemirror'
 import { EditorState } from '@codemirror/state'
 import { EditorView, keymap } from '@codemirror/view'
 import { defaultKeymap } from '@codemirror/commands'
-import BaseComponent, { PREFERENCE_MESSAGES } from '../utils/BaseComponent.js'
+import BaseComponent, { MESSAGES } from '../utils/BaseComponent.js'
 
 class Editor extends BaseComponent {
-  constructor(containerId, currentMode = 'modern') {
+  constructor(parentId, containerId) {
     // Initialize the base component with component name
-    super('Editor');
-    
-    this.container = document.getElementById(containerId);
-    this.currentMode = currentMode;
+    super('Editor', parentId, containerId);    
     this.editorInstance = null;
     this.editorView = null;
     this.modeConfig = null;
@@ -19,6 +16,7 @@ class Editor extends BaseComponent {
 
   async render() {
     // Clear the container
+    this.container=document.getElementById(this.containerId);
     this.container.innerHTML = '';
     
     // Load mode-specific configuration
@@ -111,11 +109,7 @@ class Editor extends BaseComponent {
       // Let the mode-specific instance know about the editor view
       if (this.editorInstance.setEditorView) {
         this.editorInstance.setEditorView(this.editorView);
-      }
-      
-      // Connect to icon bar
-      this.connectToIconBar();
-      
+      }      
       console.log('CodeMirror editor created successfully');
       
     } catch (error) {
@@ -232,25 +226,7 @@ class Editor extends BaseComponent {
     // Default implementation
     alert('Help not implemented for this mode');
   }
-  
-  // Connect to the icon bar
-  connectToIconBar() {
-    console.log('Connecting editor to icon bar');
-    
-    // Find the icon bar instance
-    const iconBar = this.container.iconBar;
-    
-    if (!iconBar) {
-      console.log('Icon bar not found, skipping connection');
-      return;
-    }
-    
-    // Connect the icon bar to the editor
-    iconBar.connectToEditor(this);
-    
-    console.log('Editor connected to icon bar successfully');
-  }
-  
+   
   /**
    * Handle message
    * @param {string} messageType - Type of message
@@ -262,44 +238,42 @@ class Editor extends BaseComponent {
     console.log(`Editor received message: ${messageType}`, messageData);
     
     switch (messageType) {
-      case 'MODE_CHANGE':
+      case MESSAGES.MODE_CHANGE:
         if (messageData.data && messageData.data.mode) {
           this.setMode(messageData.data.mode);
           return true;
         }
         break;
         
-      case 'NEW_FILE':
+      case MESSAGES.NEW_FILE:
         this.newFile();
         return true;
         
-      case 'OPEN_FILE':
+      case MESSAGES.OPEN_FILE:
         this.openFile();
         return true;
         
-      case 'SAVE_FILE':
+      case MESSAGES.SAVE_FILE:
         this.saveFile();
         return true;
         
-      case 'RUN_PROGRAM':
+      case MESSAGES.RUN_PROGRAM:
         this.runProgram();
         return true;
         
-      case 'DEBUG_PROGRAM':
+      case MESSAGES.DEBUG_PROGRAM:
         this.debugProgram();
         return true;
         
-      case 'LOAD_LAYOUT':
+      case MESSAGES.LOAD_LAYOUT:
         // Check if this layout is for us
         if (messageData.data && 
-            (messageData.data.componentName === 'Editor' || 
-             messageData.data.componentName === this.componentName)) {
+            messageData.data.componentName === 'Editor') {
           this.applyLayout(messageData.data.layoutInfo);
           return true;
         }
         break;
-    }
-    
+    }    
     return super.handleMessage(messageType, messageData, sender);
   }
   

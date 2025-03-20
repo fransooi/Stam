@@ -1,8 +1,9 @@
 // AMOS 1.3 Icon Bar component - Inspired by the original AMOS 1.3 from 1988 for Amiga
+import BaseComponent from '../../utils/BaseComponent.js';
 
-class AMOS13Icons {
-  constructor(container) {
-    this.container = container;
+class AMOS13Icons extends BaseComponent{
+  constructor(parentId,containerId) {
+    super('AMOS13Icons', parentId, containerId);
     this.shiftPressed = false;
     
     // Define function keys for normal state (F1-F10)

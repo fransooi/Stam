@@ -5,15 +5,15 @@
  * It creates a dialog box for managing preferences and handles layout saving/loading.
  */
 
-import BaseComponent, { PREFERENCE_MESSAGES } from '../utils/BaseComponent.js';
+import BaseComponent, { MESSAGES } from '../utils/BaseComponent.js';
 
 class PreferenceDialog extends BaseComponent {
   /**
    * Constructor
    * @param {string} parentId - ID of the parent component
    */
-  constructor(parentId = null) {
-    super('PreferenceDialog', parentId);
+  constructor(parentId = null,containerId) {
+    super('PreferenceDialog', parentId,containerId);
         
     // Create the dialog element
     this.element = document.createElement('div');
@@ -142,13 +142,13 @@ class PreferenceDialog extends BaseComponent {
     console.log(`PreferenceDialog received message: ${messageType}`, messageData);
     
     // Handle show preferences message
-    if (messageType === PREFERENCE_MESSAGES.SHOW_PREFERENCES) {
+    if (messageType === MESSAGES.SHOW_PREFERENCES) {
       this.show();
       return true;
     }
     
     // Handle hide preferences message
-    if (messageType === PREFERENCE_MESSAGES.HIDE_PREFERENCES) {
+    if (messageType === MESSAGES.HIDE_PREFERENCES) {
       this.hide();
       return true;
     }

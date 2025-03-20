@@ -1,8 +1,9 @@
 // STOS Basic Icon Bar component - Inspired by the original STOS Basic from 1987
+import BaseComponent from '../../utils/BaseComponent.js';
 
-class STOSIcons {
-  constructor(container) {
-    this.container = container;
+class STOSIcons extends BaseComponent{
+  constructor(parentId,containerId) {
+    super('STOSIcons', parentId, containerId);
     this.shiftPressed = false;
     
     // Define function keys for both states

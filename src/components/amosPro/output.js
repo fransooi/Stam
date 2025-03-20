@@ -1,9 +1,9 @@
 // AMOS Pro mode output window implementation
-import BaseOutputSideWindow from '../interface/sidewindows/BaseOutputSideWindow.js';
+import BaseOutput from '../interface/sidewindows/BaseOutput.js';
 
-class AMOSProOutputSideWindow extends BaseOutputSideWindow {
-  constructor(initialHeight = 200) {
-    super(initialHeight);
+class AMOSProOutput extends BaseOutput {
+  constructor(parentId,containerId,initialHeight = 200) {
+    super('AMOSProOutput', parentId, containerId, initialHeight);
     this.modeName = 'amosPro';
     // Default content for AMOS Pro mode
     this.outputContent = `
@@ -129,4 +129,4 @@ class AMOSProOutputSideWindow extends BaseOutputSideWindow {
 }
 
 // Make sure to export the class
-export default AMOSProOutputSideWindow;
+export default AMOSProOutput;

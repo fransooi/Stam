@@ -1,9 +1,9 @@
 // AMOS 1.3 mode output window implementation
-import BaseOutputSideWindow from '../interface/sidewindows/BaseOutputSideWindow.js';
+import BaseOutput from '../interface/sidewindows/BaseOutput.js';
 
-class AMOS1_3OutputSideWindow extends BaseOutputSideWindow {
-  constructor(initialHeight = 200) {
-    super(initialHeight);
+class AMOS1_3Output extends BaseOutput {
+  constructor(parentId,containerId,initialHeight = 200) {
+    super('AMOS1_3Output', parentId, containerId, initialHeight);
     this.modeName = 'amos1_3';
     // Default content for AMOS 1.3 mode
     this.outputContent = `
@@ -125,4 +125,4 @@ class AMOS1_3OutputSideWindow extends BaseOutputSideWindow {
 }
 
 // Make sure to export the class
-export default AMOS1_3OutputSideWindow;
+export default AMOS1_3Output;

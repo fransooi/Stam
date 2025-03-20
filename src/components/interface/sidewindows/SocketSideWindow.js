@@ -13,8 +13,8 @@ class SocketSideWindow extends SideWindow {
    * Create a new SocketSideWindow
    * @param {number} initialHeight - Initial height of the window
    */
-  constructor(initialHeight = 200) {
-    super('socket', 'Server', initialHeight);
+  constructor(parentId, containerId, initialHeight = 200) {
+    super('Socket', 'Server', parentId, containerId, initialHeight);
     
     this.client = null;
     this.isConnected = false;
@@ -53,6 +53,7 @@ class SocketSideWindow extends SideWindow {
    * @returns {boolean} - True if the message was handled
    */
   handleMessage(messageType, messageData, sender) {
+    console.log(`SocketSideWindow received message: ${messageType}`, messageData);
     // Handle socket-specific messages
     switch (messageType) {
       case 'SOCKET_CONNECT':
@@ -73,12 +74,11 @@ class SocketSideWindow extends SideWindow {
   
   /**
    * Override render to set up content and event listeners
-   * @param {HTMLElement} parentContainer - The parent container
    * @returns {HTMLElement} - The rendered window element
    */
-  render(parentContainer) {
+  render() {
     // Call parent render method
-    const container = super.render(parentContainer);
+    const container = super.render();
     
     // Add indicator buttons to the title bar
     this.addIndicatorButtons();

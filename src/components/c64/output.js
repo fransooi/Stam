@@ -1,12 +1,32 @@
 // C64 mode output window implementation with the new C64 emulator
-import BaseOutputSideWindow from '../interface/sidewindows/BaseOutputSideWindow.js';
+import BaseOutput from '../interface/sidewindows/BaseOutput.js';
 
-class C64OutputSideWindow extends BaseOutputSideWindow {
-  constructor(initialHeight = 200) {
-    super(initialHeight);
-    this.modeName = 'c64';
-    this.canvas = null;
+/**
+ * C64OutputSideWindow - Implements the C64 emulator output window
+ * This component handles the initialization and interaction with the C64 emulator
+ */
+class C64Output extends BaseOutput {
+  /**
+   * Constructor for the C64OutputSideWindow
+   * @param {number} initialHeight - Initial height for the window
+   */
+  constructor(parentId,containerId,initialHeight = 200) {
+    super('C64Output', parentId, containerId, initialHeight);
+    
+    // Flag to track if the emulator is initialized
+    this.emulatorContainer = null;
     this.emulatorInitialized = false;
+    
+    // Store a reference to the emulator container for detach/reattach
+    this.storedEmulatorContainer = null;
+    
+    // Initialize properties
+    this.canvas = null;
+    this.resizeObserver = null;
+    this.statusElement = null;
+    this.progressElement = null;
+    
+    // We'll bind the event handlers later when they're actually used
   }
   
   /**
@@ -30,69 +50,63 @@ class C64OutputSideWindow extends BaseOutputSideWindow {
     try {
       console.log('Creating C64 emulator in output window');
       
-      if (this.outputContainer) {
-        // Clear the container
-        this.outputContainer.innerHTML = '';
-        
-        // Set container styles to eliminate any borders or spacing
-        this.outputContainer.style.padding = '0';
-        this.outputContainer.style.margin = '0';
-        this.outputContainer.style.overflow = 'hidden';
-        this.outputContainer.style.backgroundColor = '#4040e0'; // C64 blue background
-        this.outputContainer.style.width = '100%';
-        this.outputContainer.style.position = 'relative'; // For absolute positioning of children
-        
-        // Calculate the appropriate height based on the 4:3 aspect ratio
-        // This will adjust the output window height to match the C64's aspect ratio
-        const containerWidth = this.outputContainer.clientWidth;
-        const aspectRatioHeight = Math.floor((containerWidth * 3) / 4);
-        this.outputContainer.style.height = `${aspectRatioHeight}px`;
-        
-        // Create a container for the C64 emulator
-        const emulatorContainer = document.createElement('div');
-        emulatorContainer.className = 'c64-emulator';
-        
-        // Create the canvas for the C64 emulator
-        this.canvas = document.createElement('canvas');
-        this.canvas.id = 'canvas';
-        this.canvas.className = 'c64-canvas';
-        this.canvas.setAttribute('oncontextmenu', 'event.preventDefault()');
-        
-        // Create the status and progress elements (positioned at bottom via CSS)
-        const statusElement = document.createElement('div');
-        statusElement.id = 'status';
-        statusElement.className = 'c64-status';
-        statusElement.textContent = 'Initializing...';
-        
-        const progressElement = document.createElement('progress');
-        progressElement.id = 'progress';
-        progressElement.className = 'c64-progress';
-        progressElement.value = 0;
-        progressElement.max = 100;
-        
-        // Add elements to the container
-        emulatorContainer.appendChild(this.canvas);
-        emulatorContainer.appendChild(statusElement);
-        emulatorContainer.appendChild(progressElement);
-        this.outputContainer.appendChild(emulatorContainer);
-        
-        // Add a resize observer to maintain aspect ratio when window is resized
-        const resizeObserver = new ResizeObserver(entries => {
-          for (let entry of entries) {
-            const containerWidth = entry.contentRect.width;
-            const aspectRatioHeight = Math.floor((containerWidth * 3) / 4);
-            this.outputContainer.style.height = `${aspectRatioHeight}px`;
-          }
-        });
-        
-        resizeObserver.observe(this.outputContainer);
-        
-        // Wait longer before initializing the emulator
-        // This gives the DOM time to render and stabilize
-        setTimeout(() => {
-          this.initializeC64Emulator();
-        }, 1000); // Increased from 500ms to 1000ms
+      if (!this.outputContainer) {
+        console.error('Output container not found');
+        return;
       }
+      
+      // Clear the container
+      this.outputContainer.innerHTML = '';
+      
+      // Set container styles to eliminate any borders or spacing
+      this.outputContainer.style.padding = '0';
+      this.outputContainer.style.margin = '0';
+      this.outputContainer.style.overflow = 'hidden';
+      this.outputContainer.style.backgroundColor = '#4040e0'; // C64 blue background
+      this.outputContainer.style.width = '100%';
+      this.outputContainer.style.position = 'relative'; // For absolute positioning of children
+      
+      // Calculate the appropriate height based on the 4:3 aspect ratio
+      const containerWidth = this.outputContainer.clientWidth;
+      const aspectRatioHeight = Math.floor((containerWidth * 3) / 4);
+      this.outputContainer.style.height = `${aspectRatioHeight}px`;
+      
+      // Create a container for the C64 emulator
+      this.emulatorContainer = document.createElement('div');
+      this.emulatorContainer.className = 'c64-emulator';
+      
+      // Create the canvas for the C64 emulator
+      this.canvas = document.createElement('canvas');
+      this.canvas.id = 'canvas';
+      this.canvas.className = 'c64-canvas';
+      this.canvas.tabIndex = 1; // Make it focusable
+      
+      // Create the status element
+      this.statusElement = document.createElement('div');
+      this.statusElement.id = 'status';
+      this.statusElement.className = 'c64-status';
+      
+      // Create the progress element
+      this.progressElement = document.createElement('div');
+      this.progressElement.id = 'progress';
+      this.progressElement.className = 'c64-progress';
+
+      // Create disc box combo
+      this.diskBoxCombo = document.createElement('div');
+      this.diskBoxCombo.id = 'diskbox_combo';
+      this.diskBoxCombo.className = 'c64-diskbox-combo';
+      
+      // Add elements to the emulator container
+      this.emulatorContainer.appendChild(this.canvas);
+      this.emulatorContainer.appendChild(this.statusElement);
+      this.emulatorContainer.appendChild(this.progressElement);
+      this.emulatorContainer.appendChild(this.diskBoxCombo);
+
+      // Add a resize observer to maintain aspect ratio when window is resized
+      this.setupResizeObserver();
+      this.outputContainer.appendChild(this.emulatorContainer);
+      
+      console.log('C64 emulator UI created, waiting for LAYOUT_READY message to initialize');
     } catch (error) {
       console.error('Error creating C64 emulator in output window:', error);
       if (this.outputContainer) {
@@ -102,301 +116,123 @@ class C64OutputSideWindow extends BaseOutputSideWindow {
   }
   
   /**
-   * Initialize the C64 emulator with custom settings
+   * Initialize the C64 emulator
    */
   initializeC64Emulator() {
-    try {
-      console.log('Initializing C64 emulator');
-      
-      // Reset the emulator initialized flag
-      this.emulatorInitialized = false;
-      
-      // Define the Module object with custom settings
-      window.Module = {
-        canvas: document.getElementById('canvas'),
-        statusElement: document.getElementById('status'),
-        progressElement: document.getElementById('progress'),
-        startSequence: 0, // Track initialization sequence
-        setStatus: function(text) {
-          if (!Module.setStatus.last) Module.setStatus.last = { time: Date.now(), text: '' };
-          if (text === Module.setStatus.last.text) return;
-          
-          // Get references to the elements
-          const statusElement = Module.statusElement;
-          const progressElement = Module.progressElement;
-          
-          // Check if elements exist before trying to use them
-          if (!statusElement || !progressElement) {
-            console.warn('Status or progress element not found in setStatus');
-            return;
-          }
-          
-          // Show status elements when there's a status update
-          if (text) {
-            statusElement.classList.add('active');
-            progressElement.classList.add('active');
-          } else {
-            // Hide status elements when status is cleared
-            statusElement.classList.remove('active');
-            progressElement.classList.remove('active');
-          }
-          
-          const m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
-          const now = Date.now();
-          
-          if (m && now - Date.now() < 30) return; // if this is a progress update, skip it if too soon
-          
-          if (m) {
-            text = m[1];
-            try {
-              progressElement.value = parseInt(m[2])*100;
-              progressElement.max = parseInt(m[4])*100;
-            } catch (e) {
-              console.warn('Error setting progress element values:', e);
-            }
-          } else {
-            try {
-              progressElement.value = null;
-              progressElement.max = null;
-            } catch (e) {
-              console.warn('Error clearing progress element values:', e);
-            }
-          }
-          
-          try {
-            statusElement.innerHTML = text;
-          } catch (e) {
-            console.warn('Error setting status element text:', e);
-          }
-          
-          Module.setStatus.last.text = text;
-          Module.setStatus.last.time = now;
-          
-          // Hide status after loading is complete
-          if (text === '') {
-            setTimeout(() => {
-              if (statusElement && progressElement) {
-                statusElement.classList.remove('active');
-                progressElement.classList.remove('active');
-              }
-            }, 1000);
-          }
-        },
-        monitorRunDependencies: function(left) {
-          try {
-            // This function is called by the emulator to update the loading progress
-            // Make sure we have valid elements before trying to update them
-            if (!Module.statusElement || !Module.progressElement) {
-              // Try to get the elements again - they might have been created since initialization
-              Module.statusElement = document.getElementById('status');
-              Module.progressElement = document.getElementById('progress');
-              
-              // If still not found, just log and return
-              if (!Module.statusElement || !Module.progressElement) {
-                console.warn('Status or progress element not found in monitorRunDependencies');
-                return;
-              }
-            }
-            
-            // Call the original function if it exists
-            if (Module._originalMonitorRunDependencies) {
-              Module._originalMonitorRunDependencies(left);
-            } else {
-              // Otherwise, update the status directly
-              Module.setStatus(left ? 'Preparing... (' + left + ')' : 'All downloads complete.');
-            }
-          } catch (e) {
-            console.error('Error in monitorRunDependencies:', e);
-          }
-        },
-        preRun: [],
-        postRun: [],
-        c64startup: function() {
-          // Start with a clean BASIC screen instead of loading the joystick test
-          try {
-            console.log('C64 emulator starting up...');
-            
-            // Make sure js_reset is available before calling it
-            if (typeof Module._js_reset === 'function') {
-              // Skip loading the joystick test snapshot
-              // Instead, just reset to get a clean BASIC screen
-              Module.ccall('js_reset', 'number', ['number'], [0]);
-              console.log('C64 emulator started up in BASIC mode');
-            } else {
-              console.warn('js_reset function not available yet');
-            }
-            
-            // Hide status elements after startup is complete
-            setTimeout(() => {
-              const statusElement = document.getElementById('status');
-              const progressElement = document.getElementById('progress');
-              if (statusElement) statusElement.classList.remove('active');
-              if (progressElement) progressElement.classList.remove('active');
-            }, 1500);
-          } catch(e) {
-            console.error('Error in c64startup:', e);
-          }
-        }
-      };
-      
-      // Add the preRun and postRun functions after Module is defined
-      window.Module.preRun.push(function() { 
-        try {
-          // Patch the emscripten touch event registration to prevent errors with empty selectors
-          if (window.Module && !window.touchEventsPatched) {
-            const originalRegisterFunction = window.Module.cwrap;
-            if (originalRegisterFunction) {
-              window.Module.cwrap = function(ident, returnType, argTypes, opts) {
-                // If this is the touch event registration function, return a no-op function
-                if (ident === 'emscripten_set_touchstart_callback_on_thread' ||
-                    ident === 'emscripten_set_touchend_callback_on_thread' ||
-                    ident === 'emscripten_set_touchmove_callback_on_thread' ||
-                    ident === 'emscripten_set_touchcancel_callback_on_thread') {
-                  console.log(`Patching touch event registration for ${ident}`);
-                  return function() { return 0; }; // Return success without actually registering
-                }
-                // Otherwise, call the original function
-                return originalRegisterFunction(ident, returnType, argTypes, opts);
-              };
-              window.touchEventsPatched = true;
-              console.log('Touch event registration patched');
-            }
-          }
-          
-          // Save the original monitorRunDependencies function if it exists
-          if (window.Module && window.Module.monitorRunDependencies && !window.Module._originalMonitorRunDependencies) {
-            window.Module._originalMonitorRunDependencies = window.Module.monitorRunDependencies;
-            console.log('Original monitorRunDependencies function saved');
-          }
-          
-          FS.mkdir('/data');
-          FS.mount(IDBFS, {}, '/data');
-          FS.syncfs(true, function(err) {
-            if (err) {
-              console.error('Error syncing filesystem:', err);
-            }
-            window.Module.startSequence |= 2;
-            if (window.Module.startSequence == 3) {
-              console.log('Starting C64 emulator from preRun');
-              window.Module.c64startup();
-            }
-          });
-        } catch(e) {
-          console.error('Error in preRun:', e);
-        }
-      });
-      
-      window.Module.postRun.push(function() { 
-        try {
-          window.Module.startSequence |= 1;
-          if (window.Module.startSequence == 3) {
-            console.log('Starting C64 emulator from postRun');
-            window.Module.c64startup();
-          }
-        } catch(e) {
-          console.error('Error in postRun:', e);
-        }
-      });
-      
-      // Set initial status
-      window.Module.setStatus('Downloading...');
-      
-      // Load the emulator scripts with a delay between them
-      this.loadEmulatorScripts();
-      
-      // Setup keyboard event handling
-      this.setupKeyboardHandling();
-    } catch (error) {
-      console.error('Error initializing C64 emulator:', error);
+    // Don't initialize more than once
+    if (this.emulatorInitialized) {
+      console.log('C64 emulator already initialized, skipping initialization');
+      return;
     }
+    this.loadEmulatorScript()
+    .then(() => {
+      this.startEmulator();
+      //this.reattachEmulatorContainer(this.emulatorContainer);
+    })
+    .catch(error => {
+      console.error('Error loading C64 emulator script:', error);
+    });
   }
   
   /**
    * Load the C64 emulator JavaScript files
    */
-  loadEmulatorScripts() {
-    // Load the main script first
-    const mainScript = document.createElement('script');
-    mainScript.src = '/c64/c64_main.js';
-    mainScript.type = 'text/javascript';
-    
-    mainScript.onerror = (error) => {
-      console.error('Error loading C64 main script:', error);
-      if (this.outputContainer) {
-        this.outputContainer.innerHTML = `<div class="error-message">Failed to load C64 emulator script</div>`;
-      }
-    };
-    
-    // Wait for the main script to load before loading the emulator script
-    mainScript.onload = () => {
-      console.log('C64 main script loaded successfully');
-      
-      // Wait longer before loading the next script
-      setTimeout(() => {
-        const emulatorScript = document.createElement('script');
-        emulatorScript.src = '/c64/c64_tiny.js';
-        emulatorScript.type = 'text/javascript';
-        
-        emulatorScript.onerror = (error) => {
-          console.error('Error loading C64 emulator script:', error);
-          if (this.outputContainer) {
-            this.outputContainer.innerHTML = `<div class="error-message">Failed to load C64 emulator script</div>`;
-          }
-        };
-        
-        emulatorScript.onload = () => {
-          console.log('C64 emulator scripts loaded successfully');
-          
-          // Wait significantly longer after loading to ensure initialization is complete
-          setTimeout(() => {
-            this.emulatorInitialized = true;
-            console.log('C64 emulator fully initialized');
-            
-            // Only try to reset if js_reset is available
-            if (window.Module && typeof window.Module._js_reset === 'function') {
-              // Force a reset to get a clean BASIC screen
-              this.reset(1); // Use hard reset (1) instead of soft reset (0)
-              console.log('C64 emulator reset to BASIC mode');
-            } else {
-              console.log('Waiting for js_reset to become available...');
-              // Try again after a delay
-              setTimeout(() => {
-                if (window.Module && typeof window.Module._js_reset === 'function') {
-                  this.reset(1);
-                  console.log('C64 emulator reset to BASIC mode (delayed)');
-                } else {
-                  console.warn('js_reset function still not available after delay');
-                }
-              }, 2000);
-            }
-          }, 3000); // Increased from 2000ms to 3000ms
-        };
-        
-        document.body.appendChild(emulatorScript);
-      }, 1500); // Increased from 1000ms to 1500ms
-    };
-    
-    document.body.appendChild(mainScript);
+  loadEmulatorScript() {
+    console.log('C64 emulator script loading started');
+
+    var done = 0;    
+    return new Promise((resolve) => {
+      // Load the main script first
+      const mainScript = document.createElement('script');
+      mainScript.src = '/c64/c64_main.js';
+      mainScript.async = true;
+      mainScript.onload = () => {
+        done++;
+        if (done === 2) {
+          resolve(true);
+        }
+      };
+      document.body.appendChild(mainScript);
+
+      // Load the emulator script
+      const mainScript2 = document.createElement('script');
+      mainScript2.src = '/c64/c64_tiny.js';
+      mainScript2.async = true;
+      mainScript2.onload = () => {
+        done++;
+        if (done === 2) {
+          resolve(true);
+        }
+      };
+      document.body.appendChild(mainScript2);
+    });
   }
   
   /**
-   * Setup keyboard event handling for the emulator
+   * Start the C64 emulator after initialization  
    */
-  setupKeyboardHandling() {
-    const arrowKeysHandler = function(e) {
-      switch(e.keyCode) {
-        case 37: case 39: case 38: case 40: // Arrow keys
-        case 32: case 17: case 112: case 114: case 116: case 118: // Space, Ctrl, F1, F3, F5, F7
-          e.preventDefault();
-          break;
-        default:
-          break;
+  startEmulator() {
+    try {
+      if ( window.Module === undefined  || window.Module._js_reset === undefined) {
+        console.error('C64 emulator not initialized');
+        return;
       }
-    };
+      console.log('Starting C64 emulator');
+      
+      // Make sure js_reset is available before calling it
+      setTimeout(() => {
+        if (typeof window.Module._js_reset === 'function') {
+          // Skip loading the joystick test snapshot
+          // Instead, just reset to get a clean BASIC screen
+          window.Module.ccall('js_reset', 'number', ['number'], [0]);
+          console.log('C64 emulator started up in BASIC mode');
+        } else {
+          console.warn('js_reset function not available yet');
+        }
+        console.log('C64 emulator started successfully');
+      }, 1000);
+      this.emulatorInitialized = true;
+    } catch (error) {
+      console.error('Error starting C64 emulator:', error);
+      if (this.statusElement) {
+        this.statusElement.textContent = 'Error starting emulator: ' + error.message;
+      }
+    }
+  }
+  
+  
+  /**
+   * Remove the resize observer
+   */
+  removeResizeObserver() {
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+      this.resizeObserver = null;
+    }
+  }
+
+  /**
+   * Set up resize observer to maintain aspect ratio
+   */
+  setupResizeObserver() {
+    // Clean up any existing observer
+    this.removeResizeObserver();
     
-    // Add event listeners to prevent browser default actions for emulator keys
-    window.addEventListener('keydown', arrowKeysHandler, false);
-    window.addEventListener('keyup', arrowKeysHandler, false);
+    // Create a new observer
+    this.resizeObserver = new ResizeObserver(entries => {
+      for (let entry of entries) {
+        if (entry.target === this.outputContainer) {
+          const containerWidth = entry.contentRect.width;
+          const aspectRatioHeight = Math.floor((containerWidth * 3) / 4);
+          this.outputContainer.style.height = `${aspectRatioHeight}px`;
+        }
+      }
+    });
+    
+    // Start observing
+    if (this.outputContainer) {
+      this.resizeObserver.observe(this.outputContainer);
+    }
   }
   
   /**
@@ -491,6 +327,7 @@ class C64OutputSideWindow extends BaseOutputSideWindow {
   /**
    * Reset the C64 emulator
    * @param {number} type - Reset type (0 for soft reset, 1 for hard reset)
+   * @returns {boolean} - Success status
    */
   reset(type = 0) {
     if (!this.emulatorInitialized || !window.Module) {
@@ -519,6 +356,7 @@ class C64OutputSideWindow extends BaseOutputSideWindow {
    * @param {Uint8Array} data - The PRG file data as a byte array
    * @param {string} fileName - The name of the file
    * @param {boolean} autoStart - Whether to automatically run the program after loading
+   * @returns {boolean} - Success status
    */
   loadPRG(data, fileName, autoStart = true) {
     if (this.emulatorInitialized && window.Module) {
@@ -543,6 +381,7 @@ class C64OutputSideWindow extends BaseOutputSideWindow {
    * Send a command to the C64 emulator
    * @param {string} command - The command to send
    * @param {Object} params - Additional parameters for the command
+   * @returns {boolean} - Success status
    */
   sendCommand(command, params = {}) {
     if (!this.emulatorInitialized) {
@@ -553,6 +392,12 @@ class C64OutputSideWindow extends BaseOutputSideWindow {
     switch (command) {
       case 'RESET':
         return this.reset(params.type || 0);
+      case 'RUN':
+        // For now, just reset the emulator
+        return this.reset(0);
+      case 'STOP':
+        // For now, just reset the emulator
+        return this.reset(0);
       case 'LOAD_PRG':
         return this.loadPRG(params.data, params.fileName, params.autoStart);
       case 'SET_KEY':
@@ -581,28 +426,122 @@ class C64OutputSideWindow extends BaseOutputSideWindow {
    * @returns {boolean} - True if the message was handled
    */
   handleMessage(messageType, messageData, senderId) {
-    switch(messageType)
-    {
+    console.log(`C64Output received message: ${messageType}`, messageData);
+    switch(messageType) {
+      case 'LAYOUT_READY':
+        // Only initialize if we're in C64 mode
+        if (messageData && messageData.data && messageData.data.mode === 'c64') {
+          this.initializeC64Emulator();
+        }
+        return true; 
+        
+      case 'MODE_EXIT':
+        // If we're leaving C64 mode, detach the emulator container
+        if (messageData && messageData.data && messageData.data.newMode !== 'c64' && messageData.data.oldMode === 'c64') {
+          this.detachEmulatorContainer();
+        }
+        return true;
+        
+      case 'MODE_ENTER':
+        // If we're entering C64 mode, reattach the emulator container
+        if (messageData && messageData.data && messageData.data.newMode === 'c64') {
+          this.reattachEmulatorContainer();
+        }
+        return true;
+        
       case 'RESET':
       case 'RUN':
       case 'STOP':
         return this.sendCommand(messageType, messageData);
+      
       default:
         break;
     }
     
-    // Pass to parent class for handling of standard messages
     return super.handleMessage(messageType, messageData, senderId);
   }
   
   /**
-   * Override appendContent to handle C64-specific content
-   * @param {string} content - The content to append
+   * Detach the emulator container from the DOM
    */
-  appendContent(content) {
-    // For C64 mode, we might want to send this to the emulator
-    console.log('C64 output received content:', content);
-    // We could implement sending this to the emulator later
+  detachEmulatorContainer() {
+    try {
+      if (!this.storedEmulatorContainer && this.emulatorContainer) {
+        console.log('Detaching C64 emulator container from DOM');
+        this.storedEmulatorContainer = this.emulatorContainer;
+        this.storedEmulatorContainer.remove(); // This doesn't destroy it, just detaches it
+        this.emulatorContainer=null;
+      }
+    } catch (error) {
+      console.error('Error detaching C64 emulator container:', error);
+    }
+  }
+  
+  /**
+   * Reattach the emulator container to the DOM
+   */
+  reattachEmulatorContainer(force = null) {
+    try {
+      if (force || (!this.emulatorContainer && this.storedEmulatorContainer)) {
+        console.log('Reattaching C64 emulator container to DOM');
+        
+        // Reattach the stored emulator container
+        if (!force)
+          force=this.storedEmulatorContainer;
+        this.outputContainer.appendChild(force);
+        this.emulatorContainer = force;
+        this.storedEmulatorContainer = null;
+      }
+      console.log('C64 emulator container reattached successfully');
+    } catch (error) {
+      console.error('Error reattaching C64 emulator container:', error);
+    }
+  }
+  
+  /**
+   * Clean up the C64 emulator when leaving C64 mode
+   */
+  cleanupEmulator() {
+    try {
+      console.log('Cleaning up C64 emulator resources');
+      
+      // Reset emulator state
+      this.emulatorInitialized = false;
+      
+      // Remove global references
+      delete window.c64Canvas;
+      delete window.c64StatusElement;
+      delete window.c64ProgressElement;
+      delete window.c64DiskBoxCombo;
+
+      // Clear references to DOM elements
+      this.canvas = null;
+      this.statusElement = null;
+      this.progressElement = null;
+      this.diskBoxCombo = null;
+      
+      // Clear the Module object
+      if (window.Module) {
+        window.Module = undefined;
+      }
+      
+      console.log('C64 emulator cleanup completed');
+    } catch (error) {
+      console.error('Error during C64 emulator cleanup:', error);
+    }
+  }
+  
+  /**
+   * Clean up resources when the component is destroyed
+   */
+  destroy() {
+    // Clean up the emulator
+    this.cleanupEmulator();
+    
+    // Call the parent class's destroy method if it exists
+    if (super.destroy) {
+      super.destroy();
+    }
   }
   
   /**
@@ -618,7 +557,7 @@ class C64OutputSideWindow extends BaseOutputSideWindow {
       modeName: this.modeName
     };
   }
-
+  
   /**
    * Set the layout from saved information
    * @param {Object} layoutInfo - The layout information to apply
@@ -630,33 +569,8 @@ class C64OutputSideWindow extends BaseOutputSideWindow {
     if (super.setLayout) {
       super.setLayout(layoutInfo);
     }
-    
-    // If we're restoring from a layout, we need to be more careful with initialization
-    // The DOM might not be fully ready yet, so we'll add an extra delay
-    if (this.outputContainer && !this.emulatorInitialized) {
-      console.log('Initializing C64 emulator from layout restoration with extra delay');
-      
-      // Clear any existing content
-      this.outputContainer.innerHTML = '';
-      
-      // Add a loading message
-      const loadingMessage = document.createElement('div');
-      loadingMessage.className = 'c64-loading-message';
-      loadingMessage.textContent = 'Initializing C64 emulator...';
-      loadingMessage.style.color = 'white';
-      loadingMessage.style.textAlign = 'center';
-      loadingMessage.style.padding = '20px';
-      loadingMessage.style.backgroundColor = '#4040e0'; // C64 blue background
-      this.outputContainer.appendChild(loadingMessage);
-      
-      // Use a longer delay when initializing from a layout restoration
-      setTimeout(() => {
-        // Create the emulator with the DOM fully ready
-        this.createC64Emulator();
-      }, 2000); // Use a longer delay for layout restoration
-    }
   }
 }
 
-// Make sure to export the class
-export default C64OutputSideWindow;
+// Export the class
+export default C64Output;

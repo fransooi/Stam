@@ -1,11 +1,12 @@
 // SideWindow.js - Base class for all side windows in the sidebar
 import BaseComponent from '../../../utils/BaseComponent.js';
+import { MESSAGES } from '../../../utils/BaseComponent.js';
 
 class SideWindow extends BaseComponent {
-  constructor(id, title, initialHeight = 200) {
+  constructor(id, title, parentId, containerId, initialHeight = 200) {
     // Initialize BaseComponent with component name and parent ID
     // We'll use 'sidewindow-' + id as the component name
-    super('sidewindow-' + id, 'sidebar');
+    super('SideWindow-' + id, parentId,containerId);
     
     this.id = id;
     this.title = title;
@@ -30,32 +31,32 @@ class SideWindow extends BaseComponent {
    * @returns {boolean} - True if the message was handled
    */
   handleMessage(messageType, messageData, sender) {
-    console.log(`SideWindow ${this.id} received message: ${messageType}`, messageData);
+    //console.log(`SideWindow received message: ${messageType}`, messageData);
     
     // Handle common SideWindow messages
     switch (messageType) {
-      case 'WINDOW_TOGGLE':
+      case MESSAGES.WINDOW_TOGGLE:
         if (messageData.windowId === this.id) {
           this.toggle();
           return true;
         }
         break;
         
-      case 'WINDOW_CLOSE':
+      case MESSAGES.WINDOW_CLOSE:
         if (messageData.windowId === this.id) {
           this.close();
           return true;
         }
         break;
         
-      case 'WINDOW_RESIZE':
+      case MESSAGES.WINDOW_RESIZE:
         if (messageData.windowId === this.id && messageData.height) {
           this.resize(messageData.height);
           return true;
         }
         break;
 
-      case 'WINDOW_ENLARGE':
+      case MESSAGES.WINDOW_ENLARGE:
         if (messageData.windowId === this.id) {
           this.toggleEnlarge();
           return true;
@@ -72,7 +73,7 @@ class SideWindow extends BaseComponent {
    * @param {HTMLElement} parentContainer - The parent container to append this window to
    * @returns {HTMLElement} The created window element
    */
-  render(parentContainer) {
+  render() {
     // Create the container element
     this.container = document.createElement('div');
     this.container.id = `side-window-${this.id}`;
@@ -128,9 +129,6 @@ class SideWindow extends BaseComponent {
     // Add header and content to the container
     this.container.appendChild(this.header);
     this.container.appendChild(this.content);
-    
-    // Add the container to the parent
-    parentContainer.appendChild(this.container);
     
     // Set initial height
     if (this.minimized) {

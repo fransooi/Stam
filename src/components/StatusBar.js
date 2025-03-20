@@ -1,18 +1,17 @@
 // StatusBar.js - Default component for the application status bar
 
-import BaseComponent, { PREFERENCE_MESSAGES } from '../utils/BaseComponent.js';
+import BaseComponent, { MESSAGES } from '../utils/BaseComponent.js';
 
 class StatusBar extends BaseComponent {
-  constructor(containerId) {
+  constructor(parentId, containerId) {
     // Initialize the base component with component name
-    super('StatusBar');
-    
-    this.container = document.getElementById(containerId);
+    super('StatusBar', parentId, containerId);    
     this.status = 'Ready';
   }
 
   render() {
     // Clear the container
+    this.container=document.getElementById(this.containerId);
     this.container.innerHTML = '';
     
     // Create status text element
@@ -56,14 +55,14 @@ class StatusBar extends BaseComponent {
     console.log(`StatusBar received message: ${messageType}`, messageData);
     
     switch (messageType) {
-      case 'UPDATE_STATUS':
+      case MESSAGES.UPDATE_STATUS:
         if (messageData.data && messageData.data.text) {
           this.setStatus(messageData.data.text);
           return true;
         }
         break;
         
-      case 'SHOW_TEMPORARY_STATUS':
+      case MESSAGES.SHOW_TEMPORARY_STATUS:
         if (messageData.data && messageData.data.text) {
           const duration = messageData.data.duration || 3000;
           this.showTemporaryStatus(messageData.data.text, duration);
@@ -71,11 +70,10 @@ class StatusBar extends BaseComponent {
         }
         break;
         
-      case PREFERENCE_MESSAGES.LOAD_LAYOUT:
+      case MESSAGES.LOAD_LAYOUT:
         // Check if this layout is for us
         if (messageData.data && 
-            (messageData.data.componentName === 'StatusBar' || 
-             messageData.data.componentName === this.componentName)) {
+            messageData.data.componentName === 'StatusBar') {
           this.applyLayout(messageData.data.layoutInfo);
           return true;
         }

@@ -1,8 +1,9 @@
 // Modern Icon Bar component with Font Awesome icons
+import BaseComponent from '../../utils/BaseComponent.js';
 
-class ModernIcons {
-  constructor(container) {
-    this.container = container;
+class ModernIcons extends BaseComponent {
+  constructor(parentId,containerId) {
+    super('ModernIcons', parentId, containerId);
   }
 
   render() {
@@ -114,54 +115,8 @@ class ModernIcons {
   handleButtonClick(action) {
     console.log(`Modern button clicked: ${action}`);
     
-    this.sendMessageDown('ICON_ACTION', {
+    this.sendMessageDown(MESSAGE.ICON_ACTION, {
       action: action
-    });
-  }
-  
-  handleNewClick() {
-    console.log('New button clicked');
-  }
-  
-  handleOpenClick() {
-    console.log('Open button clicked');
-    this.sendMessageDown('ICON_ACTION', {
-      action: 'Open'
-    });
-  }
-  
-  handleSaveClick() {
-    console.log('Save button clicked');
-    this.sendMessageDown('ICON_ACTION', {
-      action: 'Save'
-    });
-  }
-  
-  handleRunClick() {
-    console.log('Run button clicked');
-    this.sendMessageDown('ICON_ACTION', {
-      action: 'Run'
-    });
-  }
-  
-  handleDebugClick() {
-    console.log('Debug button clicked');
-    this.sendMessageDown('ICON_ACTION', {
-      action: 'Debug'
-    });
-  }
-  
-  handleShareClick() {
-    console.log('Share button clicked');
-    this.sendMessageDown('ICON_ACTION', {
-      action: 'Share'
-    });
-  }
-  
-  handleHelpClick() {
-    console.log('Help button clicked');
-    this.sendMessageDown('ICON_ACTION', {
-      action: 'Help'
     });
   }
 }

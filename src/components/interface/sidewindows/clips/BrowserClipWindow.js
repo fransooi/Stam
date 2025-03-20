@@ -1,7 +1,7 @@
 // BrowserClipWindow.js - Generic browser clip window implementation
-import ClipSideWindow from './ClipSideWindow.js';
+import ClipWindow from './ClipWindow.js';
 
-class BrowserClipWindow extends ClipSideWindow {
+class BrowserClipWindow extends ClipWindow {
   constructor(initialUrl = '') {
     super('browser', 'Browser', initialUrl || 'about:blank');
   }
