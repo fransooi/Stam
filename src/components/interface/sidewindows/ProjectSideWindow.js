@@ -1,30 +1,52 @@
 // ProjectSideWindow.js - Project file tree side window implementation
 import SideWindow from './SideWindow.js';
+import { MESSAGES } from '../../../utils/BaseComponent.js';
 
 class ProjectSideWindow extends SideWindow {
   constructor(parentId, containerId, initialHeight = 300) {
     super('Project', 'Project Files', parentId, containerId, initialHeight);
     this.projectTree = [];
+    this.messageMap[MESSAGES.CONTENT_HEIGHT_CHANGED] = this.handleContentHeightChanged;
   }
   
+  /**
+   * Initialize the component
+   * 
+   * @param {Object} options - Optional configuration options
+   */
+  async init(options) {
+    super.init(options);
+  }
+  
+  /**
+   * Destroy the component
+   */
+  async destroy() {
+    this.parentContainer.removeChild(this.treeElement);
+    this.treeElement = null;
+    super.destroy();
+  }
+
   /**
    * Override render to set up content and event listeners
    * @returns {HTMLElement} - The rendered window element
    */
-  render() {
-    // Call parent render method
-    const container = super.render();
+  async render(containerId) {
+    await super.render(containerId);
+   
+    // Create project tree container
+    this.treeElement = document.createElement('div');
+    this.treeElement.id = 'project-tree';
+    this.treeElement.className = 'project-tree';  
+    this.content.appendChild(this.treeElement);
+  
+    // Add some basic styling
+    this.addStyles();
     
-    // Create the project UI
-    this.createProjectUI();
+    // Populate with initial data
+    this.populateProjectTree();
     
-    // Add event listener for content height changes
-    this.content.addEventListener('contentHeightChanged', (event) => {
-      this.handleContentHeightChanged(event.detail.height);
-    });
-    this.updateContentHeight();
-    
-    return container;
+    return this.container;
   }
   
   /**
@@ -32,33 +54,10 @@ class ProjectSideWindow extends SideWindow {
    * @param {number} height - New content height
    */
   handleContentHeightChanged(height) {
-    // Update the project tree container height
-    const treeElement = this.content.querySelector('#project-tree');
-    if (treeElement) {
-      treeElement.style.height = `${height}px`;
-      treeElement.style.maxHeight = `${height}px`;
+    if (this.projectTree) {
+      this.projectTree.style.height = `${height}px`;
+      this.projectTree.style.maxHeight = `${height}px`;
     }
-  }
-  
-  /**
-   * Create the project UI
-   */
-  createProjectUI() {
-    // Clear existing content
-    this.content.innerHTML = '';
-    
-    // Create project tree container
-    const projectTree = document.createElement('div');
-    projectTree.id = 'project-tree';
-    projectTree.className = 'project-tree';
-    
-    this.content.appendChild(projectTree);
-    
-    // Add some basic styling
-    this.addStyles();
-    
-    // Populate with initial data
-    this.populateProjectTree();
   }
   
   /**
@@ -114,11 +113,10 @@ class ProjectSideWindow extends SideWindow {
    * Populate the project tree with data
    */
   populateProjectTree() {
-    const treeElement = this.content.querySelector('#project-tree');
-    if (!treeElement) return;
+    if (!this.treeElement) return;
     
     // Clear existing content
-    treeElement.innerHTML = '';
+    this.treeElement.innerHTML = '';
     
     // Sample project structure - in a real app, this would come from the server
     if (this.projectTree.length === 0) {
@@ -141,7 +139,7 @@ class ProjectSideWindow extends SideWindow {
     
     // Render the project tree
     this.projectTree.forEach(item => {
-      treeElement.appendChild(this.createProjectItem(item));
+      this.treeElement.appendChild(this.createProjectItem(item));
     });
   }
   
@@ -207,21 +205,6 @@ class ProjectSideWindow extends SideWindow {
     }
     
     return itemElement;
-  }
-  
-  /**
-   * Handle file click event
-   * @param {Object} file - The file object that was clicked
-   */
-  handleFileClick(file) {
-    console.log(`File clicked: ${file.name}`);
-    // In the future, this would open the file in the editor
-    
-    // Dispatch a custom event that can be listened to by other components
-    const event = new CustomEvent('fileSelected', {
-      detail: { file }
-    });
-    document.dispatchEvent(event);
   }
   
   /**

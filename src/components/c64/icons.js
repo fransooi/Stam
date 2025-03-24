@@ -5,11 +5,23 @@ import BaseComponent from '../../utils/BaseComponent.js';
 class C64Icons extends BaseComponent  {
   constructor(parentId,containerId) {
     super('C64Icons', parentId, containerId);
+    this.buttons = [];
   }
 
-  render() {
-    // Clear the container
-    this.container.innerHTML = '';
+  async init(options) {
+    await super.init(options);
+  }
+  async destroy() {
+    if (this.parentContainer) {
+      this.buttons.forEach(button => this.parentContainer.removeChild(button));
+    }
+    this.buttons = [];
+    await super.destroy();
+  }
+  async render(containerId) {    
+    this.parentContainer = await super.render(containerId);
+    this.parentContainer.innerHTML = '';
+    this.layoutContainer=this.parentContainer;
     
     // Create C64 mode buttons
     this.addButton('Run', 'run-button');
@@ -57,13 +69,14 @@ class C64Icons extends BaseComponent  {
     `;
     document.head.appendChild(style);
   }
-  
+
   addButton(text, className) {
     const button = document.createElement('button');
     button.className = `icon-button c64-button ${className}`;
     button.textContent = text;
     button.addEventListener('click', () => this.handleButtonClick(text));
-    this.container.appendChild(button);
+    this.parentContainer.appendChild(button);
+    this.buttons.push(button);
   }
   
   handleButtonClick(action) {

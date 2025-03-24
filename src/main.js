@@ -11,6 +11,7 @@ import BaseComponent from './utils/BaseComponent.js';
 import { MESSAGES } from './utils/BaseComponent.js';
 import PreferenceDialog from './components/PreferenceDialog.js';
 import messageBus from './utils/MessageBus.mjs';
+import Utilities from './utils/Utilities.js';
 
 // Main application class
 class PCOSApp extends BaseComponent {
@@ -23,113 +24,89 @@ class PCOSApp extends BaseComponent {
 
     // Initialize mode
     this.currentMode = 'modern'; // Default mode: 'modern', 'stos', 'amos1_3', 'amosPro', 'c64'
-    
-    // Initialize components
-    this.menuBar = null;
-    this.statusBar = null;
-    this.editor = null;
-    this.iconBar = null;
-    this.sideBar = null;
-    this.preferenceDialog = null;
+    this.possibleModes = [ 'modern', 'stos', 'amos1_3', 'amosPro', 'c64' ];
 
+    // Initialize utilities
+    this.utilities = new Utilities();
+    
     // Set as root
-    messageBus.setRoot(this);
-    
-    // Initialize the application
-    this.init();
-  }
-  
-  init() {
-    // Wait for DOM to be fully loaded
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', () => this.initApplication());
-    } else {
-      this.initApplication();
-    }
-  }
-  
-  /**
-   * Initialize the application, checking for saved layout first
-   */
-  async initApplication() {
-    console.log('Initializing PCOS application...');
-    
-    // Check for saved layout first to determine the initial mode
-    try {
-      const layoutData = await this.loadStorage('pcos-layout');
-      
-      if (layoutData) {
-        console.log('Found saved layout, extracting mode before initialization');
-        
-        try {
-          // Parse the layout JSON
-          const layout = JSON.parse(layoutData);
-          
-          // Validate the layout
-          if (layout && layout.components) {
-            // First, check if the IconBar component has a saved mode
-            const iconBarInfo = Object.values(layout.components).find(
-              component => component.componentName === 'IconBar'
-            );
-            
-            // If we found the IconBar info and it has a currentMode, set it first
-            if (iconBarInfo && iconBarInfo.currentMode) {
-              console.log(`Setting initial application mode to ${iconBarInfo.currentMode} from saved layout`);
-              this.currentMode = iconBarInfo.currentMode;
-            }
-          }
-        } catch (error) {
-          console.error('Error parsing saved layout:', error);
-          // Continue with default mode if there's an error
-        }
-      }
-    } catch (error) {
-      console.error('Error checking for saved layout:', error);
-      // Continue with default mode if there's an error
-    }
-    
-    // Now initialize components with the correct mode
-    this.initComponents();
-  }
-  
-  initComponents() {
+    messageBus.setRoot(this);    
+
     // Initialize all components with the correct mode from the start
-    console.log(`Initializing components in ${this.currentMode} mode`);
-    
-    this.menuBar = new MenuBar(this.getComponentID(),'menu-bar');
-    this.statusBar = new StatusBar(this.getComponentID(),'status-line');
-    this.editor = new Editor(this.getComponentID(),'editor-area');
-    this.iconBar = new IconBar(this.getComponentID(),'icon-area');
-    this.sideBar = new SideBar(this.getComponentID(),'info-area');
+    this.sideBar = new SideBar(this.componentId,'info-area');
+    this.menuBar = new MenuBar(this.componentId,'menu-bar');
+    this.statusBar = new StatusBar(this.componentId,'status-line');
+    this.iconBar = new IconBar(this.componentId,'icon-area');
+    this.editor = new Editor(this.componentId,'editor-area');
     
     // Initialize preference dialog
-    this.preferenceDialog = new PreferenceDialog(this.getComponentID());
-    
-    // Render all components
-    this.menuBar.render();
-    this.statusBar.render();
-    this.iconBar.render();
-    this.sideBar.render();
-    this.editor.render();
-    
-    // Apply saved layout if it exists (after components are initialized)
-    this.loadLayout();    
-    
+    this.preferenceDialog = new PreferenceDialog(this.componentId);
+
+    this.messageMap[MESSAGES.MENU_ACTION] = this.handleMenuAction;
+    this.messageMap[MESSAGES.ICON_ACTION] = this.handleIconAction;
+    this.messageMap[MESSAGES.LAYOUT_INFO] = this.handleLayoutInfo;
+    this.messageMap[MESSAGES.MODE_CHANGED] = this.handleModeChanged;
+  }
+  
+  async init(options = {}) {
+    super.init(options);
+
+    const layoutData=this.utilities.loadStorage('pcos-layout');  
+    let layout;    
+    if (layoutData) {
+      // Parse the layout JSON
+      layout = JSON.parse(layoutData);
+      this.currentMode = layout.mode;        
+    }
+    else if (options.mode) {
+      this.currentMode = options.mode;
+    }
+    else{
+      this.currentMode='modern';
+    }
+    options.mode=this.currentMode;
+
+    // Send INIT messages to components-> they create the rest of the tree
+    if (layout) {
+      layout.componentTypes = {};
+      Object.values(layout.components).forEach(
+        component => {
+          layout.componentTypes[component.componentName] = component;
+        }
+      );
+      options.layout=layout;
+    }
+    await this.broadcastUp(MESSAGES.INIT, options);
+
+    // If no layout, create default side windows
+    if (!layout){
+      await this.sendMessageTo(this.sideBar.componentId,MESSAGES.ADD_SIDE_WINDOW, { type: 'ProjectSideWindow', height: 200, width:300 });
+      await this.sendMessageTo(this.sideBar.componentId,MESSAGES.ADD_SIDE_WINDOW, { type: 'OutputSideWindow', height: 200 });
+      await this.sendMessageTo(this.sideBar.componentId,MESSAGES.ADD_SIDE_WINDOW, { type: 'TVSideWindow', height: 200 });
+      await this.sendMessageTo(this.sideBar.componentId,MESSAGES.ADD_SIDE_WINDOW, { type: 'SocketSideWindow', height: 100 });
+    }
+
+    // Send RENDER messages to components-> they display themselves
+    await this.broadcastUp(MESSAGES.RENDER, options);
+    if ( layout ){
+      await this.broadcastUp(MESSAGES.LOAD_LAYOUT, layout);
+    }
+    await this.utilities.sleep(1000);
+    await this.broadcastUp(MESSAGES.LAYOUT_READY);
+
     // Log initialization
     console.log('PCOS Application initialized in ' + this.currentMode + ' mode');
   }
-  
+    
   // Handle the MODE_CHANGED command 
-  handleModeChange(mode) {
+  async changeMode(mode) {
     // Don't do anything if the mode hasn't changed
     if (this.currentMode === mode) {
-      console.log(`Mode ${mode} is already active, no change needed`);
       return true;
     }
     
     // Send MODE_EXIT message with the old mode
-    console.log(`Broadcasting MODE_EXIT message for ${this.currentMode} mode`);
-    this.broadcast(MESSAGES.MODE_EXIT, { oldMode: this.currentMode, newMode: mode });
+    await this.broadcastUp(MESSAGES.MODE_EXIT, { oldMode: this.currentMode, newMode: mode });
     
     // Update current mode
     const oldMode = this.currentMode;
@@ -140,57 +117,34 @@ class PCOSApp extends BaseComponent {
     document.body.classList.add(`${mode}-mode`);
     
     // Broadcast mode change messages to components
-    this.broadcast(MESSAGES.MODE_CHANGE, { mode });
+    await this.broadcastUp(MESSAGES.MODE_CHANGE, { mode: mode });
 
     // Send MODE_ENTER message with the new mode
-    console.log(`Broadcasting MODE_ENTER message for ${mode} mode`);
-    this.broadcast(MESSAGES.MODE_ENTER, { oldMode, newMode: mode });
+    await this.broadcastUp(MESSAGES.MODE_ENTER, { oldMode: oldMode, newMode: mode });
+
+    // Send LAYOUT_READY message with the new mode
+    await this.utilities.sleep(1000);
+    await this.broadcastUp(MESSAGES.LAYOUT_READY, { mode: this.currentMode });
     
     return true; // Command handled
   }
   
-  /**
-   * Handle incoming messages
-   * @param {string} messageType - Type of message received
-   * @param {Object} messageData - Data associated with the message
-   * @param {Object} sender - Component that sent the message
-   * @returns {boolean} - True if the message was handled
-   */
-  handleMessage(messageType, messageData, sender) {
-    console.log(`PCOSApp received message: ${messageType}`, messageData, sender);
-    
-    // Handle specific message types
-    switch (messageType) {
-      case MESSAGES.MODE_CHANGED:
-        this.handleModeChange(messageData.data.mode);
-        // Wait for mode change to be fully applied before notifying components
-        setTimeout(() => {
-          console.log('Broadcasting LAYOUT_READY message after mode change');
-          this.broadcast(MESSAGES.LAYOUT_READY, { mode: this.currentMode });
-        }, 1000);    
-        return true;
-        
-      case MESSAGES.SAVE_LAYOUT:
-        this.saveLayout();
-        return true;
-        
-      case MESSAGES.MENU_ACTION:
-        return this.handleMenuAction(messageData, sender);
-        
-      case MESSAGES.ICON_ACTION:
-        return this.handleIconAction(messageData, sender);
-        
-      case MESSAGES.LAYOUT_INFO:
-        // Store the layout information from this component
-        if (sender) {
-          this.layoutInfo[sender] = messageData.data || messageData;
-          console.log(`Received layout info from ${sender}`);
-        }
-      return true;
+  async handleLayoutInfo(data, sender) {
+    if (sender) {
+      this.layoutInfo[sender] = data;
+      console.log(`Received layout info from ${sender}`);
     }
-    
-    // If we get here, the message wasn't handled
-    return super.handleMessage(messageType, messageData, sender);
+    return true;  
+  }
+  async handleModeChanged(data, sender) {
+    await this.changeMode(data.mode);
+    return true;
+  }
+  async handleMenuAction(data, sender) {
+    return this.handleMenuAction(data, sender);
+  }
+  async handleIconAction(data, sender) {
+    return this.handleIconAction(data, sender);
   }
   
   /**
@@ -203,7 +157,7 @@ class PCOSApp extends BaseComponent {
     console.log('Menu action:', action);
     
     // Handle specific menu actions
-    switch (action.data.option.toLowerCase()) {
+    switch (action.option.toLowerCase()) {
       case 'new':
         // Handle new file action
         console.log('New file action');
@@ -244,37 +198,29 @@ class PCOSApp extends BaseComponent {
   /**
    * Load layout from storage and applies
    */
-  loadLayout() {
+  async loadLayout() {
     console.log('Loading interface layout...');
-    this.loadStorage('pcos-layout')
-      .then(data => {
-        if (data) {
-          this.recreateInterface(data);
-          setTimeout(() => {
-            console.log('Broadcasting LAYOUT_READY message after mode change');
-            this.broadcast('LAYOUT_READY', { mode: this.currentMode });
-          }, 1000);    
-        }
-      })
-      .catch(error => {
-        console.error('Error loading layout:', error);
-      });
+    var data = this.utilities.loadStorage('pcos-layout');
+    if (data) {
+      await this.recreateInterface(data);
+      setTimeout(() => {
+        console.log('Broadcasting LAYOUT_READY message after mode change');
+        this.broadcastUp('LAYOUT_READY', { mode: this.currentMode });
+      }, 1000);    
+      return true;
+    }
+    return false;
   }
   
   /**
    * Save the current layout
    */
-  saveLayout() {
+  async saveLayout() {
     console.log('Saving interface layout...');
-    this.getLayout()
-      .then(layoutJson => {
-        if (layoutJson) {
-          this.saveStorage('pcos-layout', layoutJson);
-        } 
-      })
-      .catch(error => {
-        console.error('Error saving layout:', error);
-      });
+    var layoutJson = await this.getLayout();
+    if (layoutJson) {
+      this.utilities.saveStorage('pcos-layout', layoutJson);
+    }
   }
 
   /**
@@ -304,12 +250,12 @@ class PCOSApp extends BaseComponent {
    * Returns the current layout JSON string
    * @returns {Promise<string>} - Promise that resolves with the layout JSON
    */
-  getLayout() {
+  async getLayout() {
     // Clear any existing layout information
     this.layoutInfo = {};
     
     // Request layout information from all components
-    this.broadcast(MESSAGES.GET_LAYOUT_INFO);
+    await this.broadcastUp(MESSAGES.GET_LAYOUT_INFO);
     
     // Return a promise that resolves with the layout JSON
     return new Promise((resolve) => {
@@ -319,7 +265,8 @@ class PCOSApp extends BaseComponent {
         const layout = {
           version: '1.0',
           timestamp: new Date().toISOString(),
-          components: this.layoutInfo
+          components: this.layoutInfo,
+          mode: this.currentMode
         };
         
         // Convert layout information to JSON
@@ -330,44 +277,11 @@ class PCOSApp extends BaseComponent {
   }
   
   /**
-   * Save data to localStorage
-   * @param {string} name - Name of the data
-   * @param {string} data - Data to save
-   * @returns {Promise<boolean>} - Promise that resolves with success status
-   */
-  saveStorage(name, data) {
-    
-    try {
-        localStorage.setItem(name, data);
-        return Promise.resolve(true);
-      }
-    catch(error) {
-        console.error('Error saving :' + name, error);
-        return Promise.resolve(false);
-      };
-  }
-  
-  /**
-   * Load a saved layout
-   * @returns {Promise<boolean>} - Promise that resolves with success status
-   */
-  loadStorage(name) {
-    try {
-      const data = localStorage.getItem(name);
-      if (!data) return Promise.resolve(false);
-      return Promise.resolve(data);
-    } catch (error) {
-      console.error('Error loading ' + name + ':', error);
-      return Promise.resolve(false);
-    }
-  }
-  
-  /**
    * Recreate the interface from a saved layout
    * This function loads the layout from localStorage and recreates the interface
    * @returns {Promise<boolean>} - Promise that resolves with success status
    */
-  recreateInterface(layoutJson) {
+  async recreateInterface(layoutJson) {
     console.log('Recreating interface from saved layout...');
     
     try {
@@ -378,7 +292,7 @@ class PCOSApp extends BaseComponent {
       // Validate the layout
       if (!layout || !layout.components) {
         console.error('Invalid layout format');
-        return Promise.resolve(false);
+        return false;
       }
       
       // First, check if the IconBar component has a saved mode
@@ -392,41 +306,34 @@ class PCOSApp extends BaseComponent {
         this.handleModeChange(iconBarInfo.currentMode);
       }
       
-      // Process each component in the layout
-      Object.values(layout.components).forEach(componentInfo => {
-        if (!componentInfo || !componentInfo.componentName) {
-          console.error('Invalid component info:', componentInfo);
-          return;
+      // Converts the layout to type oriented components.
+      layout.componentTypes = {};
+      Object.values(layout.components).forEach(
+        component => {
+          layout.componentTypes[component.componentName] = component;
         }
-        
-        console.log(`Broadcasting layout to ${componentInfo.componentName}`);
-        
-        // Broadcast the layout info to all components
-        // Each component will check if the layout is for them and apply it
-        this.broadcast(MESSAGES.LOAD_LAYOUT, {
-          componentName: componentInfo.componentName,
-          layoutInfo: componentInfo
-        });
-      });
+      );
+      // Broadcast the layout info to all components
+      this.broadcastUp(MESSAGES.LOAD_LAYOUT, layout);
 
       console.log('Interface recreated successfully');
-      return Promise.resolve(true);
+      return true;
     } catch (error) {
       console.error('Error recreating interface:', error);
-      return Promise.resolve(false);
+      return false;
     }
   }
   
   /**
    * Handle icon actions from IconBar
-   * @param {Object} messageData - Data associated with the message
+   * @param {Object} data - Data associated with the message
    * @param {Object} sender - Component that sent the message
    * @returns {boolean} - True if the action was handled
    */
-  handleIconAction(messageData, sender) {
-    if (!messageData.data || !messageData.data.action) return false;
+  handleIconAction(data, sender) {
+    if (!data.action) return false;
     
-    var action = messageData.data.action;
+    var action = data.action;
     console.log(`PCOSApp handling icon action: ${action}`);
     
     // Handle different icon actions
@@ -449,8 +356,15 @@ class PCOSApp extends BaseComponent {
   }
 }
 
-// Create and initialize the application
-const pcosApp = new PCOSApp();
-
-// Export the app instance for global access
-window.pcosApp = pcosApp;
+function loadApplication() {
+  // Create and initialize the application
+  const pcosApp = new PCOSApp();
+  window.pcosApp = pcosApp;
+  pcosApp.init({mode:'modern'});
+}
+// Wait for DOM to be fully loaded
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => loadApplication());
+}else {
+  loadApplication();
+}

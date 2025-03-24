@@ -10,19 +10,37 @@ class MenuBar extends BaseComponent {
     this.menuStructure = this.getDefaultMenuStructure();
     this.menuItems = {}; // Store references to menu title elements
     this.activePopupMenu = null; // Reference to the active popup menu
-    
-    // Add event listener to close menus when clicking outside
+    this.messageMap[MESSAGES.MODE_CHANGE] = this.handleModeChange;
+  }
+
+  async init(options={}) {
+    super.init(options);   
+    if(options.mode) {
+      this.setMode(options.mode);
+    }
     document.addEventListener('click', this.handleDocumentClick.bind(this));
   }
 
-  render() {
-    // Clear the container
-    this.container=document.getElementById(this.containerId);
-    this.container.innerHTML = ''
-    
+  async destroy() {
+    document.removeEventListener('click', this.handleDocumentClick.bind(this));
+    if (this.menuItemsContainer) {
+      this.parentContainer.removeChild(this.menuItemsContainer);
+      this.menuItemsContainer=null;
+    }
+    if (this.modeSelectorContainer) {
+      this.parentContainer.removeChild(this.modeSelectorContainer);
+      this.modeSelectorContainer=null;
+    }
+    super.destroy();
+  }
+
+  async render(containerId) {
+    this.parentContainer=await super.render(containerId);
+    this.parentContainer.innerHTML = '';
+  
     // Create menu items container (left side)
-    const menuItemsContainer = document.createElement('div');
-    menuItemsContainer.className = 'menu-items-container';
+    this.menuItemsContainer = document.createElement('div');
+    this.menuItemsContainer.className = 'menu-items-container';
     
     // Create menu items
     Object.keys(this.menuStructure).forEach(menuName => {
@@ -38,24 +56,26 @@ class MenuBar extends BaseComponent {
       });
       
       menuItem.appendChild(menuTitle);
-      menuItemsContainer.appendChild(menuItem);
+      this.menuItemsContainer.appendChild(menuItem);
       
       // Store reference to the menu title element
       this.menuItems[menuName] = menuItem;
     });
     
     // Add menu items container to the main container
-    this.container.appendChild(menuItemsContainer);
-    
+    this.parentContainer.appendChild(this.menuItemsContainer);
+
     // Create mode selector container (right side)
-    const modeSelectorContainer = document.createElement('div');
-    modeSelectorContainer.className = 'mode-selector-container';
+    this.modeSelectorContainer = document.createElement('div');
+    this.modeSelectorContainer.className = 'mode-selector-container';
     
     // Create and add mode selector
-    this.createModeSelector(modeSelectorContainer);
+    this.createModeSelector(this.modeSelectorContainer);
     
     // Add mode selector container to the main container
-    this.container.appendChild(modeSelectorContainer);
+    this.parentContainer.appendChild(this.modeSelectorContainer);
+
+    return this.parentContainer;
   }
   
   createModeSelector(container) {
@@ -202,70 +222,42 @@ class MenuBar extends BaseComponent {
   }
   
   /**
-   * Handle message
-   * @param {string} messageType - Type of message
-   * @param {Object} messageData - Message data
+   * Handle mode change message
+   * @param {Object} data - Message data
    * @param {string} sender - Sender ID
    * @returns {boolean} - Whether the message was handled
    */
-  handleMessage(messageType, messageData, sender) {
-    console.log(`MenuBar received message: ${messageType}`, messageData);
-    
-    switch (messageType) {
-      case MESSAGES.LOAD_LAYOUT:
-        // Check if this layout is for us
-        if (messageData.data && 
-            (messageData.data.componentName === 'MenuBar')) {
-          this.applyLayout(messageData.data.layoutInfo);
-          return true;
-        }
-        break;
-        
-      case MESSAGES.MODE_CHANGE:
-        if (messageData.data && messageData.data.mode) {
-          this.setMode(messageData.data.mode);
-          return true;
-        }
-        break;        
+  async handleModeChange(data, sender) {
+    if (data.mode) {
+      this.setMode(data.mode);
+      return true;
     }
-    
-    return super.handleMessage(messageType, messageData, sender);
+    return false;
   }
   
   /**
    * Apply layout information to restore the MenuBar state
    * @param {Object} layoutInfo - Layout information for this MenuBar
    */
-  applyLayout(layoutInfo) {
-    console.log('MenuBar applying layout:', layoutInfo);
-    
-    // Set mode if specified
-    if (layoutInfo.currentMode) {
-      this.setMode(layoutInfo.currentMode);
-    }
-    
-    // Set menu structure if specified
-    if (layoutInfo.menuStructure) {
-      this.menuStructure = layoutInfo.menuStructure;
-      this.render();
-    }
+  async applyLayout(layoutInfo) {
+    await super.applyLayout(layoutInfo);
   }
   
   /**
    * Override getLayoutInfo to include MenuBar-specific information
    * @returns {Object} Layout information for this MenuBar
    */
-  getLayoutInfo() {
+  async getLayoutInfo() {
     // Get base layout information from parent class
-    const layoutInfo = super.getLayoutInfo();
+    const layoutInfo = await super.getLayoutInfo();
     
     // Add MenuBar-specific information
     layoutInfo.currentMode = this.currentMode;
     layoutInfo.menuStructure = this.menuStructure;
     
     // Get height information if available
-    if (this.container) {
-      const rect = this.container.getBoundingClientRect();
+    if (this.parentContainer) {
+      const rect = this.parentContainer.getBoundingClientRect();
       layoutInfo.height = rect.height;
     }
     

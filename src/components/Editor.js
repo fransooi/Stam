@@ -12,29 +12,41 @@ class Editor extends BaseComponent {
     this.editorInstance = null;
     this.editorView = null;
     this.modeConfig = null;
+    this.messageMap[MESSAGES.MODE_CHANGE] = this.handleModeChange;
+    this.messageMap[MESSAGES.NEW_FILE] = this.handleNewFile;
+    this.messageMap[MESSAGES.OPEN_FILE] = this.handleOpenFile;
+    this.messageMap[MESSAGES.SAVE_FILE] = this.handleSaveFile;
+    this.messageMap[MESSAGES.RUN_PROGRAM] = this.handleRunProgram;
+    this.messageMap[MESSAGES.DEBUG_PROGRAM] = this.handleDebugProgram;
+  }
+  
+  async init(options) {
+    super.init(options);
   }
 
-  async render() {
-    // Clear the container
-    this.container=document.getElementById(this.containerId);
+  async destroy() {
+    super.destroy();
+  }
+
+  async render(containerId) {
+    this.container=await super.render(containerId);
     this.container.innerHTML = '';
-    
+
     // Load mode-specific configuration
-    await this.loadModeSpecificConfig();
+    await this.loadModeSpecificConfig(this.currentMode);
     
     // Create the CodeMirror editor with mode-specific configuration
     this.createEditor();
     
+    return this.container;
   }
   
-  async loadModeSpecificConfig() {
-    try {
-      console.log(`Loading configuration for ${this.currentMode} mode`);
-      
+  async loadModeSpecificConfig(mode) {
+    try {     
       // Dynamically import the editor module for the current mode
       let ConfigModule;
       
-      switch (this.currentMode) {
+      switch (mode) {
         case 'modern':
           ConfigModule = await import('./modern/editor.js');
           break;
@@ -57,27 +69,21 @@ class Editor extends BaseComponent {
       // Create the mode-specific configuration
       this.editorInstance = new ConfigModule.default(this.container);
       
-      // Get configuration from the mode-specific instance
+      // Get configuration from the mode-specific instance  
       this.modeConfig = this.editorInstance.getConfig ? 
                         this.editorInstance.getConfig() : 
                         { extensions: [], initialDoc: '' };
-      
-      console.log(`Configuration for ${this.currentMode} mode loaded successfully`);
-      
+      return this.modeConfig;
     } catch (error) {
-      console.error(`Error loading configuration for mode ${this.currentMode}:`, error);
-      this.container.innerHTML = `<div class="error-message">Failed to load editor for ${this.currentMode} mode</div>`;
+      console.error(`Error loading configuration for mode ${mode}:`, error);
+      this.container.innerHTML = `<div class="error-message">Failed to load editor for ${mode} mode</div>`;
     }
   }
   
   createEditor() {
     try {
-      console.log('Creating CodeMirror editor with mode-specific configuration');
-      
       // Prepare container if mode requires it
-      if (this.editorInstance.prepareContainer) {
-        this.editorInstance.prepareContainer();
-      }
+      this.editorInstance.prepareContainer();
       
       // Get the parent element for the editor
       const parent = this.editorInstance.getEditorParent ? 
@@ -107,11 +113,7 @@ class Editor extends BaseComponent {
       });
       
       // Let the mode-specific instance know about the editor view
-      if (this.editorInstance.setEditorView) {
-        this.editorInstance.setEditorView(this.editorView);
-      }      
-      console.log('CodeMirror editor created successfully');
-      
+      this.editorInstance.setEditorView(this.editorView);
     } catch (error) {
       console.error('Error creating CodeMirror editor:', error);
       this.container.innerHTML = `<div class="error-message">Failed to create editor: ${error.message}</div>`;
@@ -153,153 +155,59 @@ class Editor extends BaseComponent {
     }
   }
   
-  // Common editor operations
-  
-  newFile() {
-    console.log('Creating new file');
-    // Mode-specific new file operation
+  async handleModeChange(data, sender) {
+    if (data.mode) {
+      this.setMode(data.mode);
+      return true;
+    }
+    return false;
+  }
+  async handleNewFile(data, sender) {
     if (this.editorInstance && this.editorInstance.newFile) {
       this.editorInstance.newFile();
       return;
     }
-    
-    // Default implementation
-    this.setContent('');
+    return true;
   }
-  
-  openFile() {
-    console.log('Opening file');
-    // Mode-specific open file operation
+  async handleOpenFile(data, sender) {
     if (this.editorInstance && this.editorInstance.openFile) {
       this.editorInstance.openFile();
       return;
     }
-    
-    // Default implementation
-    alert('Open file not implemented for this mode');
+    return true;
   }
-  
-  saveFile() {
-    console.log('Saving file');
-    // Mode-specific save file operation
+  async handleSaveFile(data, sender) {
     if (this.editorInstance && this.editorInstance.saveFile) {
       this.editorInstance.saveFile();
       return;
     }
-    
-    // Default implementation
-    alert('Save file not implemented for this mode');
+    return true;
   }
-  
-  runProgram() {
-    console.log('Running program');
-    // Mode-specific run operation
+  async handleRunProgram(data, sender) {
     if (this.editorInstance && this.editorInstance.runProgram) {
       this.editorInstance.runProgram();
       return;
     }
-    
-    // Default implementation
-    alert('Run program not implemented for this mode');
+    return true;
   }
-  
-  debugProgram() {
-    console.log('Debugging program');
-    // Mode-specific debug operation
+  async handleDebugProgram(data, sender) {
     if (this.editorInstance && this.editorInstance.debugProgram) {
       this.editorInstance.debugProgram();
       return;
     }
-    
-    // Default implementation
-    alert('Debug program not implemented for this mode');
+    return true;
   }
-  
-  showHelp() {
-    console.log('Showing help');
-    // Mode-specific help operation
-    if (this.editorInstance && this.editorInstance.showHelp) {
-      this.editorInstance.showHelp();
-      return;
-    }
-    
-    // Default implementation
-    alert('Help not implemented for this mode');
-  }
-   
-  /**
-   * Handle message
-   * @param {string} messageType - Type of message
-   * @param {Object} messageData - Message data
-   * @param {string} sender - Sender ID
-   * @returns {boolean} - Whether the message was handled
-   */
-  handleMessage(messageType, messageData, sender) {
-    console.log(`Editor received message: ${messageType}`, messageData);
-    
-    switch (messageType) {
-      case MESSAGES.MODE_CHANGE:
-        if (messageData.data && messageData.data.mode) {
-          this.setMode(messageData.data.mode);
-          return true;
-        }
-        break;
-        
-      case MESSAGES.NEW_FILE:
-        this.newFile();
-        return true;
-        
-      case MESSAGES.OPEN_FILE:
-        this.openFile();
-        return true;
-        
-      case MESSAGES.SAVE_FILE:
-        this.saveFile();
-        return true;
-        
-      case MESSAGES.RUN_PROGRAM:
-        this.runProgram();
-        return true;
-        
-      case MESSAGES.DEBUG_PROGRAM:
-        this.debugProgram();
-        return true;
-        
-      case MESSAGES.LOAD_LAYOUT:
-        // Check if this layout is for us
-        if (messageData.data && 
-            messageData.data.componentName === 'Editor') {
-          this.applyLayout(messageData.data.layoutInfo);
-          return true;
-        }
-        break;
-    }    
-    return super.handleMessage(messageType, messageData, sender);
-  }
-  
+
   /**
    * Apply layout information to restore the Editor state
    * @param {Object} layoutInfo - Layout information for this Editor
    */
-  applyLayout(layoutInfo) {
-    console.log('Editor applying layout:', layoutInfo);
-    
-    // Set mode if specified
-    if (layoutInfo.currentMode) {
-      this.setMode(layoutInfo.currentMode);
-    }
-    
+  async applyLayout(layoutInfo) {
+    await super.applyLayout(layoutInfo);
+
     // Set content if specified
     if (layoutInfo.content) {
       this.setContent(layoutInfo.content);
-    }
-    
-    // Apply dimensions if specified
-    if (layoutInfo.dimensions && this.container) {
-      // Only apply height, not width to allow horizontal resizing
-      if (layoutInfo.dimensions.height) {
-        this.container.style.height = `${layoutInfo.dimensions.height}px`;
-      }
     }
   }
   
@@ -307,9 +215,9 @@ class Editor extends BaseComponent {
    * Override getLayoutInfo to include Editor-specific information
    * @returns {Object} Layout information for this Editor
    */
-  getLayoutInfo() {
+  async getLayoutInfo() {
     // Get base layout information from parent class
-    const layoutInfo = super.getLayoutInfo();
+    const layoutInfo = await super.getLayoutInfo();
     
     // Add Editor-specific information
     layoutInfo.currentMode = this.currentMode;

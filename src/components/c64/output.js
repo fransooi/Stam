@@ -1,5 +1,6 @@
 // C64 mode output window implementation with the new C64 emulator
 import BaseOutput from '../interface/sidewindows/BaseOutput.js';
+import {MESSAGES} from '../../utils/BaseComponent.js';
 
 /**
  * C64OutputSideWindow - Implements the C64 emulator output window
@@ -26,21 +27,26 @@ class C64Output extends BaseOutput {
     this.statusElement = null;
     this.progressElement = null;
     
-    // We'll bind the event handlers later when they're actually used
+    this.messageMap[MESSAGES.MODE_EXIT] = this.handleModeExit;
+    this.messageMap[MESSAGES.MODE_ENTER] = this.handleModeEnter;
+    this.messageMap[MESSAGES.LAYOUT_READY] = this.handleLayoutReady;
   }
   
   /**
-   * Create the output UI specific to C64 mode
+   * Create the output UI specific to STOS mode
+   * @param {string} containerId - The ID of the container element
+   * @returns {Promise<HTMLDivElement>} The rendered output container
    */
-  createOutputUI() {
-    // Call the base implementation first to set up the container
-    super.createOutputUI();
-    
-    // Add C64-specific UI elements and styling
-    this.addC64SpecificStyles();
-    
-    // Create and add the C64 emulator
-    this.createC64Emulator();
+  async render(containerId) {
+    this.container = await super.render(containerId);
+    if (!this.storedEmulatorContainer){
+      // Add C64-specific UI elements and styling
+      this.addC64SpecificStyles();
+      
+      // Create and add the C64 emulator
+      this.createC64Emulator();
+    }
+    return this.container;
   }
   
   /**
@@ -50,26 +56,26 @@ class C64Output extends BaseOutput {
     try {
       console.log('Creating C64 emulator in output window');
       
-      if (!this.outputContainer) {
+      if (!this.container) {
         console.error('Output container not found');
         return;
       }
       
       // Clear the container
-      this.outputContainer.innerHTML = '';
+      this.container.innerHTML = '';
       
       // Set container styles to eliminate any borders or spacing
-      this.outputContainer.style.padding = '0';
-      this.outputContainer.style.margin = '0';
-      this.outputContainer.style.overflow = 'hidden';
-      this.outputContainer.style.backgroundColor = '#4040e0'; // C64 blue background
-      this.outputContainer.style.width = '100%';
-      this.outputContainer.style.position = 'relative'; // For absolute positioning of children
+      this.container.style.padding = '0';
+      this.container.style.margin = '0';
+      this.container.style.overflow = 'hidden';
+      this.container.style.backgroundColor = '#4040e0'; // C64 blue background
+      this.container.style.width = '100%';
+      this.container.style.position = 'relative'; // For absolute positioning of children
       
       // Calculate the appropriate height based on the 4:3 aspect ratio
-      const containerWidth = this.outputContainer.clientWidth;
+      const containerWidth = this.container.clientWidth;
       const aspectRatioHeight = Math.floor((containerWidth * 3) / 4);
-      this.outputContainer.style.height = `${aspectRatioHeight}px`;
+      this.container.style.height = `${aspectRatioHeight}px`;
       
       // Create a container for the C64 emulator
       this.emulatorContainer = document.createElement('div');
@@ -104,13 +110,13 @@ class C64Output extends BaseOutput {
 
       // Add a resize observer to maintain aspect ratio when window is resized
       this.setupResizeObserver();
-      this.outputContainer.appendChild(this.emulatorContainer);
+      this.container.appendChild(this.emulatorContainer);
       
       console.log('C64 emulator UI created, waiting for LAYOUT_READY message to initialize');
     } catch (error) {
       console.error('Error creating C64 emulator in output window:', error);
-      if (this.outputContainer) {
-        this.outputContainer.innerHTML = `<div class="error-message">Failed to create C64 emulator: ${error.message || 'Unknown error'}</div>`;
+      if (this.container) {
+        this.container.innerHTML = `<div class="error-message">Failed to create C64 emulator: ${error.message || 'Unknown error'}</div>`;
       }
     }
   }
@@ -320,146 +326,48 @@ class C64Output extends BaseOutput {
         }
       `;
       document.head.appendChild(style);
-      console.log('C64 output styles added to document head');
     }
   }
   
   /**
-   * Reset the C64 emulator
-   * @param {number} type - Reset type (0 for soft reset, 1 for hard reset)
-   * @returns {boolean} - Success status
+   * Handle layout ready message
+   * @param {object} data - The message data
+   * @param {string} senderId - The ID of the sender
    */
-  reset(type = 0) {
-    if (!this.emulatorInitialized || !window.Module) {
-      console.warn('Cannot reset C64 emulator - not initialized');
-      return false;
+  async handleLayoutReady(data,senderId) {
+    // Only initialize if we're in C64 mode
+    if (!this.emulatorContainer ||this.emulatorInitialized) {
+      return true;
     }
-    
-    try {
-      // Check if the js_reset function is available
-      if (typeof window.Module._js_reset === 'function') {
-        window.Module.ccall('js_reset', 'number', ['number'], [type]);
-        console.log(`C64 emulator ${type === 0 ? 'soft' : 'hard'} reset performed`);
-        return true;
-      } else {
-        console.warn('js_reset function not available');
-        return false;
-      }
-    } catch (error) {
-      console.error('Error resetting C64 emulator:', error);
-      return false;
-    }
+    this.initializeC64Emulator();
+    return true;
   }
   
   /**
-   * Load a PRG file into the C64 emulator
-   * @param {Uint8Array} data - The PRG file data as a byte array
-   * @param {string} fileName - The name of the file
-   * @param {boolean} autoStart - Whether to automatically run the program after loading
-   * @returns {boolean} - Success status
+   * Handle mode exit message
+   * @param {object} data - The message data
+   * @param {string} senderId - The ID of the sender
    */
-  loadPRG(data, fileName, autoStart = true) {
-    if (this.emulatorInitialized && window.Module) {
-      try {
-        window.Module.ccall('js_LoadFile', 'number', 
-          ['string', 'array', 'number', 'number'], 
-          [fileName, data, data.byteLength, autoStart ? 1 : 0]
-        );
-        console.log(`C64 PRG file loaded: ${fileName}, autoStart: ${autoStart}`);
-        return true;
-      } catch (error) {
-        console.error('Error loading PRG file into C64 emulator:', error);
-        return false;
-      }
-    } else {
-      console.warn('Cannot load PRG - C64 emulator not initialized');
-      return false;
+  async handleModeExit(data,senderId) {
+    // If we're leaving C64 mode, detach the emulator container
+    if (data.newMode !== 'c64' && data.oldMode === 'c64') {
+      this.detachEmulatorContainer();
     }
+    return true;
   }
   
   /**
-   * Send a command to the C64 emulator
-   * @param {string} command - The command to send
-   * @param {Object} params - Additional parameters for the command
-   * @returns {boolean} - Success status
+   * Handle mode enter message
+   * @param {object} data - The message data
+   * @param {string} senderId - The ID of the sender
    */
-  sendCommand(command, params = {}) {
-    if (!this.emulatorInitialized) {
-      console.warn('Cannot send command - C64 emulator not initialized');
-      return false;
+  async handleModeEnter(data,senderId) {
+    // If we're entering C64 mode, reattach the emulator container
+    if (data && data.newMode === 'c64') {
+      this.reattachEmulatorContainer(); 
     }
-    
-    switch (command) {
-      case 'RESET':
-        return this.reset(params.type || 0);
-      case 'RUN':
-        // For now, just reset the emulator
-        return this.reset(0);
-      case 'STOP':
-        // For now, just reset the emulator
-        return this.reset(0);
-      case 'LOAD_PRG':
-        return this.loadPRG(params.data, params.fileName, params.autoStart);
-      case 'SET_KEY':
-        if (window.Module) {
-          window.Module.ccall('js_setKey', 'number', ['number', 'number'], [params.key, params.down ? 1 : 0]);
-          return true;
-        }
-        return false;
-      case 'SET_JOYSTICK':
-        if (window.Module) {
-          window.Module.ccall('js_setJoystick', 'number', ['number', 'number'], [params.key, params.down ? 1 : 0]);
-          return true;
-        }
-        return false;
-      default:
-        console.warn(`Unknown C64 emulator command: ${command}`);
-        return false;
-    }
-  }
-  
-  /**
-   * Handle messages sent to this component
-   * @param {string} messageType - Type of message received
-   * @param {Object} messageData - Data associated with the message
-   * @param {string} senderId - ID of the component that sent the message
-   * @returns {boolean} - True if the message was handled
-   */
-  handleMessage(messageType, messageData, senderId) {
-    console.log(`C64Output received message: ${messageType}`, messageData);
-    switch(messageType) {
-      case 'LAYOUT_READY':
-        // Only initialize if we're in C64 mode
-        if (messageData && messageData.data && messageData.data.mode === 'c64') {
-          this.initializeC64Emulator();
-        }
-        return true; 
-        
-      case 'MODE_EXIT':
-        // If we're leaving C64 mode, detach the emulator container
-        if (messageData && messageData.data && messageData.data.newMode !== 'c64' && messageData.data.oldMode === 'c64') {
-          this.detachEmulatorContainer();
-        }
-        return true;
-        
-      case 'MODE_ENTER':
-        // If we're entering C64 mode, reattach the emulator container
-        if (messageData && messageData.data && messageData.data.newMode === 'c64') {
-          this.reattachEmulatorContainer();
-        }
-        return true;
-        
-      case 'RESET':
-      case 'RUN':
-      case 'STOP':
-        return this.sendCommand(messageType, messageData);
-      
-      default:
-        break;
-    }
-    
-    return super.handleMessage(messageType, messageData, senderId);
-  }
+    return true;
+  } 
   
   /**
    * Detach the emulator container from the DOM
@@ -488,7 +396,7 @@ class C64Output extends BaseOutput {
         // Reattach the stored emulator container
         if (!force)
           force=this.storedEmulatorContainer;
-        this.outputContainer.appendChild(force);
+        this.container.appendChild(force);
         this.emulatorContainer = force;
         this.storedEmulatorContainer = null;
       }
@@ -548,8 +456,8 @@ class C64Output extends BaseOutput {
    * Override getLayoutInfo to include C64-specific output information
    * @returns {Object} Layout information for this OutputSideWindow
    */
-  getLayoutInfo() {
-    const baseInfo = super.getLayoutInfo();
+  async getLayoutInfo() {
+    const baseInfo = await super.getLayoutInfo();
     
     // Add C64-specific layout information
     return {

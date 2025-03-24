@@ -38,7 +38,16 @@ export const MESSAGES = {
   WINDOW_ENLARGE: 'WINDOW_ENLARGE',
   OUTPUT_APPEND: 'OUTPUT_APPEND',
   OUTPUT_CLEAR: 'OUTPUT_CLEAR',
-  OUTPUT_UPDATE: 'OUTPUT_UPDATE'
+  OUTPUT_UPDATE: 'OUTPUT_UPDATE',
+  INIT: 'INIT',
+  RENDER: 'RENDER',
+  ADD_SIDE_WINDOW: 'ADD_SIDE_WINDOW',
+  REMOVE_SIDE_WINDOW: 'REMOVE_SIDE_WINDOW',
+  CONTENT_HEIGHT_CHANGED: 'CONTENT_HEIGHT_CHANGED',
+  SOCKET_CONNECT: 'SOCKET_CONNECT',
+  SOCKET_DISCONNECT: 'SOCKET_DISCONNECT',
+  SOCKET_SEND_MESSAGE: 'SOCKET_SEND_MESSAGE',
+  SOCKET_SET_USER_KEY: 'SOCKET_SET_USER_KEY'
 };
 
 export default class BaseComponent {
@@ -53,23 +62,24 @@ export default class BaseComponent {
     // Generate a unique ID for this component
     this.componentId = generateComponentID(componentName);
     this.componentName = componentName;
-    this.container = null;
+    this.containerId = containerId;
     this.nextContainer= null;
     this.parentId = null;
     this.root = null;
     this.parent = null;    
+    this.messageMap = {
+      [MESSAGES.INIT]: this.handleInit,
+      [MESSAGES.RENDER]: this.handleRender,
+      [MESSAGES.LOAD_LAYOUT]: this.handleLoadLayout,
+      [MESSAGES.GET_LAYOUT_INFO]: this.handleGetLayoutInfo
+    };
     if(parentId) {
       this.parentId = parentId;
       this.parent = getComponentByID(parentId);
       this.root = messageBus.getRoot();
-      this.currentMode = this.root.currentMode;
     }
     else {
       this.root = this;
-    }
-    if(containerId) {
-      this.containerId = containerId;
-      this.container = document.getElementById(containerId);
     }
     
     // Register this component with the ComponentID registry
@@ -87,6 +97,34 @@ export default class BaseComponent {
     );
     
     console.log(`Component ${componentName} created with ID: ${this.componentId}`);
+  }
+  
+  async render(containerId=null) {
+    if (!containerId&&this.containerId)
+      containerId = this.containerId;
+    if (!containerId)
+      containerId = this.getParentContainerId();
+    if (containerId)
+      return document.getElementById(containerId);
+    return null;
+  }
+
+  getParentContainerId() {
+    if (this.parent){
+      if (this.parent.container)
+        return this.parent.container.id;
+    }else{
+      return document.body.id;
+    }
+  }
+  
+  /**
+   * Initialize the component
+   * 
+   * @param {Object} options - Optional configuration options
+   */
+  async init(options = {}) {
+    this.options = options; 
   }
   
   /**
@@ -116,7 +154,7 @@ export default class BaseComponent {
   registerComponentInTree(componentId, parentId = null) {
     messageBus.registerComponentInTree(componentId, parentId);
   }
-  
+
   /**
    * Handle incoming messages (to be overridden by subclasses)
    * 
@@ -125,21 +163,38 @@ export default class BaseComponent {
    * @param {string} senderId - ID of the component that sent the message
    * @returns {boolean} - True if the message was handled
    */
-  handleMessage(messageType, messageData, senderId) {
-    //console.log(`${this.componentId} received message: ${messageType}`, messageData);
-    
-    // Handle layout information request
-    if (messageType === MESSAGES.GET_LAYOUT_INFO) {
-      // Get layout information for this component
-      const layoutInfo = this.getLayoutInfo();
-      
-      // Send layout information back to the sender
-      this.sendMessageTo(senderId, MESSAGES.LAYOUT_INFO, layoutInfo);
-      return true;
+  async handleMessage(messageType, messageData, senderId) {
+    if (this.messageMap[messageType])
+    {
+      console.log(`- ${messageType} received by ${this.componentId}, sent by ${senderId}`/*,messageData.data*/);
+      return await this.messageMap[messageType].call(this,messageData.data,senderId);
     }
+    return false;
+  }
+  async handleInit(data, senderId) {
+    // Initialize the component
+    await this.init(data);
+    return true;
+  }
+  async handleRender(data, senderId) {
+    // Handle render request
+    this.container = await this.render();
+    return true;
+  }
+  async handleGetLayoutInfo(data, senderId) {
+    // Get layout information for this component
+    const layoutInfo = await this.getLayoutInfo();
     
-    // Subclasses should override this method
-    return false; // Not handled by default
+    // Send layout information back to the sender
+    this.sendMessageTo(senderId, MESSAGES.LAYOUT_INFO, layoutInfo);
+    return true;
+  }
+  async handleLoadLayout(layout, senderId) {
+    var thisLayout=layout.componentTypes[ this.componentName ];
+    if (thisLayout){
+      await this.applyLayout(thisLayout);
+    }
+    return true;
   }
   
   /**
@@ -148,7 +203,7 @@ export default class BaseComponent {
    * 
    * @returns {Object} - Layout information for this component
    */
-  getLayoutInfo() {
+  async getLayoutInfo() {
     // Base layout information that all components should provide
     const layoutInfo = {
       componentId: this.componentId,
@@ -156,8 +211,8 @@ export default class BaseComponent {
     };
     
     // If the component has position and size information, include it
-    if (this.element) {
-      const rect = this.element.getBoundingClientRect();
+    if (this.layoutContainer) {
+      const rect = this.layoutContainer.getBoundingClientRect();
       layoutInfo.position = {
         x: rect.left,
         y: rect.top
@@ -169,11 +224,20 @@ export default class BaseComponent {
     }
     
     // If the component has visibility information, include it
-    if (this.element) {
-      layoutInfo.visible = this.element.style.display !== 'none';
+    if (this.layoutContainer && this.layoutContainer.style) {
+      layoutInfo.visible = this.layoutContainer.style.display !== 'none';
     }
     
     return layoutInfo;
+  }
+  async applyLayout(layout) {
+    if (this.layoutContainer) {
+      this.layoutContainer.style.display = layout.visible ? 'block' : 'none';
+      this.layoutContainer.style.left = layout.position.x + 'px';
+      this.layoutContainer.style.top = layout.position.y + 'px';
+      this.layoutContainer.style.width = layout.size.width + 'px';
+      this.layoutContainer.style.height = layout.size.height + 'px';
+    }
   }
   
   /**
@@ -223,15 +287,17 @@ export default class BaseComponent {
   
   /**
    * Broadcast message to all components in the component tree, excluding the sender
+   * starting from the root.
    * This traverses the entire component tree and sends the message to each component
-   * Use this for messages that need to reach all components regardless of their position in the tree
+   * Use this for messages that need to reach all components regardless of their 
+   * position in the tree
    * 
    * @param {string} messageType - Type of message to send
    * @param {Object} messageData - Data to send with the message
    * @returns {number} - Number of components that received the message
    */
-  broadcast(messageType, messageData = {}) {
-    return messageBus.broadcast(this.componentId, {
+  async broadcast(messageType, messageData = {}) {
+    return await messageBus.broadcast(this.componentId, {
       type: messageType,
       data: messageData
     });
@@ -244,8 +310,8 @@ export default class BaseComponent {
    * @param {Object} messageData - Data to send with the message
    * @returns {number} - Number of components that received the message
    */
-  broadcastUp(messageType, messageData = {}) {
-    return messageBus.broadcastUp(this.componentId, {
+  async broadcastUp(messageType, messageData = {}) {
+    return await messageBus.broadcastUp(this.componentId, {
       type: messageType,
       data: messageData
     });
@@ -286,8 +352,9 @@ export default class BaseComponent {
    */
   sendMessageTo(targetComponentId, messageType, messageData = {}) {
     return messageBus.sendMessage(targetComponentId, messageType, {
-      ...messageData,
-      sender: this.componentId
+      type: messageType,
+      data: messageData,
+      from: this.componentId
     }, this.componentId);
   }
   
@@ -316,7 +383,7 @@ export default class BaseComponent {
   /**
    * Clean up resources when component is destroyed
    */
-  destroy() {
+  async destroy() {
     console.log(`Destroying component: ${this.componentId}`);
     
     // Unregister from message bus

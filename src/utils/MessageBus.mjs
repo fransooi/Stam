@@ -13,7 +13,7 @@ class MessageBus {
   constructor() {
     this.handlers = {};
     this.globalHandlers = [];
-    this.addressedHandlers = new Map(); // Map of componentID to handler functions
+    this.addressedHandlers = new Map(); // Map of componentId to handler functions
     this.componentRegistry = {}; // Registry of component relationships (parent-child)
   }
 
@@ -75,23 +75,23 @@ class MessageBus {
   /**
    * Register a component to receive addressed messages
    * 
-   * @param {string} componentID - The unique ID of the component
+   * @param {string} componentId - The unique ID of the component
    * @param {Function} handler - The handler function for addressed messages
    * @param {Object} context - The context in which to call the handler
    * @returns {Function} - A function to unregister the handler
    */
-  registerAddressedHandler(componentID, handler, context) {
-    if (!componentID) {
+  registerAddressedHandler(componentId, handler, context) {
+    if (!componentId) {
       throw new Error('Component ID is required for addressed message handling');
     }
     
     const handlerInfo = { handler, context };
-    this.addressedHandlers.set(componentID, handlerInfo);
+    this.addressedHandlers.set(componentId, handlerInfo);
     
     // Return a function to unregister this handler
     return () => {
-      if (this.addressedHandlers.has(componentID)) {
-        this.addressedHandlers.delete(componentID);
+      if (this.addressedHandlers.has(componentId)) {
+        this.addressedHandlers.delete(componentId);
       }
     };
   }
@@ -148,39 +148,37 @@ class MessageBus {
    * @param {string} senderId - The ID of the component that sent the message
    * @returns {boolean} - True if the message was delivered to the target
    */
-  sendMessage(targetID, message, data = {}, senderId = null) {
+  async sendMessage(targetID, message, data = {}, senderId = null) {
     // Check if we have a handler for this component ID
     if (this.addressedHandlers.has(targetID)) {
       const { handler, context } = this.addressedHandlers.get(targetID);
       
       // Call the handler with the message
-      handler.call(context, message, data, senderId);
-      return true;
-    }
-    
+      return await handler.call(context, message, data, senderId);
+    }    
     return false;
   }
   
   /**
    * Broadcast a message to all registered handlers without traversing the component tree
    */
-  broadcastToHandlers(message, data = {}, senderId = null, excludeIDs = []) {
+  async broadcastToHandlers(message, data = {}, senderId = null, excludeIDs = []) {
     let deliveryCount = 0;
     
     // Convert excludeIDs to a Set for faster lookups
     const excludeSet = new Set(excludeIDs);
     
     // Send to all registered addressed handlers
-    for (const [componentID, handlerInfo] of this.addressedHandlers.entries()) {
+    for (const [componentId, handlerInfo] of this.addressedHandlers.entries()) {
       // Skip excluded components
-      if (excludeSet.has(componentID)) {
+      if (excludeSet.has(componentId)) {
         continue;
       }
       
       const { handler, context } = handlerInfo;
       
       // Call the handler with the message
-      handler.call(context, message, data, senderId);
+      await handler.call(context, message, data, senderId);
       deliveryCount++;
     }
     
@@ -189,31 +187,44 @@ class MessageBus {
   
   
   /**
-   * Broadcast a message to all components in the component tree, excluding the sender
+   * Broadcast a message to all components in the component tree starting from the root, 
+   * excluding the sender
    */
-  broadcast(fromComponentId, message) {
-    let deliveryCount = 0;
-    
+  async broadcast(fromComponentId,message) {
+    return await this.broadcastUp(null,message,function(id)
+    {
+      return id !== fromComponentId;
+    });
+  }
+
+  /**
+   * Send message up to all branches (from a node to all its children)
+   * 
+   * @param {string} fromComponentId - The source component ID
+   * @param {Object} message - The message to send
+   * @param {Function} includeCallback - Callback to determine if a component should be included
+   * @returns {Promise<number>} - Number of components that received the message
+   */
+  async broadcastUp(fromComponentId,message,includeCallback=null) {       
     // Find the root component (PCOSApp)
-    let rootId = null;
-    for (const id in this.componentRegistry) {
-      if (!this.componentRegistry[id].parentId) {
-        rootId = id;
-        break;
-      }
-    }
-    
-    if (!rootId) return 0;
-    
+    if (!fromComponentId) 
+      fromComponentId=this.root.componentId;    
+
     // Send to all components starting from the root, excluding the sender
-    const sendToAllExceptSender = (componentId) => {
-      
+    const self = this;
+    const sendToAllExceptSender = async function(componentId)
+    {      
       let count = 0;
       
       // Send to this component
-      if (componentId !== fromComponentId) 
+      var toSend;
+      if(includeCallback)
+        toSend=includeCallback(componentId);
+      else
+        toSend=(componentId !== fromComponentId);
+      if (toSend) 
       {
-        const delivered = this.sendMessage(componentId, message.type || 'MESSAGE', {
+        const delivered = await self.sendMessage(componentId, message.type || 'MESSAGE', {
           ...message,
           from: fromComponentId
         }, fromComponentId);
@@ -224,18 +235,17 @@ class MessageBus {
       }
       
       // Send to all children recursively
-      const component = this.componentRegistry[componentId];
-      if (component && component.children.length) 
-        component.children.forEach(
-          childId => { count += sendToAllExceptSender(childId); }
-        );      
-        
+      const component = self.componentRegistry[componentId];
+      if (component && component.children.length) {
+        for(var child=0; child<component.children.length; child++)
+        {
+          count += await sendToAllExceptSender(component.children[child]);
+        }
+      }
       return count;
-    };
-    
-    deliveryCount = sendToAllExceptSender(rootId);
-    
-    return deliveryCount;
+    };    
+
+    return await sendToAllExceptSender(fromComponentId);
   };
   
   /**
@@ -489,36 +499,6 @@ class MessageBus {
   };
   
   /**
-   * Send message up to all branches (from a node to all its children)
-   * 
-   * @param {string} fromComponentId - The source component ID
-   * @param {Object} message - The message to send
-   * @returns {number} - Number of components that received the message
-   */
-  broadcastUp(fromComponentId, message) {
-    const component = this.componentRegistry[fromComponentId];
-    if (!component || !component.children.length) return 0;
-    
-    let deliveryCount = 0;
-    
-    component.children.forEach(childId => {
-      const delivered = this.sendMessage(childId, message.type || 'MESSAGE', {
-        ...message,
-        from: fromComponentId,
-        direction: 'up'
-      }, fromComponentId);
-      
-      if (delivered) {
-        deliveryCount++;
-        // Continue up the tree toward the branches
-        deliveryCount += this.broadcastUp(childId, message);
-      }
-    });
-    
-    return deliveryCount;
-  };
-  
-  /**
    * Send message via a specific route
    * 
    * @param {string} fromComponentId - The source component ID
@@ -550,7 +530,7 @@ class MessageBus {
     const matchingComponents = [];
     
     // Iterate through all registered components
-    for (const [componentID, component] of this.addressedHandlers.entries()) {
+    for (const [componentId, component] of this.addressedHandlers.entries()) {
       // Get the actual component instance from the registry
       const componentInstance = component.context;
       
@@ -559,7 +539,7 @@ class MessageBus {
       if (componentInstance && 
           (componentInstance.constructor.name === className || 
            componentInstance.componentName === className)) {
-        matchingComponents.push(componentID);
+        matchingComponents.push(componentId);
       }
     }
     
@@ -581,8 +561,8 @@ class MessageBus {
     let deliveryCount = 0;
     
     // Send the message to each matching component
-    for (const componentID of targetComponents) {
-      const delivered = this.sendMessage(componentID, action, {
+    for (const componentId of targetComponents) {
+      const delivered = this.sendMessage(componentId, action, {
         ...messageData,
         forwarded: true,
         originalSender: senderId

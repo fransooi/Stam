@@ -3,7 +3,7 @@ import ClipWindow from './ClipWindow.js';
 
 class YoutubeClipWindow extends ClipWindow {
   constructor(initialUrl = '') {
-    super('youtube', 'YouTube', initialUrl);
+    super('youtube', 'YouTube', initialUrl || 'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
   }
   
   /**
@@ -85,7 +85,7 @@ class YoutubeClipWindow extends ClipWindow {
    */
   setUrl(url) {
     if (!url) {
-      return;
+      url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
     }
     
     // Store the original URL
@@ -95,8 +95,9 @@ class YoutubeClipWindow extends ClipWindow {
     const videoId = this.getYoutubeVideoId(url);
     
     if (videoId) {
-      // Create the embed URL
-      this.url = `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0`;
+      // Create the embed URL with proper parameters according to YouTube API docs
+      const origin = encodeURIComponent(window.location.origin);
+      this.url = `https://www.youtube.com/embed/${videoId}?enablejsapi=1&origin=${origin}&rel=0&modestbranding=1`;
       
       // Update the iframe if it exists
       if (this.iframe) {

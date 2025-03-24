@@ -100,52 +100,23 @@ class C64Editor {
   // Methods that can be called from the icon bar
   runProgram() {
     console.log('C64: Running program');
-    // In the future, this will send the code to the emulator
-    // For now, just log the code
-    console.log('Code to run:', this.getContent());
-    
-    // Broadcast a message that could be picked up by the output window
-    if (window.messageBus) {
-      window.messageBus.broadcast('C64_RUN_PROGRAM', {
-        code: this.getContent()
-      }, 'c64-editor');
-    }
   }
   
   stopProgram() {
     console.log('C64: Stopping program');
-    // In the future, this will send a stop command to the emulator
-    
-    // Broadcast a message that could be picked up by the output window
-    if (window.messageBus) {
-      window.messageBus.broadcast('C64_STOP_PROGRAM', {}, 'c64-editor');
-    }
   }
   
   resetEmulator() {
     console.log('C64: Resetting emulator');
-    // In the future, this will send a reset command to the emulator
-    
-    // Broadcast a message that could be picked up by the output window
-    if (window.messageBus) {
-      window.messageBus.broadcast('C64_RESET_EMULATOR', {}, 'c64-editor');
-    }
   }
   
   loadProgram(program) {
     console.log('C64: Loading program', program);
-    // In the future, this will load a program into the editor
-    
-    // For now, just set some sample content
     this.setContent('10 REM LOADED PROGRAM\n20 PRINT "PROGRAM LOADED!"\n30 END');
   }
   
   saveProgram() {
     console.log('C64: Saving program');
-    // In the future, this will save the program
-    
-    // For now, just log the code
-    console.log('Code to save:', this.getContent());
   }
   
   // Additional methods to match the interface expected by the main Editor component

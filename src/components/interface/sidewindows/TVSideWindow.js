@@ -5,6 +5,7 @@ import SpotifyClipWindow from './clips/SpotifyClipWindow.js';
 import BrowserClipWindow from './clips/BrowserClipWindow.js';
 import PlaylistManager from './playlists/PlaylistManager.js';
 import PlaylistEditorDialog from './playlists/PlaylistEditorDialog.js';
+import { MESSAGES } from '../../../utils/BaseComponent.js';
 
 class TVSideWindow extends SideWindow {
   constructor(parentId, containerId, initialHeight = 300, initialUrl = '') {
@@ -33,17 +34,36 @@ class TVSideWindow extends SideWindow {
     
     this.clipSelector = null;
     this.playlistControls = null;
+    this.messageMap[MESSAGES.CONTENT_HEIGHT_CHANGED] = this.handleContentHeightChanged;
+  }
+
+   /**
+   * Initialize the TV side window
+   * @returns {Promise<void>}
+   */
+  async init() {
+    await super.init();
   }
   
+  /**
+   * Destroy the TV side window
+   * @returns {Promise<void>}
+   */
+  async destroy() {
+    if(this.clipContainer) {
+      this.content.removeChild(this.clipContainer);
+    }
+    await super.destroy();
+  }
+
   /**
    * Override render to add custom buttons and set up content resize listener
    * @param {HTMLElement} parentContainer - The parent container
    * @returns {HTMLElement} - The rendered window element
    */
-  render() {
-    // Call parent render method
-    const container = super.render();
-    
+  async render(containerId) {
+    await super.render(containerId);
+
     // Add clip selector button to the header
     this.addClipSelectorButton();
     
@@ -51,38 +71,17 @@ class TVSideWindow extends SideWindow {
     this.addEditButton();
     
     // Initialize the current clip
-    this.clips[this.currentClipType].render(this.content);
-    
-    // Add event listener for content height changes
-    this.content.addEventListener('contentHeightChanged', (event) => {
-      this.handleContentHeightChanged(event.detail.height);
-    });
-    
-    // Initial content height update
-    this.updateContentHeight();
-    
-    // Force an immediate resize after a short delay to ensure proper rendering
-    setTimeout(() => {
-      // Get the current container height and recalculate
-      if (this.container && this.header && !this.minimized) {
-        const containerHeight = this.container.offsetHeight;
-        const headerHeight = this.header.offsetHeight;
-        const availableHeight = containerHeight - headerHeight;
-        
-        if (availableHeight > 0) {
-          this.handleContentHeightChanged(availableHeight);
-        }
-      }
-    }, 100);
-    
-    return container;
+    this.clipContainer = await this.clips[this.currentClipType].render(this.content);
+    this.content.appendChild(this.clipContainer);
+   
+    return this.container;
   }
   
   /**
    * Handle content height changes
    * @param {number} height - New content height
    */
-  handleContentHeightChanged(height) {
+  handleContentHeightChanged(height,senderId) {
     // Update the current clip's iframe or content size
     const currentClip = this.clips[this.currentClipType];
     if (currentClip && typeof currentClip.resize === 'function') {
@@ -441,7 +440,7 @@ class TVSideWindow extends SideWindow {
       this.removePlaylistControls();
     }
   }
-  
+
   /**
    * Play the current clip in the playlist
    */
@@ -458,14 +457,8 @@ class TVSideWindow extends SideWindow {
         this.currentClipType = currentClip.clipType;
       }
       
-      // Clear content
-      this.content.innerHTML = '';
-      
-      // Initialize the clip content
-      this.clips[this.currentClipType].render(this.content);
-      
       // Set the URL after the content is initialized
-      this.setUrl(currentClip.url);
+      this.clips[this.currentClipType].setUrl(currentClip.url);
       
       // Add playlist controls
       this.addPlaylistControls();
@@ -583,9 +576,9 @@ class TVSideWindow extends SideWindow {
    * Override getLayoutInfo to include TVSideWindow-specific information
    * @returns {Object} Layout information for this TVSideWindow
    */
-  getLayoutInfo() {
+  async getLayoutInfo() {
     // Get base layout information from parent class
-    const layoutInfo = super.getLayoutInfo();
+    const layoutInfo = await super.getLayoutInfo();
     
     // Add TVSideWindow-specific information
     layoutInfo.currentClipType = this.currentClipType;
@@ -648,13 +641,8 @@ class TVSideWindow extends SideWindow {
    * Apply layout information to restore the TVSideWindow state
    * @param {Object} layoutInfo - Layout information for this TVSideWindow
    */
-  applyLayout(layoutInfo) {
-    console.log('TVSideWindow applying layout:', layoutInfo);
-    
-    // Call parent applyLayout if it exists
-    if (super.applyLayout) {
-      super.applyLayout(layoutInfo);
-    }
+  async applyLayout(layoutInfo) {   
+    await super.applyLayout(layoutInfo);
     
     // Set current clip type if specified
     if (layoutInfo.currentClipType && this.clips[layoutInfo.currentClipType]) {

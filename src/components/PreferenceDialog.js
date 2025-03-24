@@ -13,8 +13,23 @@ class PreferenceDialog extends BaseComponent {
    * @param {string} parentId - ID of the parent component
    */
   constructor(parentId = null,containerId) {
-    super('PreferenceDialog', parentId,containerId);
-        
+    super('PreferenceDialog', parentId,containerId);      
+    this.messageMap[MESSAGES.SHOW_PREFERENCES] = this.handleShowPreferences;
+    this.messageMap[MESSAGES.HIDE_PREFERENCES] = this.handleHidePreferences;
+  }
+
+  async init(options = {}) {
+    await super.init(options);
+  }
+  
+  async destroy() {
+    await super.destroy();
+  }
+  
+  async render(containerId)
+  {
+    await super.render(containerId);
+
     // Create the dialog element
     this.element = document.createElement('div');
     this.element.className = 'preference-dialog';
@@ -31,17 +46,6 @@ class PreferenceDialog extends BaseComponent {
     this.element.style.minWidth = '400px';
     this.element.style.zIndex = '1000';
     
-    // Create the dialog content
-    this.createDialogContent();
-    
-    // Add the dialog to the document body
-    document.body.appendChild(this.element);
-  }
-  
-  /**
-   * Create the dialog content
-   */
-  createDialogContent() {
     // Create dialog header
     const header = document.createElement('div');
     header.className = 'preference-dialog-header';
@@ -100,8 +104,11 @@ class PreferenceDialog extends BaseComponent {
     footer.appendChild(cancelButton);
     footer.appendChild(okButton);
     this.element.appendChild(footer);
+    
+    // Add the dialog to the document body
+    document.body.appendChild(this.element);
   }
-  
+
   /**
    * Handle OK button click
    */
@@ -131,33 +138,15 @@ class PreferenceDialog extends BaseComponent {
     this.element.style.display = 'none';
   }
   
-  /**
-   * Handle incoming messages
-   * @param {string} messageType - Type of message received
-   * @param {Object} messageData - Data associated with the message
-   * @param {Object} sender - Component that sent the message
-   * @returns {boolean} - True if the message was handled
-   */
-  handleMessage(messageType, messageData, sender) {
-    console.log(`PreferenceDialog received message: ${messageType}`, messageData);
-    
-    // Handle show preferences message
-    if (messageType === MESSAGES.SHOW_PREFERENCES) {
-      this.show();
-      return true;
-    }
-    
-    // Handle hide preferences message
-    if (messageType === MESSAGES.HIDE_PREFERENCES) {
-      this.hide();
-      return true;
-    }
-    
-    // Pass to parent handler if not handled here
-    return super.handleMessage(messageType, messageData, sender);
+  handleShowPreferences() {
+    this.show();
+    return true;
   }
-
   
+  handleHidePreferences() {
+    this.hide();
+    return true;
+  }  
 }
 
 export default PreferenceDialog;

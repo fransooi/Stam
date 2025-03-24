@@ -7,27 +7,38 @@ class StatusBar extends BaseComponent {
     // Initialize the base component with component name
     super('StatusBar', parentId, containerId);    
     this.status = 'Ready';
+    this.messageMap[MESSAGES.UPDATE_STATUS] = this.handleUpdateStatus;
+    this.messageMap[MESSAGES.SHOW_TEMPORARY_STATUS] = this.handleShowTemporaryStatus; 
   }
 
-  render() {
-    // Clear the container
-    this.container=document.getElementById(this.containerId);
-    this.container.innerHTML = '';
-    
+  async init() {
+    await super.init();
+  }
+  async destroy() {
+    if (this.statusText)
+      this.statusText.remove();
+    await super.destroy();
+  }
+  async render(containerId) {
+    this.parentContainer=await super.render(containerId);
+    this.parentContainer.innerHTML = '';
+   
     // Create status text element
-    const statusText = document.createElement('div');
-    statusText.className = 'status-text';
-    statusText.textContent = this.status;
+    this.statusText = document.createElement('div');
+    this.statusText.className = 'status-text';
+    this.statusText.textContent = this.status;
     
-    // Append to container
-    this.container.appendChild(statusText);
+    // Append to parent container
+    this.parentContainer.appendChild(this.statusText);
+
+    // Returns the current container
+    return this.parentContainer;
   }
   
   setStatus(text) {
     this.status = text;
-    const statusText = this.container.querySelector('.status-text');
-    if (statusText) {
-      statusText.textContent = text;
+    if (this.statusText) {
+      this.statusText.textContent = text;
     }
   }
   
@@ -45,59 +56,43 @@ class StatusBar extends BaseComponent {
   }
   
   /**
-   * Handle message
-   * @param {string} messageType - Type of message
-   * @param {Object} messageData - Message data
+   * Handle update status message
+   * @param {Object} data - Message data
    * @param {string} sender - Sender ID
    * @returns {boolean} - Whether the message was handled
    */
-  handleMessage(messageType, messageData, sender) {
-    console.log(`StatusBar received message: ${messageType}`, messageData);
-    
-    switch (messageType) {
-      case MESSAGES.UPDATE_STATUS:
-        if (messageData.data && messageData.data.text) {
-          this.setStatus(messageData.data.text);
-          return true;
-        }
-        break;
-        
-      case MESSAGES.SHOW_TEMPORARY_STATUS:
-        if (messageData.data && messageData.data.text) {
-          const duration = messageData.data.duration || 3000;
-          this.showTemporaryStatus(messageData.data.text, duration);
-          return true;
-        }
-        break;
-        
-      case MESSAGES.LOAD_LAYOUT:
-        // Check if this layout is for us
-        if (messageData.data && 
-            messageData.data.componentName === 'StatusBar') {
-          this.applyLayout(messageData.data.layoutInfo);
-          return true;
-        }
-        break;
+  handleUpdateStatus(data, sender) {
+    if (data.text) {
+      this.setStatus(data.text);
+      return true;
     }
-    
-    return super.handleMessage(messageType, messageData, sender);
+    return false;
   }
+  
+  /**
+   * Handle show temporary status message
+   * @param {Object} data - Message data
+   * @param {string} sender - Sender ID
+   * @returns {boolean} - Whether the message was handled
+   */
+  async handleShowTemporaryStatus(data, sender) {
+    if (data.text) {
+      const duration = data.duration || 3000;
+      this.showTemporaryStatus(data.text, duration);
+      return true;
+    }
+    return false;
+  }
+  
   
   /**
    * Apply layout information to restore the StatusBar state
    * @param {Object} layoutInfo - Layout information for this StatusBar
    */
-  applyLayout(layoutInfo) {
-    console.log('StatusBar applying layout:', layoutInfo);
-    
+  async applyLayout(layoutInfo) {
     // Set status if specified
     if (layoutInfo.status) {
       this.setStatus(layoutInfo.status);
-    }
-    
-    // Apply height if specified
-    if (layoutInfo.height && this.container) {
-      this.container.style.height = `${layoutInfo.height}px`;
     }
   }
   
@@ -105,16 +100,16 @@ class StatusBar extends BaseComponent {
    * Override getLayoutInfo to include StatusBar-specific information
    * @returns {Object} Layout information for this StatusBar
    */
-  getLayoutInfo() {
+  async getLayoutInfo() {
     // Get base layout information from parent class
-    const layoutInfo = super.getLayoutInfo();
+    const layoutInfo = await super.getLayoutInfo();
     
     // Add StatusBar-specific information
     layoutInfo.status = this.status;
     
     // Get height information if available
-    if (this.container) {
-      const rect = this.container.getBoundingClientRect();
+    if (this.parentContainer) {
+      const rect = this.parentContainer.getBoundingClientRect();
       layoutInfo.height = rect.height;
     }
     

@@ -40,56 +40,32 @@ class AMOS13Icons extends BaseComponent{
       { key: 'F19', action: 'Key 19' }
     ];
     
+  }
+  
+  async init(options) {
+    super.init(options);
     // Add event listeners for shift key
     document.addEventListener('keydown', this.handleKeyDown.bind(this));
     document.addEventListener('keyup', this.handleKeyUp.bind(this));
   }
-  
-  handleKeyDown(event) {
-    if (event.key === 'Shift' && !this.shiftPressed) {
-      this.shiftPressed = true;
-      this.updateFunctionKeys();
+  async destroy() {
+    super.destroy();
+    if(this.amosIconBar)
+    {
+      document.removeEventListener('keydown', this.handleKeyDown.bind(this));
+      document.removeEventListener('keyup', this.handleKeyUp.bind(this));
+      this.parentContainer.removeChild(this.amosIconBar);
+      this.amosIconBar=null;
     }
   }
-  
-  handleKeyUp(event) {
-    if (event.key === 'Shift' && this.shiftPressed) {
-      this.shiftPressed = false;
-      this.updateFunctionKeys();
-    }
-  }
-  
-  updateFunctionKeys() {
-    const functionKeysRows = document.querySelectorAll('.amos-function-keys-row');
-    if (functionKeysRows.length !== 2) return;
-    
-    const row1 = functionKeysRows[0];
-    const row2 = functionKeysRows[1];
-    
-    // Clear existing keys
-    row1.innerHTML = '';
-    row2.innerHTML = '';
-    
-    // Add the appropriate keys based on shift state
-    const keysRow1 = this.shiftPressed ? this.shiftFunctionKeysRow1 : this.functionKeysRow1;
-    const keysRow2 = this.shiftPressed ? this.shiftFunctionKeysRow2 : this.functionKeysRow2;
-    
-    keysRow1.forEach(keyInfo => {
-      this.addFunctionKey(keyInfo.key, keyInfo.action, row1);
-    });
-    
-    keysRow2.forEach(keyInfo => {
-      this.addFunctionKey(keyInfo.key, keyInfo.action, row2);
-    });
-  }
+  async render(containerId) {
+    this.parentContainer=await super.render(containerId);
+    this.parentContainer.innerHTML = '';
+    this.layoutContainer=this.parentContainer;
 
-  render() {
-    // Clear the container
-    this.container.innerHTML = '';
-    
     // Create main container for AMOS icon bar
-    const amosIconBar = document.createElement('div');
-    amosIconBar.className = 'amos-icon-bar';
+    this.amosIconBar = document.createElement('div');
+    this.amosIconBar.className = 'amos-icon-bar';
     
     // Create top section container (logo + function keys)
     const topSection = document.createElement('div');
@@ -146,16 +122,55 @@ class AMOS13Icons extends BaseComponent{
     infoArea.textContent = 'AMOS 1.3 - Ready';
     
     // Add all sections to the main container
-    amosIconBar.appendChild(topSection);
-    amosIconBar.appendChild(infoArea);
+    this.amosIconBar.appendChild(topSection);
+    this.amosIconBar.appendChild(infoArea);
     
     // Add the main container to the DOM
-    this.container.appendChild(amosIconBar);
+    this.parentContainer.appendChild(this.amosIconBar);
     
     // Remove any inline styles that might have been added previously
     const oldStyles = document.querySelectorAll('style[data-amos-style]');
     oldStyles.forEach(style => style.remove());
   }
+  
+  handleKeyDown(event) {
+    if (event.key === 'Shift' && !this.shiftPressed) {
+      this.shiftPressed = true;
+      this.updateFunctionKeys();
+    }
+  }
+  
+  handleKeyUp(event) {
+    if (event.key === 'Shift' && this.shiftPressed) {
+      this.shiftPressed = false;
+      this.updateFunctionKeys();
+    }
+  }
+  
+  updateFunctionKeys() {
+    const functionKeysRows = document.querySelectorAll('.amos-function-keys-row');
+    if (functionKeysRows.length !== 2) return;
+    
+    const row1 = functionKeysRows[0];
+    const row2 = functionKeysRows[1];
+    
+    // Clear existing keys
+    row1.innerHTML = '';
+    row2.innerHTML = '';
+    
+    // Add the appropriate keys based on shift state
+    const keysRow1 = this.shiftPressed ? this.shiftFunctionKeysRow1 : this.functionKeysRow1;
+    const keysRow2 = this.shiftPressed ? this.shiftFunctionKeysRow2 : this.functionKeysRow2;
+    
+    keysRow1.forEach(keyInfo => {
+      this.addFunctionKey(keyInfo.key, keyInfo.action, row1);
+    });
+    
+    keysRow2.forEach(keyInfo => {
+      this.addFunctionKey(keyInfo.key, keyInfo.action, row2);
+    });
+  }
+
   
   addFunctionKey(key, action, parent) {
     const button = document.createElement('button');

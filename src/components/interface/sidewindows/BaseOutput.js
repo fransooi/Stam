@@ -7,85 +7,70 @@ class BaseOutput extends BaseComponent {
     super(componentName,parentId, initialHeight);
     this.outputContent = '';
     this.outputContainer = null;
+    this.messageMap[MESSAGES.CONTENT_HEIGHT_CHANGED] = this.handleContentHeightChanged;
   }
   
+  /**
+   * Initialize the component
+   * @param {Object} options - Initialization options
+   */
+  async init(options = {}) {
+    super.init(options);
+  }
+  
+  /**
+   * Destroy the component
+   */
+  async destroy() {
+    super.destroy();
+  }
+
   /**
    * Override render to set up content and event listeners
    * @param {HTMLElement} parentContainer - The parent container
    * @returns {HTMLElement} - The rendered window element
    */
-  render(parentContainer) {
-    // Call parent render method
-    super.render(this.container);
+  async render(containerId) {       
+    var container = await super.render(containerId);
+    this.header = container.querySelector('.side-window-header');
+    this.container = container.querySelector('.side-window-content');
+
+    // Add basic styling
+    this.addStyles();
+  
+    // Clear existing content if content exists
+    if (this.container) {
+      this.container.innerHTML = '';
+    } else {
+      console.error('Content element not found');
+    }
     
-    // Create the output UI
-    this.createOutputUI();
+    // Set the content to fill available space without scrollbars
+    if (this.container) {
+      this.container.style.overflow = 'hidden';
+      this.container.style.boxSizing = 'border-box';
+      this.container.style.height = '100%';
+      this.container.style.display = 'flex';
+      this.container.style.flexDirection = 'column';
+      
+      // Add bottom padding to prevent content from being cut off by resize handle
+      this.container.style.paddingBottom = '32px';
+    }
     
-    // Add event listener for content height changes
-    this.content.addEventListener('contentHeightChanged', (event) => {
-      this.handleContentHeightChanged(event.detail.height);
-    });
-    
-    // Initial content height update
-    this.updateContentHeight();
-    
-    return container;
+    return this.container;
   }
   
   /**
    * Handle content height changes
-   * @param {number} height - New content height
+   * @param {Object} data - Message data containing the new height
+   * @param {string} senderId - ID of the sender component
    */
-  handleContentHeightChanged(height) {
+  handleContentHeightChanged(data, senderId) {
+    const height = data.height;
     // Update the output container height
-    if (this.outputContainer) {
-      this.outputContainer.style.height = `${height}px`;
-      this.outputContainer.style.maxHeight = `${height}px`;
-    }
-  }
-  
-  /**
-   * Create the output UI
-   */
-  createOutputUI() {
-    console.log('BaseOutput.createOutputUI called');
-    
-    // Create the output container if it doesn't exist
-    if (!this.outputContainer) {
-      this.outputContainer = document.createElement('div');
-      this.outputContainer.className = 'output-container';
-      this.outputContainer.id = 'output-window';
-      this.outputContainer.style.width = '90%'; 
-      this.outputContainer.style.height = '100%';
-      this.outputContainer.style.overflow = 'hidden'; 
-      this.outputContainer.style.boxSizing = 'border-box';
-      this.outputContainer.style.margin = '0 auto'; 
-      
-      // Add basic styling
-      this.addStyles();
-    }
-    
-    // Make sure the content element is clear
-    if (this.content) {
-      // Clear existing content
-      this.content.innerHTML = '';
-      
-      // Set the content to fill available space without scrollbars
-      this.content.style.overflow = 'hidden';
-      this.content.style.boxSizing = 'border-box';
-      this.content.style.height = '100%';
-      this.content.style.display = 'flex';
-      this.content.style.flexDirection = 'column';
-      this.content.style.justifyContent = 'center'; 
-      this.content.style.alignItems = 'center'; 
-      
-      // Add the output container to the content
-      this.content.appendChild(this.outputContainer);
-      
-      // Add any existing content to the output container
-      if (this.outputContent) {
-        this.outputContainer.innerHTML = this.outputContent;
-      }
+    if (this.container) {
+      this.container.style.height = `${height}px`;
+      this.container.style.maxHeight = `${height}px`;
     }
   }
   
@@ -120,84 +105,11 @@ class BaseOutput extends BaseComponent {
   }
   
   /**
-   * Append content to the output window
-   * @param {string} content - The content to append
-   */
-  appendContent(content) {
-    this.outputContent += content;
-    if (this.outputContainer) {
-      this.outputContainer.innerHTML = this.outputContent;
-      this.outputContainer.scrollTop = this.outputContainer.scrollHeight;
-    }
-  }
-  
-  /**
-   * Clear the output window
-   */
-  clearContent() {
-    this.outputContent = '';
-    if (this.outputContainer) {
-      this.outputContainer.innerHTML = '';
-    }
-  }
-  
-  /**
-   * Update the output window with new data
-   * @param {Object} data - The data to update with
-   * @param {string} data.content - The content to append
-   * @param {boolean} data.clear - Whether to clear the output first
-   */
-  update(data) {
-    if (data.clear) {
-      this.clearContent();
-    }
-    
-    if (data.content) {
-      this.appendContent(data.content);
-    }
-  }
-  
-  /**
-   * Handle incoming messages
-   * 
-   * @param {string} messageType - Type of message received
-   * @param {Object} messageData - Data associated with the message
-   * @param {Object} sender - Component that sent the message
-   * @returns {boolean} - True if the message was handled
-   */
-  handleMessage(messageType, messageData, sender) {
-    // First, let the parent class try to handle the message
-    if (super.handleMessage(messageType, messageData, sender)) {
-      return true;
-    }
-    
-    // Handle output-specific messages
-    switch (messageType) {
-      case MESSAGES.OUTPUT_APPEND:
-        if (messageData.content) {
-          this.appendContent(messageData.content);
-          return true;
-        }
-        break;
-        
-      case MESSAGES.OUTPUT_CLEAR:
-        this.clearContent();
-        return true;
-        
-      case MESSAGES.OUTPUT_UPDATE:
-        this.update(messageData);
-        return true;
-    }
-    
-    return false;
-  }
-  
-  /**
    * Override getLayoutInfo to include output-specific information
    * @returns {Object} Layout information for this OutputSideWindow
    */
-  getLayoutInfo() {
-    const baseInfo = super.getLayoutInfo();
+  async getLayoutInfo() {
+    const baseInfo = await super.getLayoutInfo();
     
     // Add output-specific layout information
     return {
@@ -210,9 +122,9 @@ class BaseOutput extends BaseComponent {
    * Apply layout information to this window
    * @param {Object} layoutInfo - The layout information to apply
    */
-  applyLayout(layoutInfo) {
+  async applyLayout(layoutInfo) {
     // Apply base layout information
-    super.applyLayout(layoutInfo);
+    await super.applyLayout(layoutInfo);
     
     // Apply output-specific layout information
     if (layoutInfo.outputContent) {

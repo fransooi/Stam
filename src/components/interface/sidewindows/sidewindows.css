@@ -37,7 +37,7 @@
   overflow: hidden;
   margin: 0;
   position: relative; /* Enable positioning context */
-  height: 100%; /* Fill the wrapper */
+  height: 97%; /* Fill the wrapper */
   width: 100%;
 }
 

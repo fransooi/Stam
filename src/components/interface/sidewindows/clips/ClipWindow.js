@@ -11,11 +11,12 @@ class ClipWindow {
     this.content = null;
   }
   
+
   /**
    * Render the content of the clip window
    * @param {HTMLElement} contentElement - The content element to render into
    */
-  render(contentElement) {
+  async render(contentElement) {
     this.content = contentElement;
     
     // Clear existing content
@@ -25,6 +26,8 @@ class ClipWindow {
     
     // Create the modal dialog (hidden by default)
     this.createUrlModal();
+    
+    return this.iframeContainer;
   }
   
   /**
@@ -43,10 +46,10 @@ class ClipWindow {
     this.iframe = document.createElement('iframe');
     this.iframe.className = 'clip-iframe';
     this.iframe.frameBorder = '0';
-    this.iframe.allowFullscreen = true;
-    this.iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+    this.iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
     this.iframe.referrerPolicy = 'no-referrer-when-downgrade';
-    this.iframe.sandbox = 'allow-same-origin allow-scripts allow-popups allow-forms allow-presentation';
+    this.iframe.loading = 'lazy';
+    this.iframe.setAttribute('allowfullscreen', 'true');
     
     // Set iframe to fill container
     this.iframe.style.position = 'absolute';
@@ -61,8 +64,8 @@ class ClipWindow {
     // Append iframe to container
     this.iframeContainer.appendChild(this.iframe);
     
-    // Append container to parent
-    parentElement.appendChild(this.iframeContainer);
+    // Return new container
+    return this.iframeContainer;
   }
   
   /**

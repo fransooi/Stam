@@ -10,64 +10,78 @@ class SideBar extends BaseComponent {
   constructor(parentId,containerId) {
     // Initialize the base component with component name
     super('SideBar',parentId,containerId);
-    
     this.windows = [];
     this.separators = [];
     this.isDragging = false;
     this.activeSeparatorIndex = -1;
     this.windowRegistry = new Map(); // Registry to look up window objects by DOM element
-    
-    // Set up global event listeners for resize functionality
-    this.setupGlobalEvents();
-    
-    // Listen for window close events
+    this.messageMap[MESSAGES.ADD_SIDE_WINDOW] = this.handleAddSideWindow.bind(this);
+    this.messageMap[MESSAGES.REMOVE_SIDE_WINDOW] = this.handleRemoveSideWindow.bind(this);
+  }
+
+  async init(options) {
+    super.init(options);   
+
+    // Add global event listeners for mouse move and mouse up
+    document.addEventListener('mousemove', this.handleMouseMove.bind(this));
+    document.addEventListener('mouseup', this.handleMouseUp.bind(this));
+    //document.addEventListener('click', this.handleDocumentClick.bind(this));
     document.addEventListener('sideWindowClosed', (event) => {
       this.handleWindowClosed(event.detail.id);
+    });    
+
+    // Create the SideWindows contained int he layout
+    if (options.layout) {
+      this.createSideWindows(options.layout.componentTypes.SideBar);
+    }
+  }
+
+  async destroy() {
+    document.removeEventListener('mousemove', this.handleMouseMove.bind(this));
+    document.removeEventListener('mouseup', this.handleMouseUp.bind(this));
+    document.removeEventListener('sideWindowClosed', (event) => {
+      this.handleWindowClosed(event.detail.id);
     });
-    
-    // Register command handler for layout changes
-    this.registerCommandHandler('SIDEBAR_LAYOUT_CHANGED', this.handleLayoutChanged.bind(this));
+    //document.removeEventListener('click', this.handleDocumentClick.bind(this));
+    if (this.windowsContainer) {
+      this.parentContainer.removeChild(this.windowsContainer);
+      this.windowsContainer=null;
+    }
+    for (var w=0;w<this.windows.length;w++)
+      this.windows[w].destroy();
+    this.windows=[];
+    super.destroy();
   }
 
   /**
    * Render the sidebar with default windows
    */
-  render() {
-    // Clear the container
-    this.container=document.getElementById(this.containerId);
-    this.container.innerHTML = '';
-    
-    // Add default windows if none exist
-    if (this.windows.length === 0) {
-      // Order: TV, Socket, Output, Project (from top to bottom)
-      this.addWindow(new ProjectSideWindow(this.componentId,this.containerId, 300));
-      this.addWindow(new OutputSideWindow(this.componentId,this.containerId, 300));
-      this.addWindow(new TVSideWindow(this.componentId,this.containerId, 300,'https://www.youtube.com/embed/BxGPwYwlAfM'));
-      this.addWindow(new SocketSideWindow(this.componentId,this.containerId, 300));
-    }
-
-    // Render all windows and separators
-    this.renderWindows();
-  }
-  
-  /**
-   * Render all windows and separators
-   */
-  renderWindows() {
-    // Clear the container
-    this.container.innerHTML = '';
+  async render(containerId) {
+    this.parentContainer=await super.render(containerId);
+    this.parentContainer.innerHTML = ''; 
     this.separators = [];
     this.windowRegistry.clear();
     
-    // Create a wrapper for all windows
-    const windowsContainer = document.createElement('div');
-    windowsContainer.className = 'side-windows-container';
-    windowsContainer.style.display = 'flex';
-    windowsContainer.style.flexDirection = 'column';
-    windowsContainer.style.height = '100%';
-    windowsContainer.style.overflow = 'hidden';
-    this.container.appendChild(windowsContainer);
+    // Insert sidebar CSS
+    if (!document.getElementById('sidebar-css')) {
+      const link = document.createElement('link');
+      link.id = 'sidebar-css';
+      link.rel = 'stylesheet';
+      link.type = 'text/css';
+      link.href = '/css/sidebar.css';
+      document.head.appendChild(link);
+    }
     
+    // Create a wrapper for all windows
+    this.windowsContainer = document.createElement('div');
+    this.windowsContainer.className = 'side-windows-container';
+    this.windowsContainer.style.display = 'flex';
+    this.windowsContainer.style.flexDirection = 'column';
+    this.windowsContainer.style.height = '100%';
+    this.windowsContainer.style.overflow = 'hidden';
+    this.parentContainer.appendChild(this.windowsContainer);
+    this.layoutContainer = this.windowsContainer;
+
     // Render each window
     this.windows.forEach((window, index) => {
       // Create a window wrapper
@@ -87,9 +101,6 @@ class SideBar extends BaseComponent {
         windowWrapper.style.flex = '1 1 auto';
       }
       
-      // Add the container to the parent
-      windowWrapper.appendChild(window.render());    
-      
       // Register the window element for lookup
       this.windowRegistry.set(windowWrapper.querySelector('.side-window'), window);
       
@@ -101,11 +112,21 @@ class SideBar extends BaseComponent {
       }
       
       // Add the window wrapper to the container
-      windowsContainer.appendChild(windowWrapper);
+      this.windowsContainer.appendChild(windowWrapper);
+      window.parentContainer=windowWrapper;
     });
     
     // Patch the SideWindow.getWindowObjectFromElement method to use our registry
     this.patchSideWindowGetWindowObjectMethod();
+
+    // Set width?
+    if (this.widthToSet) {
+      this.parentContainer.style.width = `${this.widthToSet}px`;
+      this.widthToSet=0;
+    }
+    
+    // Container for children
+    return this.windowsContainer;
   }
   
   /**
@@ -124,36 +145,31 @@ class SideBar extends BaseComponent {
   }
   
   /**
-   * Handle layout changed event
-   * @param {Object} data - Event data
-   */
-  handleLayoutChanged(data) {
-    // Re-render the windows to update their positions
-    this.renderWindows();
-  }
-
-  /**
    * Override getLayoutInfo to include SideBar-specific information
    * @returns {Object} Layout information for this SideBar
    */
-  getLayoutInfo() {
+  async getLayoutInfo() {
     // Get base layout information from parent class
-    const layoutInfo = super.getLayoutInfo();
+    const layoutInfo = await super.getLayoutInfo();
+    
+    // Add width of container
+    layoutInfo.containerWidth = this.parentContainer.offsetWidth;
     
     // Add SideBar-specific information
-    layoutInfo.windows = this.windows.map(window => {
+    layoutInfo.windows = [];
+    for(var w=0;w<this.windows.length;w++){
       // Get the window's own layout info
-      const windowLayoutInfo = window.getLayoutInfo ? window.getLayoutInfo() : {};
+      const windowLayoutInfo = await this.windows[w].getLayoutInfo();
       
       // Ensure we have the basic window properties
-      return {
-        id: window.id,
-        type: window.constructor.name,
-        height: window.height,
-        minimized: window.minimized,
+      layoutInfo.windows.push({
+        id: this.windows[w].id,
+        type: this.windows[w].constructor.name,
+        height: this.windows[w].height,
+        minimized: this.windows[w].minimized,
         ...windowLayoutInfo // Include all window-specific properties
-      };
-    });
+      });
+    }
     
     // Add information about the active window
     const activeWindow = this.windows.find(window => window.element && 
@@ -170,134 +186,84 @@ class SideBar extends BaseComponent {
    * Apply layout information to restore the sidebar state
    * @param {Object} layoutInfo - Layout information for this SideBar
    */
-  applyLayout(layoutInfo) {
-    console.log('SideBar applying layout:', layoutInfo);
-    
-    // Check if we have window configuration
-    if (layoutInfo.windows && Array.isArray(layoutInfo.windows)) {
-      // Store current windows temporarily
-      const existingWindows = [...this.windows];
-      
-      // Clear the windows array
-      this.windows = [];
-      
-      // Process each window in the layout
-      layoutInfo.windows.forEach(windowInfo => {
-        // Find matching window from existing windows
-        const existingWindow = existingWindows.find(w => w.id === windowInfo.id);
-        
-        if (existingWindow) {
-          // Update existing window properties
-          existingWindow.height = windowInfo.height || existingWindow.height;
-          
-          // Set minimized state if specified
-          if (windowInfo.minimized !== undefined) {
-            existingWindow.minimized = windowInfo.minimized;
-          }
-          
-          // Add the window to the windows array
-          this.windows.push(existingWindow);
-        } else {
-          // Create a new window based on type
-          let newWindow;
-          
-          switch (windowInfo.type) {
-            case 'ProjectSideWindow':
-              newWindow = new ProjectSideWindow(windowInfo.height || 250,this);
-              break;
-            case 'OutputSideWindow':
-              newWindow = new OutputSideWindow(windowInfo.height || 180,this);
-              break;
-            case 'TVSideWindow':
-              newWindow = new TVSideWindow(windowInfo.height || 200,this);
-              break;
-            case 'SocketSideWindow':
-              newWindow = new SocketSideWindow(windowInfo.height || 200,this);
-              break;
-            default:
-              console.warn(`Unknown window type: ${windowInfo.type}`);
-              return;
-          }
-          
-          // Set window ID
-          newWindow.id = windowInfo.id;
-          
-          // Set minimized state if specified
-          if (windowInfo.minimized !== undefined) {
-            newWindow.minimized = windowInfo.minimized;
-          }
-          
-          // Add the new window to the windows array
-          this.windows.push(newWindow);
-        }
-      });
-      
-      // Re-render the windows
-      this.renderWindows();
-      
-      // Apply minimized state to rendered windows
-      this.windows.forEach(window => {
-        if (window.minimized && window.container) {
-          // Ensure the window is minimized in the DOM
-          window.container.classList.add('minimized');
-          if (window.content) {
-            window.content.style.display = 'none';
-          }
-          
-          // Find the wrapper element
-          const wrapper = window.container.closest('.side-window-wrapper');
-          if (wrapper) {
-            wrapper.style.height = `${window.headerHeight || 34}px`;
-            wrapper.style.minHeight = `${window.headerHeight || 34}px`;
-            wrapper.style.flex = '0 0 auto';
-          }
-          
-          // Update toggle button
-          const toggleButton = window.container.querySelector('.side-window-toggle');
-          if (toggleButton) {
-            toggleButton.innerHTML = '▼';
-            toggleButton.title = 'Maximize';
-          }
-        }
-      });
-      
-      // Set active window if specified
-      if (layoutInfo.activeWindow) {
-        const activeWindow = this.windows.find(w => w.id === layoutInfo.activeWindow);
-        if (activeWindow && activeWindow.element) {
-          activeWindow.element.classList.add('active');
-        }
+  async applyLayout(layoutInfo) {      
+    // Set active window if specified
+    if (layoutInfo.activeWindow) {
+      const activeWindow = this.windows.find(w => w.type === layoutInfo.type);
+      if (activeWindow && activeWindow.element) {
+        activeWindow.element.classList.add('active');
+      }
+    }
+
+    // Set container width if specified
+    if (layoutInfo.containerWidth) {
+      this.parentContainer.style.width = `${layoutInfo.containerWidth}px`;
+    }
+  }
+
+  
+  /**
+   * Create SideWindows based on the provided layout
+   * @param {Object} layout - The layout configuration
+   */
+  async createSideWindows(layout) {
+    // Create SideWindows based on the layout
+    if (layout.windows) {
+      for( var i = 0; i < layout.windows.length; i++) {
+        const { type, height } = layout.windows[i];
+        await this.handleAddSideWindow({ type, height }, this.componentId);
       }
     }
   }
-  
+
   /**
-   * Override handleMessage to handle layout-related messages
-   * @param {string} messageType - Type of message
-   * @param {Object} messageData - Message data
+   * Handle add side window message
+   * @param {Object} data - Message data
    * @param {string} sender - Sender ID
    * @returns {boolean} - Whether the message was handled
    */
-  handleMessage(messageType, messageData, sender) {
-    console.log(`SideBar received message: ${messageType}`, messageData);
-    
-    switch (messageType) {
-//      case MESSAGES.MODE_CHANGE:
-//        this.handleLayoutChanged(messageData.data);
-//        return true;
-      
-      case MESSAGES.LOAD_LAYOUT:
-        // Check if this layout is for us
-        if (messageData.data && 
-            (messageData.data.componentName === 'SideBar' || 
-             messageData.data.componentName === this.componentName)) {
-          this.applyLayout(messageData.data.layoutInfo);
-          return true;
-        }
-        break;
+  async handleAddSideWindow(data, sender) {
+    if (data.type) {
+      let window; 
+      switch (data.type) {
+        case 'project':
+        case 'ProjectSideWindow':
+          window = new ProjectSideWindow(this.componentId,null,data.height);
+          break; 
+        case 'output':
+        case 'OutputSideWindow':
+          window = new OutputSideWindow(this.componentId,null,data.height);
+          break;
+        case 'tv':
+        case 'TVSideWindow':
+          window = new TVSideWindow(this.componentId,null,data.height);
+          break;
+        case 'socket':
+        case 'SocketSideWindow':
+          window = new SocketSideWindow(this.componentId,null,data.height);
+          break;
+        default:
+          console.warn(`Unknown window type: ${data.type}`);
+          return null;
+      }
+      await this.sendMessageTo(window.componentId,MESSAGES.INIT,this.options);
+      this.windows.push(window);
+      if (data.width) 
+        this.widthToSet=data.width;   
+        
+      return window;
     }
-    
-    return super.handleMessage(messageType, messageData, sender);
+    return null;
+  }
+
+  /**
+   * Handle remove side window message
+   * @param {Object} data - Message data
+   * @param {string} sender - Sender ID
+   * @returns {boolean} - Whether the message was handled
+   */
+  async handleRemoveSideWindow(data, sender) {
+    return this.removeWindow(data.windowId);
   }
   
   /**
@@ -330,34 +296,17 @@ class SideBar extends BaseComponent {
     });
     
     return separator;
-  }
-  
-  /**
-   * Add a window to the sidebar
-   * @param {SideWindow} window - The window to add
-   */
-  addWindow(window) {
-    // Add the window to the windows array
-    this.windows.push(window);
-    
-    // Establish parent-child relationship in the component tree
-    // This ensures that messages will propagate correctly
-    if (window.componentId) {
-      console.log(`SideBar: Adding window ${window.id} (${window.componentId}) as child`);      
-    } else {
-      console.warn(`SideBar: Window ${window.id} has no componentId, cannot establish parent-child relationship`);
-    }
-  }
-  
+  }  
+
   /**
    * Remove a window from the sidebar
    * @param {string} windowId - ID of the window to remove
    */
-  removeWindow(windowId) {
+  async removeWindow(windowId) {
     const index = this.windows.findIndex(w => w.id === windowId);
     if (index !== -1) {
       this.windows.splice(index, 1);
-      this.renderWindows();
+      await this.renderWindows();
     }
   }
   
@@ -376,22 +325,6 @@ class SideBar extends BaseComponent {
    */
   handleWindowClosed(windowId) {
     this.removeWindow(windowId);
-  }
-  
-  /**
-   * Set up global event listeners for resize functionality
-   */
-  setupGlobalEvents() {
-    // Add global event listeners for mouse move and mouse up
-    document.addEventListener('mousemove', this.handleMouseMove.bind(this));
-    document.addEventListener('mouseup', this.handleMouseUp.bind(this));
-  }
-  
-  /**
-   * Ensure the bottom window connects to the status line
-   */
-  connectBottomWindowToStatusLine() {
-    // Implementation depends on the status line positioning
   }
   
   /**

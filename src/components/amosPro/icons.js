@@ -35,31 +35,38 @@ class AMOSProIcons extends BaseComponent {
     // Calculate total width of all buttons in row 1
     this.totalRow1Width = this.buttonWidths.row1.reduce((sum, button) => sum + button.width, 0);
     // Calculate total width of all buttons in row 2
-    this.totalRow2Width = this.buttonWidths.row2.reduce((sum, button) => sum + button.width, 0);
-    
-    // Initialize the icon bar
-    this.render();
-    
+    this.totalRow2Width = this.buttonWidths.row2.reduce((sum, button) => sum + button.width, 0);    
+  }
+  
+  async init(options) {
+    await super.init(options);
     // Create a ResizeObserver to monitor container size changes
     this.resizeObserver = new ResizeObserver(entries => {
       this.handleResize();
     });
-    
-    // Start observing the container
-    this.resizeObserver.observe(this.container);
-    
-    // Initial resize to set correct dimensions
-    this.handleResize();
   }
-  
-  render() {
-    // Clear the container first to prevent duplicates
-    this.container.innerHTML = '';
+  async destroy() {
+    await super.destroy();
+    if(this.resizeObserver)
+    {
+      this.resizeObserver.unobserve(this.parentContainer);
+      this.resizeObserver=null;
+    }
+    if(this.iconBar)
+    {
+      this.parentContainer.removeChild(this.iconBar);
+      this.iconBar=null;
+    }
+  }
+
+  async render(containerId) {
+    this.parentContainer=await super.render(containerId);
+    this.parentContainer.innerHTML = '';
+    this.layoutContainer=this.parentContainer;
     
     // Create the main icon bar container
     this.iconBar = document.createElement('div');
     this.iconBar.className = 'amospro-icon-bar';
-    this.container.appendChild(this.iconBar);
     
     // Create top row (row 1)
     const topRow = document.createElement('div');
@@ -79,14 +86,18 @@ class AMOSProIcons extends BaseComponent {
     // Add buttons for bottom row (1-2 to 4-2)
     for (let i = 1; i <= 4; i++) {
       this.addButton(i, 2, bottomRow);
-    }
-    
+    }    
     this.iconBar.appendChild(bottomRow);
+    this.parentContainer.appendChild(this.iconBar);
+    this.resizeObserver.observe(this.parentContainer);
+    return this.iconBar;
   }
   
   handleResize() {
+    if (!this.parentContainer) return;
+
     // Get the container width
-    const containerWidth = this.container.clientWidth;
+    const containerWidth = this.parentContainer.clientWidth;
     
     // Get all button rows
     const rows = document.querySelectorAll('.amospro-button-row');

@@ -7,6 +7,7 @@
 
 import SideWindow from './SideWindow.js';
 import WebSocketClient from '../../../utils/WebSocketClient.js';
+import { MESSAGES } from '../../../utils/BaseComponent.js';
 
 class SocketSideWindow extends SideWindow {
   /**
@@ -42,59 +43,47 @@ class SocketSideWindow extends SideWindow {
     // Indicator timers
     this.sendFlashTimer = null;
     this.receiveFlashTimer = null;
+
+    // Message handlers
+    this.messageMap[MESSAGES.SOCKET_CONNECT] = this.handleSocketConnectMessage;
+    this.messageMap[MESSAGES.SOCKET_DISCONNECT] = this.handleSocketDisconnectMessage;
+    this.messageMap[MESSAGES.SOCKET_SEND_MESSAGE] = this.handleSocketSendMessage;
+    this.messageMap[MESSAGES.SOCKET_SET_USER_KEY] = this.handleSocketSetUserKeyMessage;
+    this.messageMap[MESSAGES.CONTENT_HEIGHT_CHANGED] = this.handleContentHeightChanged;
   }
   
   /**
-   * Handle incoming messages
-   * 
-   * @param {string} messageType - Type of message received
-   * @param {Object} messageData - Data associated with the message
-   * @param {Object} sender - Component that sent the message
-   * @returns {boolean} - True if the message was handled
+   * Initialize the Socket side window
+   * @param {Object} options - Optional configuration options
+   * @returns {Promise<void>}
    */
-  handleMessage(messageType, messageData, sender) {
-    console.log(`SocketSideWindow received message: ${messageType}`, messageData);
-    // Handle socket-specific messages
-    switch (messageType) {
-      case 'SOCKET_CONNECT':
-        return this.handleSocketConnectMessage(messageData);
-        
-      case 'SOCKET_DISCONNECT':
-        return this.handleSocketDisconnectMessage(messageData);
-        
-      case 'SOCKET_SEND_MESSAGE':
-        return this.handleSocketSendMessage(messageData);
-        
-      case 'SOCKET_SET_USER_KEY':
-        return this.handleSocketSetUserKeyMessage(messageData);
-    }
-    
-    return super.handleMessage(messageType, messageData, sender);
+  async init(options) {
+    super.init(options);
   }
+  
+  /**
+   * Destroy the Socket side window
+   * @returns {Promise<void>}
+   */
+  async destroy() {
+    super.destroy();
+  }
+  
   
   /**
    * Override render to set up content and event listeners
    * @returns {HTMLElement} - The rendered window element
    */
-  render() {
-    // Call parent render method
-    const container = super.render();
+  async render(containerId) {
+    await super.render(containerId);
     
     // Add indicator buttons to the title bar
     this.addIndicatorButtons();
     
     // Create the socket UI
     this.createSocketUI();
-    
-    // Add event listener for content height changes
-    this.content.addEventListener('contentHeightChanged', (event) => {
-      this.handleContentHeightChanged(event.detail.height);
-    });
-    
-    // Initial content height update
-    this.updateContentHeight();
-    
-    return container;
+       
+    return this.container;
   }
   
   /**
@@ -209,7 +198,7 @@ class SocketSideWindow extends SideWindow {
    * Handle content height changes
    * @param {number} height - New content height
    */
-  handleContentHeightChanged(height) {
+  async handleContentHeightChanged(height, senderId) {
     // Update the message container height
     if (this.messageContainer) {
       // Calculate available height for messages (content height minus controls height)
@@ -605,7 +594,7 @@ class SocketSideWindow extends SideWindow {
    * @param {Object} messageData - Message data
    * @returns {boolean} - True if handled
    */
-  handleSocketConnectMessage(messageData) {
+  handleSocketConnectMessage(data,sender) {
     this.connect();
     return true;
   }
@@ -615,7 +604,7 @@ class SocketSideWindow extends SideWindow {
    * @param {Object} messageData - Message data
    * @returns {boolean} - True if handled
    */
-  handleSocketDisconnectMessage(messageData) {
+  handleSocketDisconnectMessage(data,sender) {
     this.disconnect();
     return true;
   }
@@ -625,12 +614,12 @@ class SocketSideWindow extends SideWindow {
    * @param {Object} messageData - Message data
    * @returns {boolean} - True if handled
    */
-  handleSocketSendMessage(messageData) {
-    if (this.client && this.isConnected && messageData.message) {
-      this.client.send(messageData.message);
+  handleSocketSendMessage(data,sender) {
+    if (this.client && this.isConnected && data.message) {
+      this.client.send(data.message);
       // Increment sent counter
       this.messagesSent++;
-      this.addMessage('sent', messageData.message);
+      this.addMessage('sent', data.message);
       
       // Update send indicator
       this.updateSendIndicator();
@@ -645,9 +634,9 @@ class SocketSideWindow extends SideWindow {
    * @param {Object} messageData - Message data
    * @returns {boolean} - True if handled
    */
-  handleSocketSetUserKeyMessage(messageData) {
-    if (messageData.userKey) {
-      this.userKey = messageData.userKey;
+  handleSocketSetUserKeyMessage(data,sender) {
+    if (data.userKey) {
+      this.userKey = data.userKey;
       if (this.userKeyInput) {
         this.userKeyInput.value = this.userKey;
       }
@@ -728,9 +717,9 @@ class SocketSideWindow extends SideWindow {
    * Override getLayoutInfo to include SocketSideWindow-specific information
    * @returns {Object} Layout information for this SocketSideWindow
    */
-  getLayoutInfo() {
+  async getLayoutInfo() {
     // Get base layout information from parent class
-    const layoutInfo = super.getLayoutInfo();
+    const layoutInfo = await super.getLayoutInfo();
     
     // Add SocketSideWindow-specific information
     layoutInfo.userKey = this.userKey;

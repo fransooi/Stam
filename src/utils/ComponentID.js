@@ -58,36 +58,36 @@ function generateComponentID(componentName) {
 /**
  * Register a component instance with its ID in the component registry
  * 
- * @param {string} componentID - The component's unique ID
+ * @param {string} componentId - The component's unique ID
  * @param {Object} component - The component instance
  */
-function registerComponentInstance(componentID, component) {
-  if (!componentID || !component) {
-    throw new Error('Both componentID and component must be provided');
+function registerComponentInstance(componentId, component) {
+  if (!componentId || !component) {
+    throw new Error('Both componentId and component must be provided');
   }
   
-  componentRegistry.set(componentID, component);
+  componentRegistry.set(componentId, component);
 }
 
 /**
  * Unregister a component
  * 
- * @param {string} componentID - The component's unique ID
+ * @param {string} componentId - The component's unique ID
  */
-function unregisterComponent(componentID) {
-  if (componentRegistry.has(componentID)) {
-    componentRegistry.delete(componentID);
+function unregisterComponent(componentId) {
+  if (componentRegistry.has(componentId)) {
+    componentRegistry.delete(componentId);
   }
 }
 
 /**
  * Get a component by its ID
  * 
- * @param {string} componentID - The component's unique ID
+ * @param {string} componentId - The component's unique ID
  * @returns {Object|null} - The component instance or null if not found
  */
-function getComponentByID(componentID) {
-  return componentRegistry.get(componentID) || null;
+function getComponentByID(componentId) {
+  return componentRegistry.get(componentId) || null;
 }
 
 /**

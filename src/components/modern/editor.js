@@ -9,6 +9,21 @@ class ModernEditor {
     this.editorView = null;
   }
 
+  // Prepare the container with Modern-specific styling
+  prepareContainer() {
+    // Create a styled container for Modern without the header
+    this.container.innerHTML = `
+      <div class="modern-editor">
+        <div id="modern-editor-container" class="modern-content"></div>
+      </div>
+    `;
+  }
+  
+  // Return the parent element for the editor
+  getEditorParent() {
+    return document.getElementById('modern-editor-container');
+  }
+  
   // Provide configuration for the main Editor component
   getConfig() {
     return {

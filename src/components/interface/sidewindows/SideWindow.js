@@ -4,14 +4,10 @@ import { MESSAGES } from '../../../utils/BaseComponent.js';
 
 class SideWindow extends BaseComponent {
   constructor(id, title, parentId, containerId, initialHeight = 200) {
-    // Initialize BaseComponent with component name and parent ID
-    // We'll use 'sidewindow-' + id as the component name
     super('SideWindow-' + id, parentId,containerId);
-    
     this.id = id;
     this.title = title;
     this.height = initialHeight;
-    this.container = null;
     this.content = null;
     this.header = null;
     this.isVisible = true;
@@ -20,52 +16,29 @@ class SideWindow extends BaseComponent {
     this.enlargedDialog = null;
     this.originalHeight = initialHeight;
     this.headerHeight = 34; // Approximate height of the header
+    this.messageMap[MESSAGES.WINDOW_TOGGLE] = this.handleWindowToggle;
+    this.messageMap[MESSAGES.WINDOW_CLOSE] = this.handleWindowClose;
+    this.messageMap[MESSAGES.WINDOW_RESIZE] = this.handleWindowResize;
+    this.messageMap[MESSAGES.WINDOW_ENLARGE] = this.handleWindowEnlarge;
   }
 
   /**
-   * Handle incoming messages
+   * Initialize the component
    * 
-   * @param {string} messageType - Type of message received
-   * @param {Object} messageData - Data associated with the message
-   * @param {Object} sender - Component that sent the message
-   * @returns {boolean} - True if the message was handled
-   */
-  handleMessage(messageType, messageData, sender) {
-    //console.log(`SideWindow received message: ${messageType}`, messageData);
-    
-    // Handle common SideWindow messages
-    switch (messageType) {
-      case MESSAGES.WINDOW_TOGGLE:
-        if (messageData.windowId === this.id) {
-          this.toggle();
-          return true;
-        }
-        break;
-        
-      case MESSAGES.WINDOW_CLOSE:
-        if (messageData.windowId === this.id) {
-          this.close();
-          return true;
-        }
-        break;
-        
-      case MESSAGES.WINDOW_RESIZE:
-        if (messageData.windowId === this.id && messageData.height) {
-          this.resize(messageData.height);
-          return true;
-        }
-        break;
+   * @param {Object} options - Optional configuration options
+   */ 
+  async init(options = {}) {
+    super.init(options);
+  }
 
-      case MESSAGES.WINDOW_ENLARGE:
-        if (messageData.windowId === this.id) {
-          this.toggleEnlarge();
-          return true;
-        }
-        break;
+  /**
+   * Destroy the component
+   */
+  async destroy() {
+    super.destroy();
+    if (this.container) {
+      this.parentContainer.removeChild(this.container);
     }
-    
-    // Not handled by SideWindow base class
-    return super.handleMessage(messageType, messageData, sender);
   }
 
   /**
@@ -73,7 +46,7 @@ class SideWindow extends BaseComponent {
    * @param {HTMLElement} parentContainer - The parent container to append this window to
    * @returns {HTMLElement} The created window element
    */
-  render() {
+  async render() {
     // Create the container element
     this.container = document.createElement('div');
     this.container.id = `side-window-${this.id}`;
@@ -84,13 +57,13 @@ class SideWindow extends BaseComponent {
     this.header.className = 'side-window-header';
     
     // Create the title
-    const title = document.createElement('div');
-    title.className = 'side-window-title';
-    title.textContent = this.title;
+    const titleElement = document.createElement('div');
+    titleElement.className = 'side-window-title';
+    titleElement.textContent = this.title;
     
     // Create the buttons container
-    const buttons = document.createElement('div');
-    buttons.className = 'side-window-controls';
+    this.buttons = document.createElement('div');
+    this.buttons.className = 'side-window-controls';
     
     // Create enlarge button
     const enlargeButton = document.createElement('button');
@@ -114,13 +87,13 @@ class SideWindow extends BaseComponent {
     closeButton.addEventListener('click', () => this.close());
     
     // Add buttons to the buttons container
-    buttons.appendChild(enlargeButton);
-    buttons.appendChild(toggleButton);
-    buttons.appendChild(closeButton);
+    this.buttons.appendChild(enlargeButton);
+    this.buttons.appendChild(toggleButton);
+    this.buttons.appendChild(closeButton);
     
     // Add title and buttons to the header
-    this.header.appendChild(title);
-    this.header.appendChild(buttons);
+    this.header.appendChild(titleElement);
+    this.header.appendChild(this.buttons);
     
     // Create the content area
     this.content = document.createElement('div');
@@ -137,14 +110,66 @@ class SideWindow extends BaseComponent {
     } else {
       this.updateContentHeight();
     }
-    
+    this.parentContainer.appendChild(this.container);
+    this.layoutContainer = this.container;
     return this.container;
   }
 
   /**
+   * Handle window toggle command
+   * @param {Object} messageData - Command data
+   * @param {string} sender - Sender ID
+   * @returns {boolean} - True if command was handled
+   */
+  async handleWindowToggle(messageData, sender) {
+    this.toggle();
+    return true;
+  }
+  /**
+   * Handle window close command
+   * @param {Object} messageData - Command data
+   * @param {string} sender - Sender ID
+   * @returns {boolean} - True if command was handled
+   */
+  async handleWindowClose(messageData, sender) {
+    this.close();
+    return true;
+  }
+  /**
+   * Handle window resize command
+   * @param {Object} messageData - Command data
+   * @param {string} sender - Sender ID
+   * @returns {boolean} - True if command was handled
+   */
+  async handleWindowResize(messageData, sender) {
+    if (messageData.height) {
+      this.resize(messageData.height);
+      return true;
+    }
+    return false;
+  }
+  /**
+   * Handle window enlarge command
+   * @param {Object} messageData - Command data
+   * @param {string} sender - Sender ID
+   * @returns {boolean} - True if command was handled
+   */
+  async handleWindowEnlarge(messageData, sender) {
+    this.toggleEnlarge();
+    return true;
+  }
+  
+
+
+  /**
    * Toggle the window between minimized and normal state
    */
-  toggle() {
+  async setMinimized(minimized) {
+    if(this.minimized !== minimized) {
+      await this.toggle();
+    }
+  }
+  async toggle() {
     if (!this.container) return;
     
     // Get the sidebar element
@@ -226,7 +251,7 @@ class SideWindow extends BaseComponent {
   /**
    * Toggle the window between enlarged and normal state
    */
-  toggleEnlarge() {
+  async toggleEnlarge() {
     if (!this.container) return;
     
     // Toggle enlarged state
@@ -341,7 +366,7 @@ class SideWindow extends BaseComponent {
   /**
    * Close the window
    */
-  close() {
+  async close() {
     if (!this.container) return;
     
     // If the window is enlarged, close the enlarged dialog first
@@ -358,11 +383,8 @@ class SideWindow extends BaseComponent {
     }
     
     // Dispatch an event to notify that the window has been closed
-    const event = new CustomEvent('sideWindowClosed', {
-      detail: { id: this.id }
-    });
-    document.dispatchEvent(event);
-  }
+    await this.sendMessageTo('sidebar', 'SIDEBAR_WINDOW_CLOSED', { id: this.id });
+    }
   
   /**
    * Set the height of the window
@@ -434,17 +456,26 @@ class SideWindow extends BaseComponent {
     // Calculate available height (container height minus header height)
     const containerHeight = this.container.offsetHeight;
     const headerHeight = this.header.offsetHeight;
-    const availableHeight = containerHeight - headerHeight;
+    
+    // Account for borders and padding
+    const computedStyle = window.getComputedStyle(this.content);
+    const verticalPadding = parseFloat(computedStyle.paddingTop) + parseFloat(computedStyle.paddingBottom);
+    const verticalBorders = parseFloat(computedStyle.borderTopWidth) + parseFloat(computedStyle.borderBottomWidth);
+    
+    // Add a small buffer (2px) to ensure no scrollbar appears
+    const buffer = 2;
+    
+    // Calculate the final available height
+    // We use a 12px bottom margin to account for the resize separator that's added by SideBar
+    const bottomMargin = 12;
+    const availableHeight = containerHeight - headerHeight - verticalPadding - verticalBorders - buffer - bottomMargin;
     
     // Set content height
     if (availableHeight > 0) {
       this.content.style.height = `${availableHeight}px`;
       
-      // Trigger a custom event that subclasses can listen for
-      const event = new CustomEvent('contentHeightChanged', {
-        detail: { height: availableHeight }
-      });
-      this.content.dispatchEvent(event);
+      // Send a message about the content height change
+      this.sendMessage(MESSAGES.CONTENT_HEIGHT_CHANGED, { height: availableHeight });
     }
   }
   
@@ -495,9 +526,9 @@ class SideWindow extends BaseComponent {
    * Override getLayoutInfo to include SideWindow-specific information
    * @returns {Object} Layout information for this SideWindow
    */
-  getLayoutInfo() {
+  async getLayoutInfo() {
     // Get base layout information from parent class
-    const layoutInfo = super.getLayoutInfo();
+    const layoutInfo = await super.getLayoutInfo();
     
     // Add SideWindow-specific information
     layoutInfo.minimized = this.minimized;
@@ -505,6 +536,9 @@ class SideWindow extends BaseComponent {
     layoutInfo.windowId = this.id;
     
     return layoutInfo;
+  }
+  async applyLayout(layoutInfo) {
+    await this.setMinimized(layoutInfo.minimized);
   }
 }
 

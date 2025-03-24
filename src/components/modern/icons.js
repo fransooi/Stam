@@ -4,13 +4,25 @@ import BaseComponent from '../../utils/BaseComponent.js';
 class ModernIcons extends BaseComponent {
   constructor(parentId,containerId) {
     super('ModernIcons', parentId, containerId);
+    this.buttons = [];
   }
 
-  render() {
-    // Clear the container
-    this.container.innerHTML = '';
-    
-    console.log('Rendering modern icon bar with Font Awesome icons');
+  async init(options) {
+    super.init(options);
+  }
+  async destroy() {
+    super.destroy();
+    if (this.parentContainer) {
+      this.buttons.forEach(button => {
+        this.parentContainer.removeChild(button);
+      });
+      this.buttons = [];
+    } 
+  }
+  async render(containerId) {
+    this.parentContainer=await super.render(containerId);
+    this.parentContainer.innerHTML = '';
+    this.layoutContainer=this.parentContainer;
     
     // Create modern mode buttons with Font Awesome icons
     this.addButton('New', 'new-button', 'fa-file');
@@ -106,12 +118,12 @@ class ModernIcons extends BaseComponent {
     icon.className = `fas ${iconClass}`;
     button.appendChild(icon);
     
-    // No text span anymore, just the icon
-    
+    // No text span anymore, just the icon    
     button.addEventListener('click', () => this.handleButtonClick(text));
-    this.container.appendChild(button);
+    this.parentContainer.appendChild(button);
+    this.buttons.push(button);
   }
-  
+
   handleButtonClick(action) {
     console.log(`Modern button clicked: ${action}`);
     

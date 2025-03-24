@@ -32,34 +32,31 @@ class STOSIcons extends BaseComponent{
         { key: 'F18', action: 'Env' },
         { key: 'F19', action: 'Key List' }
       ]
-    };
-    
-    // Add event listeners for shift key
+    };    
+  }
+  async init(options) {
+    super.init(options);
     document.addEventListener('keydown', this.handleKeyDown.bind(this));
     document.addEventListener('keyup', this.handleKeyUp.bind(this));
   }
-  
-  handleKeyDown(event) {
-    if (event.key === 'Shift' && !this.shiftPressed) {
-      this.shiftPressed = true;
-      this.render();
+  async destroy() {
+    super.destroy();
+    if(this.stosIconsContainer)
+    {
+      document.removeEventListener('keydown', this.handleKeyDown.bind(this));
+      document.removeEventListener('keyup', this.handleKeyUp.bind(this));
+      this.parentContainer.removeChild(this.stosIconsContainer);
+      this.stosIconsContainer=null;
     }
   }
-  
-  handleKeyUp(event) {
-    if (event.key === 'Shift' && this.shiftPressed) {
-      this.shiftPressed = false;
-      this.render();
-    }
-  }
+  async render(containerId) {
+    this.parentContainer=await super.render(containerId);
+    this.parentContainer.innerHTML = '';
+    this.layoutContainer=this.parentContainer;
 
-  render() {
-    // Clear the container
-    this.container.innerHTML = '';
-    
     // Create main container for STOS function keys
-    const stosIconsContainer = document.createElement('div');
-    stosIconsContainer.className = 'stos-icons-container';
+    this.stosIconsContainer = document.createElement('div');
+    this.stosIconsContainer.className = 'stos-icons-container';
     
     // Create first row of function keys (F1-F5 or F10-F14)
     const firstRow = document.createElement('div');
@@ -83,13 +80,29 @@ class STOSIcons extends BaseComponent{
     }
     
     // Add rows to container
-    stosIconsContainer.appendChild(firstRow);
-    stosIconsContainer.appendChild(secondRow);
+    this.stosIconsContainer.appendChild(firstRow);
+    this.stosIconsContainer.appendChild(secondRow);
     
     // Add container to main container
-    this.container.appendChild(stosIconsContainer);
+    this.parentContainer.appendChild(this.stosIconsContainer);
+    return this.stosIconsContainer;
   }
   
+
+  handleKeyDown(event) {
+    if (event.key === 'Shift' && !this.shiftPressed && this.stosIconsContainer)  {
+      this.shiftPressed = true;
+      this.render();
+    }
+  }
+  
+  handleKeyUp(event) {
+    if (event.key === 'Shift' && this.shiftPressed && this.stosIconsContainer) {
+      this.shiftPressed = false;
+      this.render();
+    }
+  }
+
   addFunctionKey(key, action, parent) {
     const button = document.createElement('button');
     button.className = 'stos-function-key';
@@ -103,8 +116,7 @@ class STOSIcons extends BaseComponent{
     button.appendChild(textContent);
     
     // Add click event
-    button.addEventListener('click', () => this.handleFunctionKeyClick(key, action));
-    
+    button.addEventListener('click', () => this.handleFunctionKeyClick(key, action));    
     parent.appendChild(button);
   }
   

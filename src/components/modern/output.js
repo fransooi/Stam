@@ -5,39 +5,36 @@ class ModernOutput extends BaseOutput {
   constructor(parentId,containerId,initialHeight = 200) {
     super('ModernOutput',parentId,containerId,initialHeight);
     this.modeName = 'modern';
-    // Default content for Modern mode
-    this.outputContent = `
+  }
+  
+  /**
+   * Create the output UI specific to STOS mode
+   * @param {string} containerId - The ID of the container element
+   * @returns {Promise<HTMLDivElement>} The rendered output container
+   */
+  async render(containerId) {
+    this.container = await super.render(containerId);
+    
+    // Add Modern-specific UI elements and styling
+    this.addModernSpecificStyles();
+    
+    // Apply direct styling to ensure it overrides any default styles
+    this.container.style.fontFamily = 'Consolas, monospace';
+    this.container.style.backgroundColor = '#f8f8f8';
+    this.container.style.color = '#333';
+    this.container.style.border = '3px solid #ddd';
+    this.container.style.borderRadius = '4px';
+    this.container.style.padding = '8px';
+    
+    // Always set the content to ensure Modern-specific display
+    this.container.innerHTML = `
       <div style="padding: 10px; text-align: center; font-family: 'Consolas', monospace; color: #333;">
         <strong>Modern OUTPUT WINDOW</strong><br>
         <span style="color: #0066cc;">JavaScript Console Ready</span><br>
         <span style="color: #009900;">Type commands to execute</span>
       </div>
     `;
-  }
-  
-  /**
-   * Create the output UI specific to Modern mode
-   */
-  createOutputUI() {
-    // Call the base implementation first to set up the container
-    super.createOutputUI();
-    
-    // Add Modern-specific UI elements and styling
-    this.addModernSpecificStyles();
-    
-    // Apply Modern-specific styling directly to the container
-    if (this.outputContainer) {
-      // Apply direct styling to ensure it overrides any default styles
-      this.outputContainer.style.fontFamily = 'Consolas, monospace';
-      this.outputContainer.style.backgroundColor = '#f8f8f8';
-      this.outputContainer.style.color = '#333';
-      this.outputContainer.style.border = '3px solid #ddd';
-      this.outputContainer.style.borderRadius = '4px';
-      this.outputContainer.style.padding = '8px';
-      
-      // Always set the content to ensure Modern-specific display
-      this.outputContainer.innerHTML = this.outputContent;
-    }
+    return this.container;
   }
   
   /**
@@ -91,49 +88,15 @@ class ModernOutput extends BaseOutput {
         }
       `;
       document.head.appendChild(style);
-      console.log('Modern output styles added to document head');
     }
-  }
-  
-  /**
-   * Format content specifically for Modern mode
-   * @param {string} content - The content to format
-   * @returns {string} - The formatted content
-   */
-  formatContent(content) {
-    // Apply Modern-specific formatting to the content
-    
-    // Add timestamp to log entries
-    const timestamp = new Date().toLocaleTimeString();
-    
-    // Format console.log style output
-    if (content.includes('console.log')) {
-      content = `<div class="log-entry"><span class="log-time">${timestamp}</span> ${content.replace('console.log', '')}</div>`;
-    }
-    
-    // Format errors
-    if (content.includes('Error:') || content.includes('Exception:')) {
-      content = `<div class="log-entry error"><span class="log-time">${timestamp}</span> ${content}</div>`;
-    }
-    
-    return content;
-  }
-  
-  /**
-   * Override appendContent to apply Modern-specific formatting
-   * @param {string} content - The content to append
-   */
-  appendContent(content) {
-    const formattedContent = this.formatContent(content);
-    super.appendContent(formattedContent);
   }
   
   /**
    * Override getLayoutInfo to include Modern-specific output information
    * @returns {Object} Layout information for this OutputSideWindow
    */
-  getLayoutInfo() {
-    const baseInfo = super.getLayoutInfo();
+  async getLayoutInfo() {
+    const baseInfo = await super.getLayoutInfo();
     
     // Add Modern-specific layout information
     return {

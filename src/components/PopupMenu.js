@@ -47,9 +47,7 @@ export default class PopupMenu extends BaseComponent {
     this.create();
     
     // Add global event listener to close menu when clicking outside
-    document.addEventListener('click', this.handleDocumentClick);
-    
-    console.log(`PopupMenu created with ID: ${this.getComponentID()}, context: ${this.menuContext}`);
+    document.addEventListener('click', this.handleDocumentClick);    
   }
   
   /**
@@ -373,7 +371,7 @@ export default class PopupMenu extends BaseComponent {
    * @param {Object} sender - Component that sent the message
    * @returns {boolean} - True if the message was handled
    */
-  handleMessage(messageType, messageData, sender) {
+  async handleMessage(messageType, messageData, sender) {
     console.log(`PopupMenu received message: ${messageType}`, messageData);
     return super.handleMessage(messageType, messageData, sender);
   }
