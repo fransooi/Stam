@@ -246,7 +246,6 @@ class Editor extends BaseComponent {
   }
   
   setMode(mode) {
-    console.log(`Changing editor mode from ${this.currentMode} to ${mode}`);
     this.currentMode = mode;
     this.loadModeSpecificConfig();
     this.render();  

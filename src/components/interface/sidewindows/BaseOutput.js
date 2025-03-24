@@ -129,9 +129,9 @@ class BaseOutput extends BaseComponent {
     // Apply output-specific layout information
     if (layoutInfo.outputContent) {
       this.outputContent = layoutInfo.outputContent;
-      if (this.outputContainer) {
-        this.outputContainer.innerHTML = this.outputContent;
-        this.outputContainer.scrollTop = this.outputContainer.scrollHeight;
+      if (this.container) {
+        this.container.innerHTML = this.outputContent;
+        this.container.scrollTop = this.container.scrollHeight;
       }
     }
   }
