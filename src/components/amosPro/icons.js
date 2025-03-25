@@ -68,9 +68,23 @@ class AMOSProIcons extends BaseComponent {
     this.iconBar = document.createElement('div');
     this.iconBar.className = 'amospro-icon-bar';
     
+    // Apply styles directly to the icon bar for consistent display
+    this.iconBar.style.display = 'flex';
+    this.iconBar.style.flexDirection = 'column';
+    this.iconBar.style.width = '100%';
+    this.iconBar.style.backgroundColor = '#000';
+    this.iconBar.style.fontFamily = 'monospace';
+    this.iconBar.style.boxSizing = 'border-box';
+    
     // Create top row (row 1)
     const topRow = document.createElement('div');
     topRow.className = 'amospro-button-row';
+    
+    // Apply styles directly to the top row
+    topRow.style.display = 'flex';
+    topRow.style.width = '100%';
+    topRow.style.justifyContent = 'flex-start';
+    topRow.style.fontSize = '0'; // Remove whitespace between buttons
     
     // Add buttons for top row (1-1 to 14-1)
     for (let i = 1; i <= 14; i++) { 
@@ -83,13 +97,22 @@ class AMOSProIcons extends BaseComponent {
     const bottomRow = document.createElement('div');
     bottomRow.className = 'amospro-button-row';
     
+    // Apply styles directly to the bottom row
+    bottomRow.style.display = 'flex';
+    bottomRow.style.width = '100%';
+    bottomRow.style.justifyContent = 'flex-start';
+    bottomRow.style.fontSize = '0'; // Remove whitespace between buttons
+    
     // Add buttons for bottom row (1-2 to 4-2)
     for (let i = 1; i <= 4; i++) {
       this.addButton(i, 2, bottomRow);
     }    
     this.iconBar.appendChild(bottomRow);
     this.parentContainer.appendChild(this.iconBar);
+    
+    // Start observing for resize events
     this.resizeObserver.observe(this.parentContainer);
+    
     return this.iconBar;
   }
   
@@ -211,6 +234,15 @@ class AMOSProIcons extends BaseComponent {
     button.dataset.x = x;
     button.dataset.y = y;
     button.dataset.id = buttonId;
+    
+    // Apply consistent styling directly to the button
+    button.style.padding = '0';
+    button.style.margin = '0';
+    button.style.border = 'none';
+    button.style.backgroundColor = 'transparent';
+    button.style.cursor = 'pointer';
+    button.style.display = 'inline-block';
+    button.style.boxSizing = 'border-box';
     
     // Set initial state to 'up'
     this.buttonStates[buttonId] = 'up';

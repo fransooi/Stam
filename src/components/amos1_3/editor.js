@@ -25,7 +25,7 @@ class AMOS13Editor {
   // Provide configuration for the main Editor component
   getConfig() {
     // Custom theme for AMOS 1.3 based on the image
-    const amosTheme = EditorView.theme({
+    const amosTheme =   EditorView.theme({
       "&": {
         backgroundColor: "#00008B", // Dark blue background
         color: "#FFFFFF", // White text

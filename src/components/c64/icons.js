@@ -23,6 +23,15 @@ class C64Icons extends BaseComponent  {
     this.parentContainer.innerHTML = '';
     this.layoutContainer=this.parentContainer;
     
+    // Apply container styles for consistent display
+    this.parentContainer.style.display = 'flex';
+    this.parentContainer.style.flexDirection = 'row';
+    this.parentContainer.style.alignItems = 'center';
+    this.parentContainer.style.padding = '5px';
+    this.parentContainer.style.backgroundColor = '#4040ff';
+    this.parentContainer.style.width = '100%';
+    this.parentContainer.style.boxSizing = 'border-box';
+    
     // Create C64 mode buttons
     this.addButton('Run', 'run-button');
     this.addButton('Stop', 'stop-button');
@@ -68,6 +77,8 @@ class C64Icons extends BaseComponent  {
       }
     `;
     document.head.appendChild(style);
+    
+    return this.parentContainer;
   }
 
   addButton(text, className) {

@@ -94,6 +94,7 @@ class PCOSApp extends BaseComponent {
     await this.utilities.sleep(1000);
     await this.broadcastUp(MESSAGES.LAYOUT_READY);
 
+
     // Log initialization
     console.log('PCOS Application initialized in ' + this.currentMode + ' mode');
   }

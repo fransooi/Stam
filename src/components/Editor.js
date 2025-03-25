@@ -22,6 +22,7 @@ class Editor extends BaseComponent {
   
   async init(options) {
     super.init(options);
+    this.currentMode = options?.mode || 'modern';
   }
 
   async destroy() {
@@ -247,7 +248,6 @@ class Editor extends BaseComponent {
   
   setMode(mode) {
     this.currentMode = mode;
-    this.loadModeSpecificConfig();
     this.render();  
   }
 }

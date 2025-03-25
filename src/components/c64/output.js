@@ -96,6 +96,7 @@ class C64Output extends BaseOutput {
     if (!this.emulatorContainer) {
       await this.render();
     }
+    await this.emulator.load();
     await this.emulator.initialize();
     return true;
   }

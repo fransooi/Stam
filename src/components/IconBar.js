@@ -76,6 +76,11 @@ class IconBar extends BaseComponent {
       }    
       await this.modeSpecificIconsCache[mode].init();  
       this.modeSpecificIcons=this.modeSpecificIconsCache[mode];
+      
+      // Render the mode-specific icons
+      if (this.iconContainer) {
+        await this.modeSpecificIcons.render(this.iconContainer.id);
+      }
     }
   }
   
