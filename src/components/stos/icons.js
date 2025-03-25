@@ -40,109 +40,31 @@ class STOSIcons extends BaseComponent{
     document.addEventListener('keyup', this.handleKeyUp.bind(this));
   }
   async destroy() {
-    // Remove event listeners
-    document.removeEventListener('keydown', this.handleKeyDown.bind(this));
-    document.removeEventListener('keyup', this.handleKeyUp.bind(this));
-    
-    // Remove any styles that were added
-    const existingStyle = document.getElementById('stos-icons-styles');
-    if (existingStyle) {
-      existingStyle.remove();
-    }
-    
     super.destroy();
-  }
-  
-  /**
-   * Add a function key button to the specified container
-   * @param {string} key - The key label (e.g., 'F1')
-   * @param {string} action - The action label (e.g., 'Help')
-   * @param {HTMLElement} container - The container to add the button to
-   */
-  addFunctionKey(key, action, container) {
-    const button = document.createElement('button');
-    button.className = 'stos-function-key';
-    button.setAttribute('data-key', key);
-    button.textContent = `${key}: ${action}`;
-    
-    // Apply styles directly to the button
-    button.style.flex = '1';
-    button.style.height = '30px';
-    button.style.backgroundColor = '#0000aa';
-    button.style.color = '#ffffff';
-    button.style.border = '1px solid #ffffff';
-    button.style.fontFamily = 'monospace';
-    button.style.fontSize = '14px';
-    button.style.display = 'flex';
-    button.style.alignItems = 'center';
-    button.style.justifyContent = 'center';
-    button.style.cursor = 'pointer';
-    button.style.padding = '0 5px';
-    button.style.margin = '2px';
-    button.style.boxSizing = 'border-box';
-    button.style.textAlign = 'center';
-    button.style.whiteSpace = 'nowrap';
-    button.style.overflow = 'hidden';
-    button.style.textOverflow = 'ellipsis';
-    
-    // Special styling for Run button (F6)
-    if (key === 'F6') {
-      button.style.backgroundColor = '#00aa00';
-    }
-    
-    button.addEventListener('click', () => this.handleFunctionKeyClick(key, action));
-    container.appendChild(button);
-  }
-  
-  /**
-   * Handle function key button clicks
-   * @param {string} key - The key that was clicked
-   * @param {string} action - The action associated with the key
-   */
-  handleFunctionKeyClick(key, action) {
-    console.log(`STOS Function Key clicked: ${key} - ${action}`);
-    
-    // Call the callback if provided
-    if (typeof this.onIconClickCallback === 'function') {
-      this.onIconClickCallback(action.toLowerCase());
+    if(this.stosIconsContainer)
+    {
+      document.removeEventListener('keydown', this.handleKeyDown.bind(this));
+      document.removeEventListener('keyup', this.handleKeyUp.bind(this));
+      this.parentContainer.removeChild(this.stosIconsContainer);
+      this.stosIconsContainer=null;
     }
   }
-  
   async render(containerId) {
-    this.parentContainer = await super.render(containerId);
+    this.parentContainer=await super.render(containerId);
     this.parentContainer.innerHTML = '';
-    this.layoutContainer = this.parentContainer;
+    this.layoutContainer=this.parentContainer;
 
     // Create main container for STOS function keys
     this.stosIconsContainer = document.createElement('div');
     this.stosIconsContainer.className = 'stos-icons-container';
     
-    // Apply styles directly to the container
-    this.stosIconsContainer.style.display = 'flex';
-    this.stosIconsContainer.style.flexDirection = 'column';
-    this.stosIconsContainer.style.width = '100%';
-    this.stosIconsContainer.style.backgroundColor = '#0000aa';
-    this.stosIconsContainer.style.color = '#ffffff';
-    this.stosIconsContainer.style.fontFamily = 'monospace';
-    this.stosIconsContainer.style.padding = '5px';
-    this.stosIconsContainer.style.boxSizing = 'border-box';
-    
     // Create first row of function keys (F1-F5 or F10-F14)
     const firstRow = document.createElement('div');
     firstRow.className = 'stos-function-row';
     
-    // Apply styles directly to the first row
-    firstRow.style.display = 'flex';
-    firstRow.style.width = '100%';
-    firstRow.style.marginBottom = '4px';
-    
     // Create second row of function keys (F6-F10 or F15-F19)
     const secondRow = document.createElement('div');
     secondRow.className = 'stos-function-row';
-    
-    // Apply styles directly to the second row
-    secondRow.style.display = 'flex';
-    secondRow.style.width = '100%';
     
     // Get the current set of keys based on shift state
     const currentKeys = this.shiftPressed ? this.functionKeys.shift : this.functionKeys.normal;
@@ -163,44 +85,43 @@ class STOSIcons extends BaseComponent{
     
     // Add container to main container
     this.parentContainer.appendChild(this.stosIconsContainer);
-    
     return this.stosIconsContainer;
   }
   
-  /**
-   * Update the function keys when shift state changes
-   */
-  updateFunctionKeys() {
-    // Clear existing function keys
-    this.parentContainer.innerHTML = '';
-    
-    // Re-render the icon bar
-    this.render(this.containerId);
-  }
-  
+
   handleKeyDown(event) {
-    if (event.key === 'Shift' && !this.shiftPressed) {
+    if (event.key === 'Shift' && !this.shiftPressed && this.stosIconsContainer)  {
       this.shiftPressed = true;
-      this.updateFunctionKeys();
+      this.render();
     }
   }
   
   handleKeyUp(event) {
-    if (event.key === 'Shift' && this.shiftPressed) {
+    if (event.key === 'Shift' && this.shiftPressed && this.stosIconsContainer) {
       this.shiftPressed = false;
-      this.updateFunctionKeys();
+      this.render();
     }
   }
+
+  addFunctionKey(key, action, parent) {
+    const button = document.createElement('button');
+    button.className = 'stos-function-key';
+    button.dataset.key = key;
+    button.dataset.action = action;
+    
+    // Create a single text element with the format "Fxx: action"
+    const textContent = document.createElement('span');
+    textContent.className = 'stos-key-text';
+    textContent.textContent = `${key}: ${action}`;
+    button.appendChild(textContent);
+    
+    // Add click event
+    button.addEventListener('click', () => this.handleFunctionKeyClick(key, action));    
+    parent.appendChild(button);
+  }
   
-  /**
-   * Get information about the STOS icon bar for layout saving
-   * @returns {Object} Icon information
-   */
-  getIconInfo() {
-    return {
-      mode: 'stos',
-      shiftPressed: this.shiftPressed
-    };
+  handleFunctionKeyClick(key, action) {
+    console.log(`STOS Function Key clicked: ${key} - ${action}`);
   }
 }
 
