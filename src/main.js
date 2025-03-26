@@ -5,7 +5,7 @@ import './components/interface/sidewindows/sidewindows.css'
 import MenuBar from './components/MenuBar.js';
 import StatusBar from './components/StatusBar.js';
 import Editor from './components/Editor.js';
-import IconBar from './components/IconBar.js';
+import IconBar, { ICONACTIONS } from './components/IconBar.js';
 import SideBar from './components/SideBar.js';  
 import BaseComponent from './utils/BaseComponent.js';
 import { MESSAGES } from './utils/BaseComponent.js';
@@ -143,9 +143,6 @@ class PCOSApp extends BaseComponent {
   }
   async handleMenuAction(data, sender) {
     return this.handleMenuAction(data, sender);
-  }
-  async handleIconAction(data, sender) {
-    return this.handleIconAction(data, sender);
   }
   
   /**
@@ -332,20 +329,24 @@ class PCOSApp extends BaseComponent {
    * @returns {boolean} - True if the action was handled
    */
   handleIconAction(data, sender) {
-    if (!data.action) return false;
-    
+    if (!data.action) return false;    
     var action = data.action;
-    console.log(`PCOSApp handling icon action: ${action}`);
     
     // Handle different icon actions
-    switch (action) {
-      case 'run':
+    switch (action.toLowerCase()) {
+      case ICONACTIONS.NEW_FILE:
         return true;
-        
-      case 'debug':
+      case ICONACTIONS.OPEN_FILE:
         return true;
-        
-      case 'stop':
+      case ICONACTIONS.SAVE_FILE:
+        return true;        
+      case ICONACTIONS.RUN_PROGRAM:
+        return true;
+      case ICONACTIONS.DEBUG_PROGRAM:
+        return true;
+      case ICONACTIONS.SHARE_PROGRAM:
+        return true;
+      case ICONACTIONS.HELP:
         return true;
         
       // Add more icon actions as needed

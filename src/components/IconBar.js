@@ -1,11 +1,17 @@
 import BaseComponent, { MESSAGES } from '../utils/BaseComponent.js';
-/*
-import ModernIcons from './modern/icons.js';
-import StosIcons from './modern/icons.js';
-import AMOS1_3Icons from './modern/icons.js';
-import AMOSProIcons from './modern/icons.js';
-import C64Icons from './modern/icons.js';
-*/
+
+
+// Define message types for preference handling
+export const ICONACTIONS = {
+  NEW_FILE: 'NEW_FILE',
+  OPEN_FILE: 'OPEN_FILE',
+  SAVE_FILE: 'SAVE_FILE',
+  RUN_PROGRAM: 'RUN_PROGRAM',
+  DEBUG_PROGRAM: 'DEBUG_PROGRAM',
+  SHARE_PROGRAM: 'SHARE_PROGRAM',
+  HELP: 'HELP'
+};
+
 // IconBar.js - Component for the icon area with buttons
 class IconBar extends BaseComponent {
   constructor(parentId, containerId) {

@@ -1,5 +1,5 @@
 // Modern Icon Bar component with Font Awesome icons
-import BaseComponent from '../../utils/BaseComponent.js';
+import BaseComponent, { MESSAGES } from '../../utils/BaseComponent.js';
 
 class ModernIcons extends BaseComponent {
   constructor(parentId,containerId) {
@@ -42,18 +42,18 @@ class ModernIcons extends BaseComponent {
     this.parentContainer.style.minHeight = '60px';
     
     // Create modern mode buttons with Font Awesome icons
-    this.addButton('New', 'new-button', 'fa-file');
-    this.addButton('Open', 'open-button', 'fa-folder-open');
-    this.addButton('Save', 'save-button', 'fa-save');
-    this.addButton('Run', 'run-button', 'fa-play');
-    this.addButton('Debug', 'debug-button', 'fa-bug');
-    this.addButton('Share', 'share-button', 'fa-share-alt');
-    this.addButton('Help', 'help-button', 'fa-question-circle');
+    this.addButton('New', ICONACTIONS.NEW_FILE, 'new-button', 'fa-file');
+    this.addButton('Open', ICONACTIONS.OPEN_FILE, 'open-button', 'fa-folder-open');
+    this.addButton('Save', ICONACTIONS.SAVE_FILE, 'save-button', 'fa-save');
+    this.addButton('Run', ICONACTIONS.RUN_PROGRAM, 'run-button', 'fa-play');
+    this.addButton('Debug', ICONACTIONS.DEBUG_PROGRAM, 'debug-button', 'fa-bug');
+    this.addButton('Share', ICONACTIONS.SHARE_PROGRAM, 'share-button', 'fa-share-alt');
+    this.addButton('Help', ICONACTIONS.HELP, 'help-button', 'fa-question-circle');
     
     return this.parentContainer;
   }
   
-  addButton(text, className, iconClass) {
+  addButton(text, action,className, iconClass) {
     const button = document.createElement('button');
     button.className = `icon-button modern-icon-button ${className}`;
     button.title = text; // Keep the title for tooltip on hover
@@ -98,7 +98,8 @@ class ModernIcons extends BaseComponent {
         button.style.color = '#CE93D8';
         break;
     }
-    
+    button.action=action;
+
     // Create icon element
     const icon = document.createElement('i');
     icon.className = `fas ${iconClass}`;
@@ -125,7 +126,7 @@ class ModernIcons extends BaseComponent {
     });
     
     // No text span anymore, just the icon    
-    button.addEventListener('click', () => this.handleButtonClick(text));
+    button.addEventListener('click', () => this.handleButtonClick(action));
     this.parentContainer.appendChild(button);
     this.buttons.push(button);
   }
@@ -133,14 +134,9 @@ class ModernIcons extends BaseComponent {
   handleButtonClick(action) {
     console.log(`Modern button clicked: ${action}`);
     
-    this.sendMessageDown(MESSAGE.ICON_ACTION, {
+    this.sendMessageDown(MESSAGES.ICON_ACTION, {
       action: action
-    });
-    
-    // Call the callback if provided
-    if (typeof this.onIconClickCallback === 'function') {
-      this.onIconClickCallback(action.toLowerCase());
-    }
+    });    
   }
   
   /**
