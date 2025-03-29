@@ -9,15 +9,21 @@ import IconBar, { ICONACTIONS } from './components/IconBar.js';
 import SideBar from './components/SideBar.js';  
 import BaseComponent from './utils/BaseComponent.js';
 import { MESSAGES } from './utils/BaseComponent.js';
+import { SOCKETMESSAGES } from './components/interface/sidewindows/SocketSideWindow.js';
 import PreferenceDialog from './components/PreferenceDialog.js';
 import messageBus from './utils/MessageBus.mjs';
 import Utilities from './utils/Utilities.js';
+import FileSystem from './utils/FileSystem.js';
+import Project from './components/Project.js';
 
 // Main application class
 class PCOSApp extends BaseComponent {
   constructor() {
     // Initialize the base component with component name
     super('PCOSApp');
+
+    // Set as root
+    messageBus.setRoot(this);    
     
     // Storage for layout information from components
     this.layoutInfo = {};
@@ -28,10 +34,9 @@ class PCOSApp extends BaseComponent {
 
     // Initialize utilities
     this.utilities = new Utilities();
+    this.fileSystem = new FileSystem(this.componentId);
+    this.project = new Project(this.componentId);
     
-    // Set as root
-    messageBus.setRoot(this);    
-
     // Initialize all components with the correct mode from the start
     this.sideBar = new SideBar(this.componentId,'info-area');
     this.menuBar = new MenuBar(this.componentId,'menu-bar');
@@ -45,7 +50,7 @@ class PCOSApp extends BaseComponent {
     this.messageMap[MESSAGES.MENU_ACTION] = this.handleMenuAction;
     this.messageMap[MESSAGES.ICON_ACTION] = this.handleIconAction;
     this.messageMap[MESSAGES.LAYOUT_INFO] = this.handleLayoutInfo;
-    this.messageMap[MESSAGES.MODE_CHANGED] = this.handleModeChanged;
+    this.messageMap[MESSAGES.MODE_CHANGED] = this.handleModeChanged;    
   }
   
   async init(options = {}) {
@@ -94,9 +99,12 @@ class PCOSApp extends BaseComponent {
     await this.utilities.sleep(1000);
     await this.broadcastUp(MESSAGES.LAYOUT_READY);
 
+    // Send CONNECT message to socket
+    await this.sendMessageTo(this.socket.componentId,SOCKETMESSAGES.CONNECT_IF_CONNECTED);
 
     // Log initialization
     console.log('PCOS Application initialized in ' + this.currentMode + ' mode');
+    
   }
     
   // Handle the MODE_CHANGED command 
@@ -141,17 +149,14 @@ class PCOSApp extends BaseComponent {
     await this.changeMode(data.mode);
     return true;
   }
-  async handleMenuAction(data, sender) {
-    return this.handleMenuAction(data, sender);
-  }
-  
+
   /**
    * Handle menu actions from MenuBar
    * @param {Object} action - Action data
    * @param {Object} sender - Component that sent the action
    * @returns {boolean} - True if the action was handled
    */
-  handleMenuAction(action, sender) {
+  async handleMenuAction(action, sender) {
     console.log('Menu action:', action);
     
     // Handle specific menu actions

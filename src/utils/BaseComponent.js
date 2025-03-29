@@ -43,11 +43,7 @@ export const MESSAGES = {
   RENDER: 'RENDER',
   ADD_SIDE_WINDOW: 'ADD_SIDE_WINDOW',
   REMOVE_SIDE_WINDOW: 'REMOVE_SIDE_WINDOW',
-  CONTENT_HEIGHT_CHANGED: 'CONTENT_HEIGHT_CHANGED',
-  SOCKET_CONNECT: 'SOCKET_CONNECT',
-  SOCKET_DISCONNECT: 'SOCKET_DISCONNECT',
-  SOCKET_SEND_MESSAGE: 'SOCKET_SEND_MESSAGE',
-  SOCKET_SET_USER_KEY: 'SOCKET_SET_USER_KEY'
+  CONTENT_HEIGHT_CHANGED: 'CONTENT_HEIGHT_CHANGED'
 };
 
 export default class BaseComponent {
@@ -225,14 +221,21 @@ export default class BaseComponent {
     
     // If the component has visibility information, include it
     if (this.layoutContainer && this.layoutContainer.style) {
-      layoutInfo.visible = this.layoutContainer.style.display !== 'none';
+      layoutInfo.display = this.layoutContainer.style.display;
     }
     
     return layoutInfo;
   }
+  
+  /**
+   * Apply layout information to this component
+   * Used for layout persistence
+   * 
+   * @param {Object} layout - Layout information for this component
+   */
   async applyLayout(layout) {
     if (this.layoutContainer) {
-      this.layoutContainer.style.display = layout.visible ? 'block' : 'none';
+      this.layoutContainer.style.display = layout.display;
       this.layoutContainer.style.left = layout.position.x + 'px';
       this.layoutContainer.style.top = layout.position.y + 'px';
       this.layoutContainer.style.width = layout.size.width + 'px';
@@ -341,6 +344,23 @@ export default class BaseComponent {
       data: messageData
     });
   }
+
+  /**
+   * Send a message to a specific component and wait for response
+   *    
+   * @param {string} targetComponentId - ID of the target component
+   * @param {string} messageType - Type of message to send
+   * @param {Object} messageData - Data to send with the message
+   * @returns {Promise} - Promise that resolves with the response
+   */
+  sendRequestTo(targetComponentId, messageType, messageData = {}) {
+    return messageBus.sendRequest(targetComponentId, messageType, {
+      type: messageType,
+      data: messageData,
+      from: this.componentId
+    }, this.componentId);
+  }
+    
   
   /**
    * Send a message to a specific component
@@ -352,6 +372,21 @@ export default class BaseComponent {
    */
   sendMessageTo(targetComponentId, messageType, messageData = {}) {
     return messageBus.sendMessage(targetComponentId, messageType, {
+      type: messageType,
+      data: messageData,
+      from: this.componentId
+    }, this.componentId);
+  }
+  
+  /**
+   * Send a message to the root component
+   * 
+   * @param {string} messageType - Type of message to send
+   * @param {Object} messageData - Data to send with the message
+   * @returns {boolean} - True if the message was delivered
+   */
+  sendMessageToRoot(messageType, messageData = {}) {
+    return messageBus.sendMessage(messageBus.root.componentId, messageType, {
       type: messageType,
       data: messageData,
       from: this.componentId

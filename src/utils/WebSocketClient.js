@@ -4,6 +4,8 @@
  * A client-side WebSocket implementation for the PCOS application.
  * Handles connection management, message sending/receiving, and authentication.
  */
+import { SERVERCOMMANDS } from './../../../engine/servercommands.js';
+import { SOCKETMESSAGES } from '../components/interface/sidewindows/SocketSideWindow.js';
 
 class WebSocketClient {
   /**
@@ -17,23 +19,26 @@ class WebSocketClient {
    * @param {Function} options.onError - Callback when error occurs
    */
   constructor(options = {}) {
-    this.url = options.url || 'ws://localhost:8080';
-    this.userKey = options.userKey || '';
     this.socket = null;
     this.isConnected = false;
+    this.loggedIn = false;
+    this.userName = '';
+    this.userKey = '';
     this.reconnectAttempts = 0;
     this.maxReconnectAttempts = options.maxReconnectAttempts || 5;
     this.reconnectInterval = options.reconnectInterval || 3000;
     this.messageQueue = [];
     this.lastMessageId = 0;
-    this.pendingRequests = new Map();
-    this.requestTimeout = options.requestTimeout || 10000; // 10 seconds timeout for requests
+    this.callbacks = new Map();
+    this.callbackTimeout = options.callbackTimeout || 10000; // 10 seconds timeout for callbacks
+    this.root = options.root || null;
+    this.handle = '';
     
     // Callbacks
-    this.onOpenCallback = options.onOpen || (() => {});
     this.onMessageCallback = options.onMessage || (() => {});
     this.onCloseCallback = options.onClose || (() => {});
     this.onErrorCallback = options.onError || (() => {});
+    this.onConnectedCallback = options.onConnected || (() => {});
     
     // Bind methods
     this.onOpen = this.onOpen.bind(this);
@@ -47,17 +52,21 @@ class WebSocketClient {
    * @param {string} userKey - Optional user key to override the one provided in constructor
    * @returns {Promise} - Resolves when connected, rejects on error or timeout
    */
-  connect(userKey = null) {
-    if (userKey) {
-      this.userKey = userKey;
+  connect(options=null) {
+    if ( options ){
+      this.url = options.url || 'ws://localhost:1033';
+      this.userKey = options.userKey || '';
+      this.userName = options.userName || '';
     }
-    
     return new Promise((resolve, reject) => {
       if (this.isConnected) {
         resolve();
         return;
       }
-      
+      if (!this.userKey || !this.userName) {
+        reject('User key and name are required');
+        return;
+      }    
       try {
         this.socket = new WebSocket(this.url);
         
@@ -117,19 +126,17 @@ class WebSocketClient {
   onOpen(event) {
     console.log('WebSocket connection established');
     this.isConnected = true;
+    this.loggedIn = false;
     this.reconnectAttempts = 0;
     
     // Send authentication message
-    this.send({
-      type: 'auth',
+    this.send(SERVERCOMMANDS.CONNECT, {
+      userName: this.userName,
       userKey: this.userKey
     });
-    
+
     // Process any queued messages
-    this.processQueue();
-    
-    // Call the user callback
-    this.onOpenCallback(event);
+    this.processQueue();    
   }
   
   /**
@@ -140,28 +147,27 @@ class WebSocketClient {
   onMessage(event) {
     try {
       const message = JSON.parse(event.data);
-      console.log('Received message:', message);
       
       // Handle authentication response
-      if (message.type === 'auth_response') {
-        if (message.success) {
-          console.log('Authentication successful');
+      if (message.responseTo === SERVERCOMMANDS.CONNECT) {
+        if (!message.error) {
+          this.handle=message.parameters.handle;
+          this.loggedIn = true;
         } else {
-          console.error('Authentication failed:', message.error);
-          this.disconnect();
+          this.disconnect(message.error);
         }
       }
       
       // Handle response to a request
-      if (message.id && this.pendingRequests.has(message.id)) {
-        const { resolve, reject, timeout } = this.pendingRequests.get(message.id);
+      if (message.callbackId && this.callbacks.has(message.callbackId)) {
+        const { resolve, reject, timeout } = this.callbacks.get(message.callbackId);
         clearTimeout(timeout);
-        this.pendingRequests.delete(message.id);
+        this.callbacks.delete(message.callbackId);
         
-        if (message.error) {
-          reject(new Error(message.error));
+        if (message.parameters.error) {
+          reject(message.parameters.error);
         } else {
-          resolve(message);
+          resolve(message.parameters);
         }
       }
       
@@ -183,11 +189,11 @@ class WebSocketClient {
     this.socket = null;
     
     // Reject all pending requests
-    this.pendingRequests.forEach(({ reject, timeout }) => {
+    this.callbacks.forEach(({ reject, timeout }) => {
       clearTimeout(timeout);
-      reject(new Error('Connection closed'));
+      reject('Connection closed');
     });
-    this.pendingRequests.clear();
+    this.callbacks.clear();
     
     // Attempt to reconnect if not a clean close
     if (event.code !== 1000 && event.code !== 1001) {
@@ -234,10 +240,13 @@ class WebSocketClient {
    * @param {Object} message - Message to send
    * @returns {boolean} - True if sent or queued, false if failed
    */
-  send(message) {
-    if (!message.id) {
-      message.id = this.generateMessageId();
-    }
+  send(command,parameters) {
+    const message = {
+      id: this.root.utilities.getUniqueIdentifier( {}, 'message', 0, '', 3, 3 ),
+      handle: this.handle,
+      command: command,
+      parameters: parameters
+    };
     
     if (this.isConnected && this.socket.readyState === WebSocket.OPEN) {
       try {
@@ -259,28 +268,39 @@ class WebSocketClient {
    * @param {Object} message - Message to send
    * @returns {Promise} - Resolves with the response, rejects on error or timeout
    */
-  request(message) {
+  request(command, parameters) {
     return new Promise((resolve, reject) => {
-      // Generate a unique ID for this request
-      const id = this.generateMessageId();
-      message.id = id;
-      
+      const message = {
+        id: this.root.utilities.getUniqueIdentifier( {}, 'message', 0, '', 3, 3 ),
+        handle: this.handle,
+        command: command,
+        parameters: parameters
+      };
+        
       // Set up timeout for this request
       const timeout = setTimeout(() => {
-        if (this.pendingRequests.has(id)) {
-          this.pendingRequests.delete(id);
+        if (this.callbacks.has(message.id)) {
+          this.callbacks.delete(message.id);
           reject(new Error('Request timeout'));
         }
-      }, this.requestTimeout);
+      }, 1000*1000 /*this.callbackTimeout*/);
       
       // Store the promise callbacks
-      this.pendingRequests.set(id, { resolve, reject, timeout });
-      
+      this.callbacks.set(message.id, { resolve, reject, timeout });
+
       // Send the message
-      if (!this.send(message)) {
-        clearTimeout(timeout);
-        this.pendingRequests.delete(id);
-        reject(new Error('Failed to send request'));
+      if (this.isConnected && this.socket.readyState === WebSocket.OPEN) {
+        try {
+          this.socket.send(JSON.stringify(message));
+          return true;
+        } catch (error) {
+          console.error('Error sending message:', error);
+          return false;
+        }
+      } else {
+        // Queue the message for later
+        this.messageQueue.push(message);
+        return true;
       }
     });
   }
@@ -300,18 +320,8 @@ class WebSocketClient {
         this.send(message);
       });
     }
-  }
-  
-  /**
-   * Generate a unique message ID
-   * @returns {string} - Unique message ID
-   * @private
-   */
-  generateMessageId() {
-    this.lastMessageId++;
-    return `msg_${Date.now()}_${this.lastMessageId}`;
-  }
-  
+  }  
+
   /**
    * Check if the client is connected
    * @returns {boolean} - True if connected, false otherwise

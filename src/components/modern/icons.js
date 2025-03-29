@@ -1,5 +1,6 @@
 // Modern Icon Bar component with Font Awesome icons
 import BaseComponent, { MESSAGES } from '../../utils/BaseComponent.js';
+import { ICONACTIONS } from '../../components/IconBar.js';
 
 class ModernIcons extends BaseComponent {
   constructor(parentId,containerId) {
@@ -134,7 +135,7 @@ class ModernIcons extends BaseComponent {
   handleButtonClick(action) {
     console.log(`Modern button clicked: ${action}`);
     
-    this.sendMessageDown(MESSAGES.ICON_ACTION, {
+    this.sendMessageToRoot(MESSAGES.ICON_ACTION, {
       action: action
     });    
   }

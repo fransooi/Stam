@@ -158,6 +158,16 @@ class MessageBus {
     }    
     return false;
   }
+
+  async sendRequest(targetID, message, data = {}, senderId = null) {
+    if (this.addressedHandlers.has(targetID)) {
+      const { handler, context } = this.addressedHandlers.get(targetID);
+      return await handler.call(context, message, data, senderId);
+    }    
+    return new Promise((resolve, reject) => {
+      reject(new Error('No handler found for target ID'));
+    });
+  }
   
   /**
    * Broadcast a message to all registered handlers without traversing the component tree

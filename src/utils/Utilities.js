@@ -96,6 +96,51 @@ export default class Utilities {
   }
 
   /**
+   * Generate a unique identifier
+   * 
+   * @param {Object} toCheck - Object to check for existing IDs
+   * @param {string} root - Root of the ID (default: '')
+   * @param {number} count - Counter for the ID (default: 0)
+   * @param {string} timeString - Time string format (default: '')
+   * @param {number} nNumbers - Number of random numbers (default: 3)
+   * @param {number} nLetters - Number of random letters (default: 3)
+   * @returns {string} - A unique ID
+   */
+  getUniqueIdentifier( toCheck = {}, root = '', count = 0, timeString = '', nNumbers = 3, nLetters = 3 )
+	{
+		var id;
+		do
+		{
+			id = root + ( root ? '_' : '' ) + count;
+			if ( timeString )
+			{
+				var currentdate = new Date();
+				var time = this.format( timeString,
+				{
+					day: currentdate.getDate(),
+					month: currentdate.getMonth(),
+					year:  currentdate.getFullYear(),
+					hour:  currentdate.getHours(),
+					minute:  currentdate.getMinutes(),
+					second: currentdate.getSeconds(),
+					milli: currentdate.getMilliseconds(),
+				} );
+				if ( time )
+					id += '_' + time;
+			}
+			var numbers = '';
+			for ( var n = 0; n < nNumbers; n++ )
+				numbers += String.fromCharCode( 48 + Math.floor( Math.random() * 10 ) );
+			id += '_' + numbers;
+			var letters = '';
+			for ( var n = 0; n < nLetters; n++ )
+				letters += String.fromCharCode( 65 + Math.floor( Math.random() * 26 ) );
+			id += letters;
+		} while( toCheck[ id ] );
+		return id;
+	}
+
+  /**
    * Debounce a function
    * 
    * @param {Function} func - The function to debounce

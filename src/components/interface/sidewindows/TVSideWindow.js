@@ -392,11 +392,11 @@ class TVSideWindow extends SideWindow {
       this.clipSelector.button.textContent = this.getClipTypeById(clipTypeId).name;
     }
     
-    // Clear content
-    this.content.innerHTML = '';
-    
     // Initialize new clip
-    this.clips[clipTypeId].render(this.content);
+    this.content.innerHTML = '';
+    this.clips[clipTypeId].render(this.content).then(clipContainer => {
+      this.content.appendChild(clipContainer);
+    });
   }
   
   /**
@@ -642,25 +642,11 @@ class TVSideWindow extends SideWindow {
    * @param {Object} layoutInfo - Layout information for this TVSideWindow
    */
   async applyLayout(layoutInfo) {   
-    await super.applyLayout(layoutInfo);
+   await super.applyLayout(layoutInfo);
     
     // Set current clip type if specified
     if (layoutInfo.currentClipType && this.clips[layoutInfo.currentClipType]) {
       this.currentClipType = layoutInfo.currentClipType;
-    }
-    
-    // Set URLs for all clips if specified
-    if (layoutInfo.clipUrls) {
-      Object.keys(layoutInfo.clipUrls).forEach(clipType => {
-        if (this.clips[clipType]) {
-          this.clips[clipType].setUrl(layoutInfo.clipUrls[clipType]);
-        }
-      });
-    }
-    
-    // Set current URL if specified
-    if (layoutInfo.currentUrl && this.clips[this.currentClipType]) {
-      this.clips[this.currentClipType].setUrl(layoutInfo.currentUrl);
     }
     
     // Restore playlist if specified
@@ -672,17 +658,24 @@ class TVSideWindow extends SideWindow {
         this.isPlayingPlaylist = true;
         
         // Set current index if specified
-        if (layoutInfo.playlist.currentIndex !== undefined) {
-          this.currentPlaylist.currentIndex = layoutInfo.playlist.currentIndex;
-        }
+        this.currentPlaylist.currentIndex = layoutInfo.playlist.currentIndex;
         
         // Load the current clip from the playlist
         this.loadCurrentPlaylistClip();
+        this.addPlaylistControls();
       }
     }
-    
-    // Render the current clip
-    this.renderCurrentClip();
+    else {
+      Object.keys(layoutInfo.clipUrls).forEach(clipType => {
+        if (this.clips[clipType]) {
+          if(clipType==this.currentClipType) {
+            this.clips[clipType].setUrl(layoutInfo.clipUrls[clipType]);
+          }
+        }
+      });
+      // Render the current clip
+      this.renderCurrentClip();
+    }          
   }
   
   /**
@@ -704,11 +697,11 @@ class TVSideWindow extends SideWindow {
         this.changeClipType(currentClip.clipType);
       }
       
-      // Clear content
-      this.content.innerHTML = '';
-      
       // Initialize the clip content
-      this.clips[this.currentClipType].render(this.content);
+      this.content.innerHTML = '';
+      this.clips[this.currentClipType].render(this.content).then(clipContainer => {
+        this.content.appendChild(clipContainer);
+      });
       
       // Set the URL after the content is initialized
       this.setUrl(currentClip.url);
@@ -718,12 +711,12 @@ class TVSideWindow extends SideWindow {
   /**
    * Render the current clip
    */
-  renderCurrentClip() {
-    // Clear content
-    this.content.innerHTML = '';
-    
+  renderCurrentClip() {    
     // Initialize the clip content
-    this.clips[this.currentClipType].render(this.content);
+    this.content.innerHTML = '';
+    this.clips[this.currentClipType].render(this.content).then(clipContainer => {
+      this.content.appendChild(clipContainer);
+    });
   }
 }
 

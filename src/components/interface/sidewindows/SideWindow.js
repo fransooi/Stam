@@ -475,7 +475,7 @@ class SideWindow extends BaseComponent {
       this.content.style.height = `${availableHeight}px`;
       
       // Send a message about the content height change
-      this.sendMessage(MESSAGES.CONTENT_HEIGHT_CHANGED, { height: availableHeight });
+      //this.sendMessage(MESSAGES.CONTENT_HEIGHT_CHANGED, { height: availableHeight });
     }
   }
   

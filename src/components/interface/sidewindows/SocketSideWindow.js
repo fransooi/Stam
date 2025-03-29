@@ -7,7 +7,20 @@
 
 import SideWindow from './SideWindow.js';
 import WebSocketClient from '../../../utils/WebSocketClient.js';
-import { MESSAGES } from '../../../utils/BaseComponent.js';
+import { SERVERCOMMANDS } from '../../../../../engine/servercommands.js';
+
+// Define message types for preference handling
+export const SOCKETMESSAGES = {
+  CONNECT: 'SOCKET_CONNECT',
+  CONNECT_IF_CONNECTED: 'SOCKET_CONNECT_IF_CONNECTED',
+  DISCONNECT: 'SOCKET_DISCONNECT',
+  SEND_MESSAGE: 'SOCKET_SEND_MESSAGE',
+  REQUEST_RESPONSE: 'SOCKET_REQUEST_RESPONSE',
+  CONTENT_HEIGHT_CHANGED: 'CONTENT_HEIGHT_CHANGED',
+  CONNECTED: 'SOCKET_CONNECTED',
+  DISCONNECTED: 'SOCKET_DISCONNECTED',
+  MESSAGE_RECEIVED: 'SOCKET_MESSAGE_RECEIVED'
+};
 
 class SocketSideWindow extends SideWindow {
   /**
@@ -17,10 +30,12 @@ class SocketSideWindow extends SideWindow {
   constructor(parentId, containerId, initialHeight = 200) {
     super('Socket', 'Server', parentId, containerId, initialHeight);
     
-    this.client = null;
     this.isConnected = false;
     this.isConnecting = false;
+    this.wasConnected = false;
     this.userKey = '';
+    this.userName = 'francois';
+    this.url = 'ws://localhost:1033';
     this.messages = [];
     this.maxMessages = 50; // Maximum number of messages to display
     
@@ -34,6 +49,8 @@ class SocketSideWindow extends SideWindow {
     this.connectButton = null;
     this.disconnectButton = null;
     this.userKeyInput = null;
+    this.userNameInput = null;
+    this.urlInput = null;
     
     // Indicator elements
     this.connectionIndicator = null;
@@ -45,11 +62,25 @@ class SocketSideWindow extends SideWindow {
     this.receiveFlashTimer = null;
 
     // Message handlers
-    this.messageMap[MESSAGES.SOCKET_CONNECT] = this.handleSocketConnectMessage;
-    this.messageMap[MESSAGES.SOCKET_DISCONNECT] = this.handleSocketDisconnectMessage;
-    this.messageMap[MESSAGES.SOCKET_SEND_MESSAGE] = this.handleSocketSendMessage;
-    this.messageMap[MESSAGES.SOCKET_SET_USER_KEY] = this.handleSocketSetUserKeyMessage;
-    this.messageMap[MESSAGES.CONTENT_HEIGHT_CHANGED] = this.handleContentHeightChanged;
+    this.messageMap[SOCKETMESSAGES.CONNECT] = this.handleConnect;
+    this.messageMap[SOCKETMESSAGES.CONNECT_IF_CONNECTED] = this.handleConnectIfConnected;
+    this.messageMap[SOCKETMESSAGES.DISCONNECT] = this.handleDisconnect;
+    this.messageMap[SOCKETMESSAGES.SEND_MESSAGE] = this.handleSendMessage;
+    this.messageMap[SOCKETMESSAGES.REQUEST_RESPONSE] = this.handleRequestResponse;
+    this.messageMap[SOCKETMESSAGES.CONTENT_HEIGHT_CHANGED] = this.handleContentHeightChanged;    
+
+    // Create client if not exists
+    this.client = new WebSocketClient({   
+      root: this.root,
+      onOpen: () => this.handleConnectionOpen(),
+      onConnected: () => this.handleConnectionConnected(),
+      onClose: () => this.handleConnectionClose(),
+      onMessage: (message) => this.handleServerMessage(message),
+      onError: (error) => this.handleConnectionError(error)
+    });
+
+    // Poke in root
+    this.root.socket = this;
   }
   
   /**
@@ -229,33 +260,79 @@ class SocketSideWindow extends SideWindow {
     const controlsContainer = document.createElement('div');
     controlsContainer.className = 'socket-controls';
     
+    // URL input
+    const urlLabel = document.createElement('label');
+    urlLabel.textContent = 'URL:';
+    urlLabel.htmlFor = 'socket-url';
+    urlLabel.className = 'socket-label';
+    
+    this.urlInput = document.createElement('input');
+    this.urlInput.type = 'text';
+    this.urlInput.id = 'socket-url';
+    this.urlInput.value = this.url;
+    this.urlInput.placeholder = 'ws://localhost:1033';
+    this.urlInput.className = 'socket-input';
+    
+    // User name input
+    const userNameLabel = document.createElement('label');
+    userNameLabel.textContent = 'User Name:';
+    userNameLabel.htmlFor = 'socket-user-name';
+    userNameLabel.className = 'socket-label';
+    
+    this.userNameInput = document.createElement('input');
+    this.userNameInput.type = 'text';
+    this.userNameInput.id = 'socket-user-name';
+    this.userNameInput.value = this.userName;
+    this.userNameInput.placeholder = 'Enter username';
+    this.userNameInput.className = 'socket-input';
+    
     // User key input
     const userKeyLabel = document.createElement('label');
     userKeyLabel.textContent = 'User Key:';
     userKeyLabel.htmlFor = 'socket-user-key';
+    userKeyLabel.className = 'socket-label';
     
     this.userKeyInput = document.createElement('input');
     this.userKeyInput.type = 'text';
     this.userKeyInput.id = 'socket-user-key';
     this.userKeyInput.value = this.userKey;
     this.userKeyInput.placeholder = 'Enter user key';
+    this.userKeyInput.className = 'socket-input';
     
     // Connect button
     this.connectButton = document.createElement('button');
     this.connectButton.textContent = 'Connect';
     this.connectButton.addEventListener('click', () => this.connect());
+    this.connectButton.className = 'socket-button';
     
     // Disconnect button
     this.disconnectButton = document.createElement('button');
     this.disconnectButton.textContent = 'Disconnect';
     this.disconnectButton.addEventListener('click', () => this.disconnect());
     this.disconnectButton.disabled = !this.isConnected;
+    this.disconnectButton.className = 'socket-button';
     
     // Add elements to controls container
-    controlsContainer.appendChild(userKeyLabel);
-    controlsContainer.appendChild(this.userKeyInput);
-    controlsContainer.appendChild(this.connectButton);
-    controlsContainer.appendChild(this.disconnectButton);
+    const connectionRow = document.createElement('div');
+    connectionRow.className = 'socket-control-row';
+    connectionRow.appendChild(urlLabel);
+    connectionRow.appendChild(this.urlInput);
+    
+    const userRow = document.createElement('div');
+    userRow.className = 'socket-control-row';
+    userRow.appendChild(userNameLabel);
+    userRow.appendChild(this.userNameInput);
+    userRow.appendChild(userKeyLabel);
+    userRow.appendChild(this.userKeyInput);
+    
+    const buttonRow = document.createElement('div');
+    buttonRow.className = 'socket-control-row socket-button-row';
+    buttonRow.appendChild(this.connectButton);
+    buttonRow.appendChild(this.disconnectButton);
+    
+    controlsContainer.appendChild(connectionRow);
+    controlsContainer.appendChild(userRow);
+    controlsContainer.appendChild(buttonRow);
     
     // Create message container
     this.messageContainer = document.createElement('div');
@@ -276,36 +353,6 @@ class SocketSideWindow extends SideWindow {
     
     // Display existing messages
     this.displayMessages();
-  }
-  
-  /**
-   * Update the status display based on connection state
-   */
-  updateStatusDisplay() {
-    if (!this.statusElement) return;
-    
-    if (this.isConnected) {
-      this.statusElement.innerHTML = '<span class="status-connected">Connected</span>';
-      this.statusElement.classList.add('connected');
-      this.statusElement.classList.remove('disconnected');
-      
-      if (this.connectButton) this.connectButton.disabled = true;
-      if (this.disconnectButton) this.disconnectButton.disabled = false;
-    } else if (this.isConnecting) {
-      this.statusElement.innerHTML = '<span class="status-connecting">Connecting...</span>';
-      this.statusElement.classList.add('connecting');
-      this.statusElement.classList.remove('connected', 'disconnected');
-      
-      if (this.connectButton) this.connectButton.disabled = true;
-      if (this.disconnectButton) this.disconnectButton.disabled = true;
-    } else {
-      this.statusElement.innerHTML = '<span class="status-disconnected">Disconnected</span>';
-      this.statusElement.classList.add('disconnected');
-      this.statusElement.classList.remove('connected', 'connecting');
-      
-      if (this.connectButton) this.connectButton.disabled = false;
-      if (this.disconnectButton) this.disconnectButton.disabled = true;
-    }
   }
   
   /**
@@ -343,18 +390,34 @@ class SocketSideWindow extends SideWindow {
         }
         .socket-controls {
           display: flex;
-          flex-wrap: wrap;
+          flex-direction: column;
           gap: 5px;
           padding: 5px;
           background-color: rgba(0, 0, 0, 0.1);
           margin-bottom: 5px;
         }
-        .socket-controls input {
+        .socket-control-row {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 5px;
+          align-items: center;
+        }
+        .socket-label {
+          min-width: 70px;
+          font-size: 0.9em;
+        }
+        .socket-input {
           flex: 1;
           min-width: 100px;
+          padding: 2px 4px;
+          font-size: 0.9em;
         }
-        .socket-controls button {
+        .socket-button-row {
+          justify-content: flex-end;
+        }
+        .socket-button {
           padding: 2px 8px;
+          margin-left: 5px;
         }
         .socket-messages {
           padding: 5px;
@@ -474,97 +537,6 @@ class SocketSideWindow extends SideWindow {
   }
   
   /**
-   * Connect to the WebSocket server
-   */
-  connect() {
-    // Get user key from input
-    this.userKey = this.userKeyInput.value.trim();
-    
-    // Create client if not exists
-    if (!this.client) {
-      this.client = new WebSocketClient();
-      
-      // Set up event handlers
-      this.client.onOpen = () => this.handleConnectionOpen();
-      this.client.onClose = () => this.handleConnectionClose();
-      this.client.onMessage = (message) => this.handleServerMessage(message);
-      this.client.onError = (error) => this.handleConnectionError(error);
-    }
-    
-    // Connect
-    this.client.connect(this.userKey);
-    
-    // Add connection message
-    this.addMessage('sent', 'Connecting to server...');
-    
-    // Update connection indicator
-    this.isConnecting = true;
-    this.updateStatusDisplay();
-    this.updateConnectionIndicator();
-  }
-  
-  /**
-   * Disconnect from the WebSocket server
-   */
-  disconnect() {
-    if (this.client) {
-      this.client.disconnect();
-      this.addMessage('sent', 'Disconnecting from server...');
-    }
-  }
-  
-  /**
-   * Handle connection open event
-   */
-  handleConnectionOpen() {
-    this.isConnected = true;
-    this.isConnecting = false;
-    // Reset message counters on new connection
-    this.messagesSent = 0;
-    this.messagesReceived = 0;
-    this.updateStatusDisplay();
-    this.updateConnectionIndicator();
-    this.updateSendIndicatorTooltip();
-    this.updateReceiveIndicatorTooltip();
-    this.addMessage('received', 'Connected to server');
-  }
-  
-  /**
-   * Handle connection close event
-   */
-  handleConnectionClose() {
-    this.isConnected = false;
-    this.isConnecting = false;
-    this.updateStatusDisplay();
-    this.updateConnectionIndicator();
-    this.addMessage('received', 'Disconnected from server');
-  }
-  
-  /**
-   * Handle connection error event
-   * @param {Error} error - The error that occurred
-   */
-  handleConnectionError(error) {
-    this.addMessage('received', `Error: ${error.message}`);
-  }
-  
-  /**
-   * Handle message from server
-   * @param {Object} message - The message received
-   */
-  handleServerMessage(message) {
-    // Increment received counter
-    this.messagesReceived++;
-    
-    // Add message to display
-    this.addMessage('received', JSON.stringify(message));
-    
-    // Update receive indicator
-    this.updateReceiveIndicator();
-    this.updateReceiveIndicatorTooltip();
-  }
-  
-  /**
    * Add a message to the message list
    * @param {string} direction - Direction of the message ('sent' or 'received')
    * @param {string} content - Content of the message
@@ -590,59 +562,33 @@ class SocketSideWindow extends SideWindow {
   }
   
   /**
-   * Handle SOCKET_CONNECT message
-   * @param {Object} messageData - Message data
-   * @returns {boolean} - True if handled
+   * Update the status display based on connection state
    */
-  handleSocketConnectMessage(data,sender) {
-    this.connect();
-    return true;
-  }
-  
-  /**
-   * Handle SOCKET_DISCONNECT message
-   * @param {Object} messageData - Message data
-   * @returns {boolean} - True if handled
-   */
-  handleSocketDisconnectMessage(data,sender) {
-    this.disconnect();
-    return true;
-  }
-  
-  /**
-   * Handle SOCKET_SEND_MESSAGE message
-   * @param {Object} messageData - Message data
-   * @returns {boolean} - True if handled
-   */
-  handleSocketSendMessage(data,sender) {
-    if (this.client && this.isConnected && data.message) {
-      this.client.send(data.message);
-      // Increment sent counter
-      this.messagesSent++;
-      this.addMessage('sent', data.message);
+  updateStatusDisplay() {
+    if (!this.statusElement) return;
+    
+    if (this.isConnected) {
+      this.statusElement.innerHTML = '<span class="status-connected">Connected</span>';
+      this.statusElement.classList.add('connected');
+      this.statusElement.classList.remove('disconnected');
       
-      // Update send indicator
-      this.updateSendIndicator();
-      this.updateSendIndicatorTooltip();
-      return true;
+      if (this.connectButton) this.connectButton.disabled = true;
+      if (this.disconnectButton) this.disconnectButton.disabled = false;
+    } else if (this.isConnecting) {
+      this.statusElement.innerHTML = '<span class="status-connecting">Connecting...</span>';
+      this.statusElement.classList.add('connecting');
+      this.statusElement.classList.remove('connected', 'disconnected');
+      
+      if (this.connectButton) this.connectButton.disabled = true;
+      if (this.disconnectButton) this.disconnectButton.disabled = true;
+    } else {
+      this.statusElement.innerHTML = '<span class="status-disconnected">Disconnected</span>';
+      this.statusElement.classList.add('disconnected');
+      this.statusElement.classList.remove('connected', 'connecting');
+      
+      if (this.connectButton) this.connectButton.disabled = false;
+      if (this.disconnectButton) this.disconnectButton.disabled = true;
     }
-    return false;
-  }
-  
-  /**
-   * Handle SOCKET_SET_USER_KEY message
-   * @param {Object} messageData - Message data
-   * @returns {boolean} - True if handled
-   */
-  handleSocketSetUserKeyMessage(data,sender) {
-    if (data.userKey) {
-      this.userKey = data.userKey;
-      if (this.userKeyInput) {
-        this.userKeyInput.value = this.userKey;
-      }
-      return true;
-    }
-    return false;
   }
   
   /**
@@ -723,10 +669,263 @@ class SocketSideWindow extends SideWindow {
     
     // Add SocketSideWindow-specific information
     layoutInfo.userKey = this.userKey;
+    layoutInfo.userName = this.userName;
+    layoutInfo.url = this.url;
     layoutInfo.isConnected = this.isConnected;
-    
+        
     return layoutInfo;
   }
+
+  /**
+   * Override applyLayout to include SocketSideWindow-specific information
+   * @param {Object} layoutInfo - Layout information for this SocketSideWindow
+   * @returns {Object} Layout information for this SocketSideWindow
+   */
+  async applyLayout(layoutInfo) {
+    // Call parent class applyLayout
+    await super.applyLayout(layoutInfo);
+    
+    // Add SocketSideWindow-specific information
+    this.userKey = layoutInfo.userKey || '';
+    this.userName = layoutInfo.userName || 'francois';
+    this.url = layoutInfo.url || 'ws://localhost:1033';
+    this.wasConnected = layoutInfo.isConnected || false;
+    return layoutInfo;
+  }
+
+  /**
+   * Connect to the WebSocket server
+   */
+  connect(options) {
+    if(options) {
+      // Get values from options
+      this.userKey = options.userKey || this.userKey;
+      this.userName = options.userName || this.userName;
+      this.url = options.url || this.url;
+    }else{
+      // Get values from input fields
+      this.userKey = this.userKeyInput.value.trim();
+      this.userName = this.userNameInput.value.trim();
+      this.url = this.urlInput.value.trim();
+    }
+
+    // Disconnect if already connected
+    if ( this.client.getState() === 'connected' ) {
+      this.client.disconnect();
+    }
+
+    // Add connection message
+    this.addMessage('sent', 'Connecting to server...');
+    
+    // Update connection indicator
+    this.isConnecting = true;
+    this.updateStatusDisplay();
+    this.updateConnectionIndicator();
+
+    this.client.connect({
+      url: this.url,
+      userName: this.userName,
+      userKey: this.userKey
+    }).then(() => {
+      this.handleConnectionOpen();
+    }).catch(error => {
+      console.error('WebSocket connection error:', error);
+    });
+  }
+  
+  /**
+   * Disconnect from the WebSocket server
+   */
+  disconnect() {
+    if ( this.client.getState() === 'connected' ) {
+      this.client.disconnect();
+      this.addMessage('sent', 'Disconnecting from server...');
+    }
+  }
+
+  
+  ///////////////////////////////////////////////////////////////////////////////////////////////
+  // WebSocket Client Methods
+  ///////////////////////////////////////////////////////////////////////////////////////////////
+  
+  /**
+   * Handle connection open event
+   */
+  handleConnectionOpen() {
+    this.isConnected = true;
+    this.isConnecting = false;
+    // Reset message counters on new connection
+    this.messagesSent = 0;
+    this.messagesReceived = 0;
+    this.updateStatusDisplay();
+    this.updateConnectionIndicator();
+    this.updateSendIndicatorTooltip();
+    this.updateReceiveIndicatorTooltip();
+    this.addMessage('received', 'Connected to server');
+  }
+  
+  /**
+   * Handle connection close event
+   */
+  handleConnectionClose() {
+    this.isConnected = false;
+    this.isConnecting = false;
+    this.updateStatusDisplay();
+    this.updateConnectionIndicator();
+    this.updateSendIndicatorTooltip();
+    this.updateReceiveIndicatorTooltip();
+    this.addMessage('received', 'Disconnected from server');
+
+    // Broadcast message
+    this.broadcast(SOCKETMESSAGES.DISCONNECTED, {
+      userName: this.userName,
+      userKey: this.userKey
+    });
+  }
+  
+  /**
+   * Handle connection error event
+   * @param {Error} error - The error that occurred
+   */
+  handleConnectionError(error) {
+    this.addMessage('received', `Error: ${error}`);
+    this.updateStatusDisplay();
+    this.updateConnectionIndicator();
+    this.updateSendIndicatorTooltip();
+    this.updateReceiveIndicatorTooltip();
+  }
+  
+  /**
+   * Handle message from server
+   * @param {Object} message - The message received
+   */
+  handleServerMessage(message) {
+    // Increment received counter
+    this.messagesReceived++;
+    
+    // Add message to display
+    this.addMessage('received', message);
+    
+    // Update receive indicator
+    this.updateReceiveIndicator();
+    this.updateReceiveIndicatorTooltip();
+
+    // Connected?
+    if (message.responseTo === SERVERCOMMANDS.CONNECT) {
+      if (!message.error) {
+        // Broadcast message
+        this.broadcast(SOCKETMESSAGES.CONNECTED, {
+          userName: this.userName,
+          userKey: this.userKey
+        });
+      }
+    }
+
+    // Send message to root
+    this.sendMessageToRoot(SOCKETMESSAGES.MESSAGE_RECEIVED,message);
+  }
+  
+  ///////////////////////////////////////////////////////////////////////////////////////////////
+  // PCOS Message Handlers
+  ///////////////////////////////////////////////////////////////////////////////////////////////
+  
+  /**
+   * Handle SOCKET_CONNECT message
+   * @param {Object} messageData - Message data
+   * @returns {boolean} - True if handled
+   */
+  handleConnect(data,sender) {
+    this.connect(data);
+    return true;
+  }
+  
+  /**
+   * Handle SOCKET_CONNECT_IF_CONNECTED message
+   * @param {Object} messageData - Message data
+   * @returns {boolean} - True if handled
+   */
+  handleConnectIfConnected(data,sender) {
+    if (this.wasConnected) {
+      this.connect({
+        userKey: this.userKey,
+        userName: this.userName,
+        url: this.url
+      });
+    }
+    return true;
+  }
+  
+  /**
+   * Handle SOCKET_DISCONNECT message
+   * @param {Object} messageData - Message data
+   * @returns {boolean} - True if handled
+   */
+  handleDisconnect(data,sender) {
+    this.disconnect();
+    return true;
+  }
+  
+  /**
+   * Handle SOCKET_SEND_MESSAGE message
+   * @param {Object} messageData - Message data
+   * @returns {boolean} - True if handled
+   */
+  handleSendMessage(data,sender) {
+    if (this.client && this.isConnected) {
+      this.client.send(data.command,data.parameters);
+
+      // Increment sent counter
+      this.messagesSent++;
+      this.addMessage('sent', data.command);
+      
+      // Update send indicator
+      this.updateSendIndicator();
+      this.updateSendIndicatorTooltip();
+      return true;
+    }
+    return false;
+  }
+
+  handleRequestResponse(data,sender) {
+
+    if (this.client && this.isConnected) {
+      var self = this;
+
+      // Increment sent counter
+      this.messagesSent++;
+      this.addMessage('sent', data.command);
+      this.updateSendIndicator();
+      this.updateSendIndicatorTooltip();
+      
+      return new Promise((resolve, reject) => {
+        this.client.request(data.command,data.parameters)
+        .then(response => {
+          // Add response to display
+          this.addMessage('received', response.responseTo);
+        
+          // Update receive indicator
+          this.updateReceiveIndicator();
+          this.updateReceiveIndicatorTooltip();
+
+          // Send response back to sender
+          resolve(response);
+        })
+        .catch(error => {
+          // Add error to display
+          this.addMessage('received', error);
+          
+          // Update receive indicator
+          this.updateReceiveIndicator();
+          this.updateReceiveIndicatorTooltip();
+
+          // Send error back to sender
+          reject(error);
+        });
+      });
+    }
+    return false;
+  }
+  
 }
 
 export default SocketSideWindow;
