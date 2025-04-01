@@ -813,11 +813,8 @@ class SocketSideWindow extends SideWindow {
     // Connected?
     if (message.responseTo === SERVERCOMMANDS.CONNECT) {
       if (!message.error) {
-        // Broadcast message
-        this.broadcast(SOCKETMESSAGES.CONNECTED, {
-          userName: this.userName,
-          userKey: this.userKey
-        });
+        this.broadcast(SOCKETMESSAGES.CONNECTED, message.parameters);
+        console.log( message.parameters.text );
       }
     }
 
