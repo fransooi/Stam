@@ -57,23 +57,25 @@ class IconBar extends BaseComponent {
         // Dynamically import the icons module for the current mode
         let IconsModule;
         switch (mode) {
-          case 'modern':
-          IconsModule = await import('./modern/icons.js');
-          break;
-        case 'stos':
-          IconsModule = await import('./stos/icons.js');
-          break;
-        case 'amos1_3':
-          IconsModule = await import('./amos1_3/icons.js');
-          break;
-        case 'amosPro':
-          IconsModule = await import('./amosPro/icons.js');
-          break;
-        case 'c64':
-          IconsModule = await import('./c64/icons.js');
-          break;
-        default:
-          IconsModule = await import('./modern/icons.js');
+          case 'phaser':
+            IconsModule = await import('./modes/phaser/icons.js');
+            break;
+          case 'stos':
+            IconsModule = await import('./modes/stos/icons.js');
+            break;
+          case 'amos1_3':
+            IconsModule = await import('./modes/amos1_3/icons.js');
+            break;
+          case 'amosPro':
+            IconsModule = await import('./modes/amosPro/icons.js');
+            break;
+          case 'c64':
+            IconsModule = await import('./modes/c64/icons.js');
+            break;
+          case 'javascript':
+          default:
+            IconsModule = await import('./modes/javascript/icons.js');
+            break;
         }       
         // Create and render the mode-specific icons
         this.modeSpecificIconsCache[mode] = new IconsModule.default(this.componentId);

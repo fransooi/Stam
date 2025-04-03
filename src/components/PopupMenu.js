@@ -31,9 +31,7 @@ export default class PopupMenu extends BaseComponent {
     super('PopupMenu', parentId);
     
     this.items = options.items || [];
-    this.parent = options.parent || document.body;
     this.position = options.position || { x: 0, y: 0 };
-    this.className = options.className || '';
     this.element = null;
     this.isVisible = false;
     this.level = options.level || 'main'; // 'main' or 'sub'
@@ -129,51 +127,85 @@ export default class PopupMenu extends BaseComponent {
     // Clear existing items
     this.element.innerHTML = '';
     
-    // Add items
+    // Add items using recursive approach
     this.items.forEach((item, index) => {
-      if (item === '-') {
-        // Separator
-        const separator = document.createElement('div');
-        separator.className = 'popup-menu-separator';
-        this.element.appendChild(separator);
-      } else if (typeof item === 'object' && item.submenu) {
-        // Menu item with submenu
-        const menuItem = document.createElement('div');
-        menuItem.className = 'popup-menu-item';
-        
-        const itemText = document.createElement('span');
-        itemText.textContent = item.label;
-        menuItem.appendChild(itemText);
-        
-        // Add submenu indicator
-        const submenuIndicator = document.createElement('span');
-        submenuIndicator.className = 'popup-menu-submenu-indicator';
-        submenuIndicator.innerHTML = '&#9654;'; // Right-pointing triangle
-        menuItem.appendChild(submenuIndicator);
-        
-        // Handle submenu
-        menuItem.addEventListener('mouseenter', (e) => {
-          this.showSubmenu(item.submenu, menuItem, item.label);
-        });
-        
-        // Add to menu
-        this.element.appendChild(menuItem);
-      } else {
-        // Simple menu item
-        const menuItem = document.createElement('div');
-        menuItem.className = 'popup-menu-item';
-        menuItem.textContent = typeof item === 'object' ? item.label : item;
-        
-        // Add click handler
-        menuItem.addEventListener('click', (e) => {
-          e.stopPropagation();
-          this.handleItemClick(item, index);
-        });
-        
-        // Add to menu
-        this.element.appendChild(menuItem);
-      }
+      this.element.appendChild(this.createMenuItem(item, index));
     });
+  }
+  
+  /**
+   * Create a menu item element recursively
+   * 
+   * @param {Object|string} item - Menu item to create
+   * @param {number} index - Index of the item in the items array
+   * @returns {HTMLElement} - Created menu item element
+   */
+  createMenuItem(item, index) {
+    // Handle separator
+    if (item === '-') {
+      const separator = document.createElement('div');
+      separator.className = 'popup-menu-separator';
+      return separator;
+    }
+    
+    // Handle menu item with submenu (new recursive structure)
+    if (typeof item === 'object' && item.items && item.items.length > 0) {
+      return this.createSubmenuItem(item, item.items, item.name);
+    }
+    
+    // Handle legacy format for menu item with submenu
+    if (typeof item === 'object' && item.submenu) {
+      return this.createSubmenuItem(item, item.submenu, item.label);
+    }
+    
+    // Handle simple menu item
+    const menuItem = document.createElement('div');
+    menuItem.className = 'popup-menu-item';
+    
+    // Support both old and new menu item formats
+    const itemText = typeof item === 'object' 
+      ? (item.name || item.label || 'Unnamed Item')
+      : item;
+    
+    menuItem.textContent = itemText;
+    
+    // Add click handler
+    menuItem.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.handleItemClick(item, index);
+    });
+    
+    return menuItem;
+  }
+  
+  /**
+   * Create a submenu item element
+   * 
+   * @param {Object} item - Menu item with submenu
+   * @param {Array} submenuItems - Items for the submenu
+   * @param {string} label - Label for the menu item
+   * @returns {HTMLElement} - Created submenu item element
+   */
+  createSubmenuItem(item, submenuItems, label) {
+    const menuItem = document.createElement('div');
+    menuItem.className = 'popup-menu-item';
+    
+    const itemText = document.createElement('span');
+    itemText.textContent = label;
+    menuItem.appendChild(itemText);
+    
+    // Add submenu indicator
+    const submenuIndicator = document.createElement('span');
+    submenuIndicator.className = 'popup-menu-submenu-indicator';
+    submenuIndicator.innerHTML = '&#9654;'; // Right-pointing triangle
+    menuItem.appendChild(submenuIndicator);
+    
+    // Handle submenu
+    menuItem.addEventListener('mouseenter', (e) => {
+      this.showSubmenu(submenuItems, menuItem, label);
+    });
+    
+    return menuItem;
   }
   
   /**
@@ -184,8 +216,12 @@ export default class PopupMenu extends BaseComponent {
    * @param {string} submenuContext - Context identifier for the submenu
    */
   showSubmenu(submenuItems, parentItem, submenuContext) {
-    // Close any existing submenus
-    this.closeSubmenus();
+    // Don't close all submenus - only close direct children of this menu item
+    // This allows parent menus to stay open when showing nested submenus
+    if (this.submenus.length > 0) {
+      this.submenus.forEach(submenu => submenu.hide());
+      this.submenus = [];
+    }
     
     // Create full context path
     const fullContext = this.menuContext 
@@ -193,12 +229,10 @@ export default class PopupMenu extends BaseComponent {
       : submenuContext;
     
     // Create submenu
-    const submenu = new PopupMenu({
+    const submenu = new PopupMenu(this.getComponentID(),{
       items: submenuItems,
-      className: 'popup-submenu',
       level: 'sub',
-      menuContext: fullContext,
-      parentId: this.getComponentID()
+      menuContext: fullContext
     });
     
     // Store as active submenu
@@ -234,22 +268,19 @@ export default class PopupMenu extends BaseComponent {
    * @param {number} index - Index of the item in the items array
    */
   handleItemClick(item, index) {
-    // Extract the item value
-    const itemValue = typeof item === 'object' ? item.value || item.label : item;
-    
-    // Create action path from context and item
-    let action = itemValue;
-    if (this.menuContext) {
-      action = `${this.menuContext}:${itemValue}`;
+    // Check if this is a submenu item (has items property)
+    if (typeof item === 'object' && item.items && item.items.length > 0) {
+      // This is a submenu item, don't handle click
+      return;
     }
     
-    console.log(`Menu item clicked: ${action}`);
-    
-    // Send the menu action message DOWN toward the root (PCOSApp)
-    this.sendMessageDown(MESSAGES.MENU_ACTION, {
+    // Extract the item value and command
+    var command = item.command;
+    var name = item.name || '';
+    this.broadcast(command, {
       menuName: this.menuContext,
-      option: itemValue,
-      action: action
+      action: command,
+      name: name
     });
     
     // Hide the menu
@@ -343,7 +374,21 @@ export default class PopupMenu extends BaseComponent {
    * @param {Event} event - Click event
    */
   handleDocumentClick(event) {
-    if (this.isVisible && this.element && !this.element.contains(event.target)) {
+    // Check if click is outside this menu and all its submenus
+    let isClickInsideSubmenu = false;
+    
+    // Check if click is inside any of the submenus
+    for (const submenu of this.submenus) {
+      if (submenu.element && submenu.element.contains(event.target)) {
+        isClickInsideSubmenu = true;
+        break;
+      }
+    }
+    
+    // Only hide if click is outside this menu AND outside all its submenus
+    if (this.isVisible && this.element && 
+        !this.element.contains(event.target) && 
+        !isClickInsideSubmenu) {
       this.hide();
       
       // If this is a main menu, destroy it
@@ -380,6 +425,8 @@ export default class PopupMenu extends BaseComponent {
    * Clean up resources
    */
   destroy() {
+    super.destroy();
+    
     // Remove event listener
     document.removeEventListener('click', this.handleDocumentClick);
     
@@ -390,9 +437,6 @@ export default class PopupMenu extends BaseComponent {
     if (this.element && this.element.parentNode) {
       this.element.parentNode.removeChild(this.element);
     }
-    
-    // Unregister from component tree (using BaseComponent's method)
-    this.unregister();
     
     console.log(`PopupMenu destroyed: ${this.getComponentID()}`);
   }

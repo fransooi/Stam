@@ -1,27 +1,27 @@
-// Modern Editor component
+// Phaser Editor component
 import { javascript } from '@codemirror/lang-javascript'
 import { oneDark } from '@codemirror/theme-one-dark'
 import { EditorState } from '@codemirror/state'
 
-class ModernEditor {
+class PhaserEditor {
   constructor(container) {
     this.container = container;
     this.editorView = null;
   }
 
-  // Prepare the container with Modern-specific styling
+  // Prepare the container with Phaser-specific styling
   prepareContainer() {
-    // Create a styled container for Modern without the header
+    // Create a styled container for Phaser without the header
     this.container.innerHTML = `
-      <div class="modern-editor">
-        <div id="modern-editor-container" class="modern-content"></div>
+      <div class="phaser-editor">
+        <div id="phaser-editor-container" class="phaser-content"></div>
       </div>
     `;
   }
   
   // Return the parent element for the editor
   getEditorParent() {
-    return document.getElementById('modern-editor-container');
+    return document.getElementById('phaser-editor-container');
   }
   
   // Provide configuration for the main Editor component
@@ -32,7 +32,7 @@ class ModernEditor {
         oneDark,
         EditorState.allowMultipleSelections.of(true)
       ],
-      initialDoc: '// Welcome to PCOS Editor\n\nfunction helloWorld() {\n  console.log("Hello, world!");\n  return "Hello, world!";\n}\n\nhelloWorld();'
+      initialDoc: '// Phaser Editor'
     };
   }
   
@@ -44,43 +44,6 @@ class ModernEditor {
   // Mode-specific operations
   runProgram() {
     console.log('Running JavaScript program');
-    
-    try {
-      // Get the current code
-      const code = this.editorView.state.doc.toString();
-      
-      // Create a function from the code
-      const runFunction = new Function(code);
-      
-      // Run the code and capture console output
-      const originalConsoleLog = console.log;
-      let output = [];
-      
-      console.log = function(...args) {
-        output.push(args.join(' '));
-        originalConsoleLog.apply(console, args);
-      };
-      
-      // Execute the code
-      const result = runFunction();
-      
-      // Restore console.log
-      console.log = originalConsoleLog;
-      
-      // Display the output
-      let outputMessage = 'Program executed successfully.';
-      if (output.length > 0) {
-        outputMessage += '\n\nConsole output:\n' + output.join('\n');
-      }
-      if (result !== undefined) {
-        outputMessage += '\n\nReturn value: ' + result;
-      }
-      
-      alert(outputMessage);
-    } catch (error) {
-      alert(`Error executing JavaScript: ${error.message}`);
-      console.error('Error executing JavaScript:', error);
-    }
   }
   
   debugProgram() {
@@ -101,7 +64,7 @@ class ModernEditor {
     
     // Create a shareable link (this is a placeholder - would need a real sharing service)
     const encodedCode = encodeURIComponent(code);
-    alert(`Code sharing link (conceptual):\nhttps://pcos.share/code?lang=js&code=${encodedCode.substring(0, 30)}...`);
+    alert(`Code sharing link (conceptual):\nhttps://stam.share/code?lang=js&code=${encodedCode.substring(0, 30)}...`);
   }
   
   showHelp() {
@@ -110,4 +73,4 @@ class ModernEditor {
   }
 }
 
-export default ModernEditor;
+export default PhaserEditor;

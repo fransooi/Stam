@@ -1,12 +1,14 @@
 // ProjectSideWindow.js - Project file tree side window implementation
 import SideWindow from './SideWindow.js';
-import { MESSAGES } from '../../../utils/BaseComponent.js';
+import { MESSAGES } from '../../utils/BaseComponent.js';
+import { PROJECTMESSAGES } from '../ProjectManager.js';
 
 class ProjectSideWindow extends SideWindow {
   constructor(parentId, containerId, initialHeight = 300) {
     super('Project', 'Project Files', parentId, containerId, initialHeight);
     this.projectTree = [];
     this.messageMap[MESSAGES.CONTENT_HEIGHT_CHANGED] = this.handleContentHeightChanged;
+    this.messageMap[PROJECTMESSAGES.SET_PROJECT] = this.handleSetProject;
   }
   
   /**
@@ -74,13 +76,17 @@ class ProjectSideWindow extends SideWindow {
           padding: 5px;
           font-family: Arial, sans-serif;
           font-size: 14px;
+          width: 100%;
+          display: block;
         }
         
         .project-item {
           padding: 3px 0;
           cursor: pointer;
-          display: flex;
-          align-items: center;
+          display: block;
+          width: 100%;
+          margin-bottom: 4px;
+          white-space: nowrap;
         }
         
         .project-item:hover {
@@ -91,6 +97,13 @@ class ProjectSideWindow extends SideWindow {
           margin-right: 5px;
           width: 16px;
           text-align: center;
+          display: inline-block;
+          vertical-align: middle;
+        }
+        
+        .project-item-name {
+          display: inline-block;
+          vertical-align: middle;
         }
         
         .project-folder {
@@ -99,6 +112,8 @@ class ProjectSideWindow extends SideWindow {
         
         .project-folder-contents {
           padding-left: 20px;
+          width: 100%;
+          display: block;
         }
         
         .project-folder-collapsed .project-folder-contents {
@@ -110,38 +125,65 @@ class ProjectSideWindow extends SideWindow {
   }
   
   /**
-   * Populate the project tree with data
-   */
-  populateProjectTree() {
-    if (!this.treeElement) return;
-    
-    // Clear existing content
-    this.treeElement.innerHTML = '';
-    
-    // Sample project structure - in a real app, this would come from the server
-    if (this.projectTree.length === 0) {
-      this.projectTree = [
-        { name: 'src', type: 'folder', children: [
-          { name: 'main.js', type: 'file' },
-          { name: 'style.css', type: 'file' },
-          { name: 'components', type: 'folder', children: [
-            { name: 'Editor.js', type: 'file' },
-            { name: 'MenuBar.js', type: 'file' },
-            { name: 'StatusBar.js', type: 'file' },
-            { name: 'IconBar.js', type: 'file' },
-            { name: 'SideBar.js', type: 'file' }
-          ]}
-        ]},
-        { name: 'index.html', type: 'file' },
-        { name: 'package.json', type: 'file' }
-      ];
-    }
+ * Populate the project tree with data
+ */
+populateProjectTree() {
+  if (!this.treeElement) return;
+  
+  // Clear existing content
+  this.treeElement.innerHTML = '';
+  
+  // Initialize project tree
+  this.projectTree = [];
+  if (this.project && this.project.files) {
+    // Process the project files recursively
+    this.projectTree = this.processProjectFiles(this.project.files);
     
     // Render the project tree
     this.projectTree.forEach(item => {
       this.treeElement.appendChild(this.createProjectItem(item));
     });
   }
+}
+
+/**
+ * Process project files recursively
+ * @param {Array} files - Array of file/directory objects
+ * @returns {Array} - Processed tree items
+ */
+processProjectFiles(files) {
+  if (!Array.isArray(files)) return [];
+  
+  return files.map(file => {
+    const item = {
+      name: file.name,
+      type: file.isDirectory ? 'folder' : 'file',
+      path: file.path,
+      size: file.size || 0
+    };
+    
+    // Process children recursively if it's a directory
+    if (file.isDirectory && Array.isArray(file.files)) {
+      item.children = this.processProjectFiles(file.files);
+    }
+    
+    return item;
+  }).sort((a, b) => {
+    // Folders first, then files, alphabetically
+    if (a.type === 'folder' && b.type !== 'folder') return -1;
+    if (a.type !== 'folder' && b.type === 'folder') return 1;
+    return a.name.localeCompare(b.name);
+  });
+}
+
+/**
+ * Get the full file path for a file item
+ * @param {Object} item - The file item
+ * @returns {string} - The full file path
+ */
+getFilePath(item) {
+  return item.path;
+}
   
   /**
    * Create a project item element
@@ -216,6 +258,23 @@ class ProjectSideWindow extends SideWindow {
       this.projectTree = tree;
       this.populateProjectTree();
     }
+  }
+
+  /**
+   * Handle a set project message
+   * @param {Object} project - The project object
+   */
+  async handleSetProject(project, sender) {
+    this.project = project;
+    
+    // Update the window title to the project name
+    if (project && project.name) {
+      this.setTitle(project.name);
+    } else {
+      this.setTitle('Project Files');
+    }
+    
+    this.populateProjectTree(project);
   }
 }
 

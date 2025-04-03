@@ -5,7 +5,7 @@ import SpotifyClipWindow from './clips/SpotifyClipWindow.js';
 import BrowserClipWindow from './clips/BrowserClipWindow.js';
 import PlaylistManager from './playlists/PlaylistManager.js';
 import PlaylistEditorDialog from './playlists/PlaylistEditorDialog.js';
-import { MESSAGES } from '../../../utils/BaseComponent.js';
+import { MESSAGES } from '../../utils/BaseComponent.js';
 
 class TVSideWindow extends SideWindow {
   constructor(parentId, containerId, initialHeight = 300, initialUrl = '') {

@@ -1,10 +1,10 @@
-// Modern mode output window implementation
-import BaseOutput from '../interface/sidewindows/BaseOutput.js';
+// Javascript mode output window implementation
+import BaseOutput from '../../sidewindows/BaseOutput.js';
 
-class ModernOutput extends BaseOutput {
+class JavascriptOutput extends BaseOutput {
   constructor(parentId,containerId,initialHeight = 200) {
-    super('ModernOutput',parentId,containerId,initialHeight);
-    this.modeName = 'modern';
+    super('JavascriptOutput',parentId,containerId,initialHeight);
+    this.modeName = 'javascript';
   }
   
   /**
@@ -15,8 +15,8 @@ class ModernOutput extends BaseOutput {
   async render(containerId) {
     this.container = await super.render(containerId);
     
-    // Add Modern-specific UI elements and styling
-    this.addModernSpecificStyles();
+    // Add Javascript-specific UI elements and styling
+    this.addJavascriptSpecificStyles();
     
     // Apply direct styling to ensure it overrides any default styles
     this.container.style.fontFamily = 'Consolas, monospace';
@@ -26,10 +26,10 @@ class ModernOutput extends BaseOutput {
     this.container.style.borderRadius = '4px';
     this.container.style.padding = '8px';
     
-    // Always set the content to ensure Modern-specific display
+    // Always set the content to ensure Javascript-specific display
     this.container.innerHTML = `
       <div style="padding: 10px; text-align: center; font-family: 'Consolas', monospace; color: #333;">
-        <strong>Modern OUTPUT WINDOW</strong><br>
+        <strong>Javascript OUTPUT WINDOW</strong><br>
         <span style="color: #0066cc;">JavaScript Console Ready</span><br>
         <span style="color: #009900;">Type commands to execute</span>
       </div>
@@ -38,17 +38,17 @@ class ModernOutput extends BaseOutput {
   }
   
   /**
-   * Add Modern-specific styles for the output window
+   * Add Javascript-specific styles for the output window
    */
-  addModernSpecificStyles() {
+  addJavascriptSpecificStyles() {
     // Add styles if not already present
-    if (!document.getElementById('modern-output-styles')) {
+    if (!document.getElementById('javascript-output-styles')) {
       const style = document.createElement('style');
-      style.id = 'modern-output-styles';
+      style.id = 'javascript-output-styles';
       style.textContent = `
-        /* Direct styling for the output window in Modern mode */
-        .modern-mode #output-window,
-        .modern-mode .output-window {
+        /* Direct styling for the output window in Javascript mode */
+        .javascript-mode #output-window,
+        .javascript-mode .output-window {
           font-family: 'Consolas', monospace !important;
           background-color: #f8f8f8 !important;
           color: #333 !important;
@@ -57,31 +57,31 @@ class ModernOutput extends BaseOutput {
           padding: 8px !important;
         }
         
-        .modern-mode .output-window .error {
+        .javascript-mode .output-window .error {
           color: #e74c3c !important;
           font-weight: bold !important;
         }
         
-        .modern-mode .output-window .warning {
+        .javascript-mode .output-window .warning {
           color: #f39c12 !important;
         }
         
-        .modern-mode .output-window .success {
+        .javascript-mode .output-window .success {
           color: #2ecc71 !important;
         }
         
-        .modern-mode .output-window .info {
+        .javascript-mode .output-window .info {
           color: #3498db !important;
         }
         
-        /* Modern console-style log formatting */
-        .modern-mode .output-window .log-entry {
+        /* Javascript console-style log formatting */
+        .javascript-mode .output-window .log-entry {
           margin-bottom: 4px;
           border-bottom: 1px solid #eee;
           padding-bottom: 4px;
         }
         
-        .modern-mode .output-window .log-time {
+        .javascript-mode .output-window .log-time {
           color: #999;
           font-size: 0.8em;
           margin-right: 5px;
@@ -92,13 +92,13 @@ class ModernOutput extends BaseOutput {
   }
   
   /**
-   * Override getLayoutInfo to include Modern-specific output information
+   * Override getLayoutInfo to include Javascript-specific output information
    * @returns {Object} Layout information for this OutputSideWindow
    */
   async getLayoutInfo() {
     const baseInfo = await super.getLayoutInfo();
     
-    // Add Modern-specific layout information
+    // Add Javascript-specific layout information
     return {
       ...baseInfo,
       modeName: this.modeName
@@ -106,4 +106,4 @@ class ModernOutput extends BaseOutput {
   }
 }
 
-export default ModernOutput;
+export default JavascriptOutput;

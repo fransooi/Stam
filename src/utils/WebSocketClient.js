@@ -1,11 +1,11 @@
 /**
  * WebSocketClient.js
  * 
- * A client-side WebSocket implementation for the PCOS application.
+ * A client-side WebSocket implementation for the STAM application.
  * Handles connection management, message sending/receiving, and authentication.
  */
-import { SERVERCOMMANDS } from './../../../engine/servercommands.js';
-import { SOCKETMESSAGES } from '../components/interface/sidewindows/SocketSideWindow.js';
+import { SERVERCOMMANDS } from './../../../engine/servercommands.mjs';
+import { SOCKETMESSAGES } from '../components/sidewindows/SocketSideWindow.js';
 
 class WebSocketClient {
   /**
@@ -22,6 +22,7 @@ class WebSocketClient {
     this.socket = null;
     this.isConnected = false;
     this.loggedIn = false;
+    this.tryReconnect = true;
     this.userName = '';
     this.userKey = '';
     this.reconnectAttempts = 0;
@@ -57,6 +58,9 @@ class WebSocketClient {
       this.url = options.url || 'ws://localhost:1033';
       this.userKey = options.userKey || '';
       this.userName = options.userName || '';
+      if ( typeof options.tryReconnect === 'boolean' ){
+        this.tryReconnect = options.tryReconnect;
+      }
     }
     return new Promise((resolve, reject) => {
       if (this.isConnected) {
@@ -74,7 +78,7 @@ class WebSocketClient {
         const connectionTimeout = setTimeout(() => {
           if (!this.isConnected) {
             this.socket.close();
-            reject(new Error('Connection timeout'));
+            reject('TIMEOUT');
           }
         }, 5000);
         
@@ -112,12 +116,21 @@ class WebSocketClient {
   /**
    * Disconnect from the WebSocket server
    */
-  disconnect() {
+  disconnect(tryReconnect = false) {
+    this.tryReconnect = tryReconnect;
     if (this.socket) {
       this.socket.close();
     }
   }
-  
+
+  authenticate() {
+    // Send authentication message
+    this.send(SERVERCOMMANDS.CONNECT, {
+      userName: this.userName,
+      userKey: this.userKey
+    });
+  }
+     
   /**
    * Handle WebSocket open event
    * @param {Event} event - WebSocket open event
@@ -129,12 +142,6 @@ class WebSocketClient {
     this.loggedIn = false;
     this.reconnectAttempts = 0;
     
-    // Send authentication message
-    this.send(SERVERCOMMANDS.CONNECT, {
-      userName: this.userName,
-      userKey: this.userKey
-    });
-
     // Process any queued messages
     this.processQueue();    
   }
@@ -156,21 +163,20 @@ class WebSocketClient {
         } else {
           this.disconnect(message.error);
         }
-      }
+      } 
       
       // Handle response to a request
       if (message.callbackId && this.callbacks.has(message.callbackId)) {
         const { resolve, reject, timeout } = this.callbacks.get(message.callbackId);
         clearTimeout(timeout);
         this.callbacks.delete(message.callbackId);
-        
         if (message.parameters.error) {
-          reject(message.parameters.error);
+          reject(message);
         } else {
-          resolve(message.parameters);
+          resolve(message);
         }
+        return;
       }
-      
       // Call the user callback
       this.onMessageCallback(message);
     } catch (error) {
@@ -196,7 +202,7 @@ class WebSocketClient {
     this.callbacks.clear();
     
     // Attempt to reconnect if not a clean close
-    if (event.code !== 1000 && event.code !== 1001) {
+    if (this.tryReconnect) {
       this.attemptReconnect();
     }
     

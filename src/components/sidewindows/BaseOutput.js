@@ -1,6 +1,6 @@
 // BaseOutputSideWindow.js - Base class for output console side windows
-import BaseComponent from '../../../utils/BaseComponent.js';
-import { MESSAGES } from '../../../utils/BaseComponent.js';
+import BaseComponent from '../../utils/BaseComponent.js';
+import { MESSAGES } from '../../utils/BaseComponent.js';
 
 class BaseOutput extends BaseComponent {
   constructor(componentName,parentId,initialHeight = 200) {

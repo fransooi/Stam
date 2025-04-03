@@ -1,5 +1,5 @@
 import './style.css'
-import './components/interface/sidewindows/sidewindows.css'
+import './components/sidewindows/sidewindows.css'
 
 // Import components
 import MenuBar from './components/MenuBar.js';
@@ -9,18 +9,18 @@ import IconBar, { ICONACTIONS } from './components/IconBar.js';
 import SideBar from './components/SideBar.js';  
 import BaseComponent from './utils/BaseComponent.js';
 import { MESSAGES } from './utils/BaseComponent.js';
-import { SOCKETMESSAGES } from './components/interface/sidewindows/SocketSideWindow.js';
+import { SOCKETMESSAGES } from './components/sidewindows/SocketSideWindow.js';
 import PreferenceDialog from './components/PreferenceDialog.js';
 import messageBus from './utils/MessageBus.mjs';
 import Utilities from './utils/Utilities.js';
 import FileSystem from './utils/FileSystem.js';
-import Project from './components/Project.js';
+import Project from './components/ProjectManager.js';
 
 // Main application class
-class PCOSApp extends BaseComponent {
+class StamApp extends BaseComponent {
   constructor() {
     // Initialize the base component with component name
-    super('PCOSApp');
+    super('StamApp');
 
     // Set as root
     messageBus.setRoot(this);    
@@ -29,8 +29,15 @@ class PCOSApp extends BaseComponent {
     this.layoutInfo = {};
 
     // Initialize mode
-    this.currentMode = 'modern'; // Default mode: 'modern', 'stos', 'amos1_3', 'amosPro', 'c64'
-    this.possibleModes = [ 'modern', 'stos', 'amos1_3', 'amosPro', 'c64' ];
+    this.possibleModes = [
+      { value: 'javascript', text: 'Javascript' },
+      { value: 'phaser', text: 'Phaser Game' },
+      { value: 'stos', text: 'STOS Basic' },
+      { value: 'amos1_3', text: 'AMOS 1.3' },
+      { value: 'amosPro', text: 'AMOS Pro' },
+      { value: 'c64', text: 'Commodore 64' }
+    ];
+    this.currentMode = 'phaser'; 
 
     // Initialize utilities
     this.utilities = new Utilities();
@@ -56,7 +63,7 @@ class PCOSApp extends BaseComponent {
   async init(options = {}) {
     super.init(options);
 
-    const layoutData=this.utilities.loadStorage('pcos-layout');  
+    const layoutData=this.utilities.loadStorage('stam-layout');  
     let layout;    
     if (layoutData) {
       // Parse the layout JSON
@@ -65,9 +72,6 @@ class PCOSApp extends BaseComponent {
     }
     else if (options.mode) {
       this.currentMode = options.mode;
-    }
-    else{
-      this.currentMode='modern';
     }
     options.mode=this.currentMode;
 
@@ -88,7 +92,7 @@ class PCOSApp extends BaseComponent {
       await this.sendMessageTo(this.sideBar.componentId,MESSAGES.ADD_SIDE_WINDOW, { type: 'ProjectSideWindow', height: 200, width:300 });
       await this.sendMessageTo(this.sideBar.componentId,MESSAGES.ADD_SIDE_WINDOW, { type: 'OutputSideWindow', height: 200 });
       await this.sendMessageTo(this.sideBar.componentId,MESSAGES.ADD_SIDE_WINDOW, { type: 'TVSideWindow', height: 200 });
-      await this.sendMessageTo(this.sideBar.componentId,MESSAGES.ADD_SIDE_WINDOW, { type: 'SocketSideWindow', height: 100 });
+      await this.sendMessageTo(this.sideBar.componentId,MESSAGES.ADD_SIDE_WINDOW, { type: 'SocketSideWindow', height: 200 });
     }
 
     // Send RENDER messages to components-> they display themselves
@@ -100,10 +104,10 @@ class PCOSApp extends BaseComponent {
     await this.broadcastUp(MESSAGES.LAYOUT_READY);
 
     // Send CONNECT message to socket
-    await this.sendMessageTo(this.socket.componentId,SOCKETMESSAGES.CONNECT_IF_CONNECTED);
+    await this.sendMessageTo('class:SocketSideWindow',SOCKETMESSAGES.CONNECT_IF_CONNECTED);
 
     // Log initialization
-    console.log('PCOS Application initialized in ' + this.currentMode + ' mode');
+    console.log('STAM Application initialized in ' + this.currentMode + ' mode');
     
   }
     
@@ -203,7 +207,7 @@ class PCOSApp extends BaseComponent {
    */
   async loadLayout() {
     console.log('Loading interface layout...');
-    var data = this.utilities.loadStorage('pcos-layout');
+    var data = this.utilities.loadStorage('stam-layout');
     if (data) {
       await this.recreateInterface(data);
       setTimeout(() => {
@@ -222,7 +226,7 @@ class PCOSApp extends BaseComponent {
     console.log('Saving interface layout...');
     var layoutJson = await this.getLayout();
     if (layoutJson) {
-      this.utilities.saveStorage('pcos-layout', layoutJson);
+      this.utilities.saveStorage('stam-layout', layoutJson);
     }
   }
 
@@ -365,9 +369,9 @@ class PCOSApp extends BaseComponent {
 
 function loadApplication() {
   // Create and initialize the application
-  const pcosApp = new PCOSApp();
-  window.pcosApp = pcosApp;
-  pcosApp.init({mode:'modern'});
+  const stamApp = new StamApp();
+  window.stamApp = stamApp;
+  stamApp.init({mode:'phaser'});
 }
 // Wait for DOM to be fully loaded
 if (document.readyState === 'loading') {

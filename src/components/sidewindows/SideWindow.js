@@ -1,6 +1,6 @@
 // SideWindow.js - Base class for all side windows in the sidebar
-import BaseComponent from '../../../utils/BaseComponent.js';
-import { MESSAGES } from '../../../utils/BaseComponent.js';
+import BaseComponent from '../../utils/BaseComponent.js';
+import { MESSAGES } from '../../utils/BaseComponent.js';
 
 class SideWindow extends BaseComponent {
   constructor(id, title, parentId, containerId, initialHeight = 200) {
@@ -539,6 +539,25 @@ class SideWindow extends BaseComponent {
   }
   async applyLayout(layoutInfo) {
     await this.setMinimized(layoutInfo.minimized);
+  }
+
+  /**
+   * Set the title of the window
+   * @param {string} newTitle - The new title to set
+   */
+  setTitle(newTitle) {
+    if (!newTitle) return;
+    
+    // Update the title property
+    this.title = newTitle;
+    
+    // Update the DOM if the window has been rendered
+    if (this.container) {
+      const titleElement = this.container.querySelector('.side-window-title');
+      if (titleElement) {
+        titleElement.textContent = newTitle;
+      }
+    }
   }
 }
 

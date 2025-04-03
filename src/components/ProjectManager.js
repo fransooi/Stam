@@ -1,19 +1,19 @@
 /**
  * Project.js
  * 
- * This component manages application preferences and layout persistence.
- * It creates a dialog box for managing preferences and handles layout saving/loading.
+ * This component manages the project
  */
 
 import BaseComponent, { MESSAGES } from '../utils/BaseComponent.js';
-import { SOCKETMESSAGES } from './interface/sidewindows/SocketSideWindow.js';
+import { SOCKETMESSAGES } from './sidewindows/SocketSideWindow.js';
 
 export const PROJECTMESSAGES = {
   SHOW_PROJECTDIALOG: 'show-project-dialog',
-  HIDE_PROJECTDIALOG: 'hide-project-dialog'
+  HIDE_PROJECTDIALOG: 'hide-project-dialog',
+  SET_PROJECT: 'set-project'
 };
 
-class Project extends BaseComponent {
+class ProjectManager extends BaseComponent {
   /**
    * Constructor
    * @param {string} parentId - ID of the parent component
@@ -53,14 +53,16 @@ class Project extends BaseComponent {
         this.root.fileSystem.loadProject({ name: this.projectName })
         .then((project) => {
           this.project = project;
-          this.broadcast(PROJECTMESSAGES.SETPROJECT, project);
+          console.log( 'Project received from server: ', project );
+          this.broadcast(PROJECTMESSAGES.SET_PROJECT, project);
         });
       } else {
         // Create a new project
-        this.root.fileSystem.newProject({name: 'New Project', mode: 'phaser' /*this.root.currentMode*/, template: 'default', overwrite: true})
+        this.root.fileSystem.newProject({name: 'New Project', mode: this.root.currentMode, template: 'default', overwrite: true})
         .then((project) => {
           this.project = project;
-          this.broadcast(PROJECTMESSAGES.SETPROJECT, project);
+          console.log( 'New project created: ', project );
+          this.broadcast(PROJECTMESSAGES.SET_PROJECT, project);
         })
         .catch((error) => {
           console.error('Error creating new project:', error);
@@ -201,4 +203,4 @@ class Project extends BaseComponent {
   }  
 }
 
-export default Project;
+export default ProjectManager;

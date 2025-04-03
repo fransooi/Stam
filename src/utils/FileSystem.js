@@ -6,8 +6,8 @@
  * Can be replaced by direct access to the file system if necessary.
  */
 
-import { SERVERCOMMANDS } from '../../../engine/servercommands.js';
-import { SOCKETMESSAGES } from '../components/interface/sidewindows/SocketSideWindow.js';
+import { SERVERCOMMANDS } from '../../../engine/servercommands.mjs';
+import { SOCKETMESSAGES } from '../components/sidewindows/SocketSideWindow.js';
 import BaseComponent from './BaseComponent.js';
 
 export default class FileSystem extends BaseComponent {

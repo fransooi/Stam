@@ -1,5 +1,5 @@
 // AMOS 1.3 mode output window implementation
-import BaseOutput from '../interface/sidewindows/BaseOutput.js';
+import BaseOutput from '../../sidewindows/BaseOutput.js';
 
 class AMOS1_3Output extends BaseOutput {
   constructor(parentId,containerId,initialHeight = 200) {

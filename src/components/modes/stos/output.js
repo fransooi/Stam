@@ -1,5 +1,5 @@
 // STOS mode output window implementation
-import BaseOutput from '../interface/sidewindows/BaseOutput.js';
+import BaseOutput from '../../sidewindows/BaseOutput.js';
 
 class STOSOutput extends BaseOutput {
   constructor(parentId,containerId,initialHeight = 200) {

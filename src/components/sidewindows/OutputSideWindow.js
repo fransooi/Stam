@@ -1,7 +1,7 @@
 // OutputSideWindow.js - Factory for mode-specific output console windows
 import SideWindow from './SideWindow.js';
 import BaseOutput from './BaseOutput.js';
-import { MESSAGES } from '../../../utils/BaseComponent.js';
+import { MESSAGES } from '../../utils/BaseComponent.js';
 
 class OutputSideWindow extends SideWindow {
   constructor(parentId, containerId, initialHeight = 200) {
@@ -59,33 +59,30 @@ class OutputSideWindow extends SideWindow {
       
       switch (mode) {
         case 'stos':
-          const stosModule = await import('../../stos/output.js');
+          const stosModule = await import('../modes/stos/output.js');
           OutputImplementation = stosModule.default;
-          console.log('Loaded STOS output implementation');
           break;
         case 'amos1_3':
-          const amos13Module = await import('../../amos1_3/output.js');
+          const amos13Module = await import('../modes/amos1_3/output.js');
           OutputImplementation = amos13Module.default;
-          console.log('Loaded AMOS 1.3 output implementation');
           break;
         case 'amosPro':
-          const amosProModule = await import('../../amosPro/output.js');
+          const amosProModule = await import('../modes/amosPro/output.js');
           OutputImplementation = amosProModule.default;
-          console.log('Loaded AMOS Pro output implementation');
           break;
         case 'c64':
-          const c64Module = await import('../../c64/output.js');
+          const c64Module = await import('../modes/c64/output.js');
           OutputImplementation = c64Module.default;
-          console.log('Loaded C64 output implementation');
           break;
-        case 'modern':
-          const modernModule = await import('../../modern/output.js');
-          OutputImplementation = modernModule.default;
-          console.log('Loaded Modern output implementation');
+        case 'phaser':
+          const phaserModule = await import('../modes/phaser/output.js');
+          OutputImplementation = phaserModule.default;
           break;
+        case 'javascript':
         default:
-          console.warn(`No specific output implementation for mode ${mode}, using base implementation`);
-          OutputImplementation = BaseOutput;
+          const javascriptModule = await import('../modes/javascript/output.js');
+          OutputImplementation = javascriptModule.default;
+          break;
       }
       
       // Create a new instance of the mode-specific implementation

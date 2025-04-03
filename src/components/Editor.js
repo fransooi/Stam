@@ -22,7 +22,7 @@ class Editor extends BaseComponent {
   
   async init(options) {
     super.init(options);
-    this.currentMode = options?.mode || 'modern';
+    this.currentMode = options?.mode || 'javascript';
   }
 
   async destroy() {
@@ -48,23 +48,25 @@ class Editor extends BaseComponent {
       let ConfigModule;
       
       switch (mode) {
-        case 'modern':
-          ConfigModule = await import('./modern/editor.js');
+        case 'phaser':
+          ConfigModule = await import('./modes/phaser/editor.js');
           break;
         case 'stos':
-          ConfigModule = await import('./stos/editor.js');
+          ConfigModule = await import('./modes/stos/editor.js');
           break;
         case 'amos1_3':
-          ConfigModule = await import('./amos1_3/editor.js');
+          ConfigModule = await import('./modes/amos1_3/editor.js');
           break;
         case 'amosPro':
-          ConfigModule = await import('./amosPro/editor.js');
+          ConfigModule = await import('./modes/amosPro/editor.js');
           break;
         case 'c64':
-          ConfigModule = await import('./c64/editor.js');
+          ConfigModule = await import('./modes/c64/editor.js');
           break;
+        case 'javascript':
         default:
-          ConfigModule = await import('./modern/editor.js');
+          ConfigModule = await import('./modes/javascript/editor.js');
+          break;
       }
       
       // Create the mode-specific configuration

@@ -1,6 +1,6 @@
 // C64 mode output window implementation with the new C64 emulator
-import BaseOutput from '../interface/sidewindows/BaseOutput.js';
-import {MESSAGES} from '../../utils/BaseComponent.js';
+import BaseOutput from '../../sidewindows/BaseOutput.js';
+import {MESSAGES} from '../../../utils/BaseComponent.js';
 import Emulator from './emulator.js';
 
 /**

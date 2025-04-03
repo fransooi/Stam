@@ -1,10 +1,10 @@
-// Modern Icon Bar component with Font Awesome icons
-import BaseComponent, { MESSAGES } from '../../utils/BaseComponent.js';
-import { ICONACTIONS } from '../../components/IconBar.js';
+// Phaser Icon Bar component with Font Awesome icons
+import BaseComponent, { MESSAGES } from '../../../utils/BaseComponent.js';
+import { ICONACTIONS } from '../../IconBar.js';
 
-class ModernIcons extends BaseComponent {
+class PhaserIcons extends BaseComponent {
   constructor(parentId,containerId) {
-    super('ModernIcons', parentId, containerId);
+    super('PhaserIcons', parentId, containerId);
     this.buttons = [];
   }
 
@@ -13,7 +13,7 @@ class ModernIcons extends BaseComponent {
   }
   async destroy() {
     // Remove any existing styles to prevent duplication
-    const existingStyle = document.getElementById('modern-icons-styles');
+    const existingStyle = document.getElementById('phaser-icons-styles');
     if (existingStyle) {
       existingStyle.remove();
     }
@@ -42,7 +42,7 @@ class ModernIcons extends BaseComponent {
     this.parentContainer.style.overflowX = 'auto';
     this.parentContainer.style.minHeight = '60px';
     
-    // Create modern mode buttons with Font Awesome icons
+    // Create phaser mode buttons with Font Awesome icons
     this.addButton('New', ICONACTIONS.NEW_FILE, 'new-button', 'fa-file');
     this.addButton('Open', ICONACTIONS.OPEN_FILE, 'open-button', 'fa-folder-open');
     this.addButton('Save', ICONACTIONS.SAVE_FILE, 'save-button', 'fa-save');
@@ -56,7 +56,7 @@ class ModernIcons extends BaseComponent {
   
   addButton(text, action,className, iconClass) {
     const button = document.createElement('button');
-    button.className = `icon-button modern-icon-button ${className}`;
+    button.className = `icon-button phaser-icon-button ${className}`;
     button.title = text; // Keep the title for tooltip on hover
     
     // Apply styles directly to the button
@@ -133,7 +133,7 @@ class ModernIcons extends BaseComponent {
   }
 
   handleButtonClick(action) {
-    console.log(`Modern button clicked: ${action}`);
+    console.log(`Phaser button clicked: ${action}`);
     
     this.sendMessageToRoot(MESSAGES.ICON_ACTION, {
       action: action
@@ -141,14 +141,14 @@ class ModernIcons extends BaseComponent {
   }
   
   /**
-   * Get information about the Modern icon bar for layout saving
+   * Get information about the Phaser icon bar for layout saving
    * @returns {Object} Icon information
    */
   getIconInfo() {
     return {
-      mode: 'modern'
+      mode: 'phaser'
     };
   }
 }
 
-export default ModernIcons;
+export default PhaserIcons;

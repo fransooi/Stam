@@ -1,10 +1,10 @@
 /**
  * WebSocketServer.js
  * 
- * A server-side WebSocket implementation for the PCOS application.
+ * A server-side WebSocket implementation for the STAM application.
  * Handles client connections, authentication, and file system operations.
  * 
- * NOTE: This is a template file and not intended to be used directly in the PCOS project.
+ * NOTE: This is a template file and not intended to be used directly in the STAM project.
  * It should be integrated into your existing AWI WebSocket server architecture.
  */
 

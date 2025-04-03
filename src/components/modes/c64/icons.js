@@ -1,6 +1,6 @@
 // Commodore 64 Icon Bar component
-import messageBus from '../../utils/MessageBus.mjs';
-import BaseComponent from '../../utils/BaseComponent.js';
+import messageBus from '../../../utils/MessageBus.mjs';
+import BaseComponent from '../../../utils/BaseComponent.js';
 
 class C64Icons extends BaseComponent  {
   constructor(parentId,containerId) {

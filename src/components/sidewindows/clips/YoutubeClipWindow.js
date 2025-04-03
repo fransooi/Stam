@@ -3,7 +3,7 @@ import ClipWindow from './ClipWindow.js';
 
 class YoutubeClipWindow extends ClipWindow {
   constructor(initialUrl = '') {
-    super('youtube', 'YouTube', initialUrl || 'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+    super('youtube', 'YouTube', initialUrl || 'https://youtu.be/ful9G57pJwQ');
   }
   
   /**

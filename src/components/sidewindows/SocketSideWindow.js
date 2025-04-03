@@ -6,8 +6,9 @@
  */
 
 import SideWindow from './SideWindow.js';
-import WebSocketClient from '../../../utils/WebSocketClient.js';
-import { SERVERCOMMANDS } from '../../../../../engine/servercommands.js';
+import WebSocketClient from '../../utils/WebSocketClient.js';
+import { SERVERCOMMANDS } from '../../../../engine/servercommands.mjs';
+import { MENUCOMMANDS } from '../MenuBar.js';
 
 // Define message types for preference handling
 export const SOCKETMESSAGES = {
@@ -19,7 +20,10 @@ export const SOCKETMESSAGES = {
   CONTENT_HEIGHT_CHANGED: 'CONTENT_HEIGHT_CHANGED',
   CONNECTED: 'SOCKET_CONNECTED',
   DISCONNECTED: 'SOCKET_DISCONNECTED',
-  MESSAGE_RECEIVED: 'SOCKET_MESSAGE_RECEIVED'
+  MESSAGE_RECEIVED: 'SOCKET_MESSAGE_RECEIVED',
+  GET_CONNECTION_INFO: 'SOCKET_GET_CONNECTION_INFO',
+  SHOW_CONNECTION_DIALOG: 'SOCKET_SHOW_CONNECTION_DIALOG',
+  FROM_PROMPT: 'SOCKET_FROM_PROMPT'
 };
 
 class SocketSideWindow extends SideWindow {
@@ -34,7 +38,7 @@ class SocketSideWindow extends SideWindow {
     this.isConnecting = false;
     this.wasConnected = false;
     this.userKey = '';
-    this.userName = 'francois';
+    this.userName = '';
     this.url = 'ws://localhost:1033';
     this.messages = [];
     this.maxMessages = 50; // Maximum number of messages to display
@@ -64,10 +68,13 @@ class SocketSideWindow extends SideWindow {
     // Message handlers
     this.messageMap[SOCKETMESSAGES.CONNECT] = this.handleConnect;
     this.messageMap[SOCKETMESSAGES.CONNECT_IF_CONNECTED] = this.handleConnectIfConnected;
-    this.messageMap[SOCKETMESSAGES.DISCONNECT] = this.handleDisconnect;
+    this.messageMap[SOCKETMESSAGES.DISCONNECT] = this.handleLogout;
     this.messageMap[SOCKETMESSAGES.SEND_MESSAGE] = this.handleSendMessage;
     this.messageMap[SOCKETMESSAGES.REQUEST_RESPONSE] = this.handleRequestResponse;
     this.messageMap[SOCKETMESSAGES.CONTENT_HEIGHT_CHANGED] = this.handleContentHeightChanged;    
+    this.messageMap[SOCKETMESSAGES.GET_CONNECTION_INFO] = this.handleGetConnectionInfo;
+    this.messageMap[MENUCOMMANDS.LOGIN] = this.handleLogin;
+    this.messageMap[MENUCOMMANDS.LOGOUT] = this.handleLogout;
 
     // Create client if not exists
     this.client = new WebSocketClient({   
@@ -251,102 +258,42 @@ class SocketSideWindow extends SideWindow {
     // Clear existing content
     this.content.innerHTML = '';
     
-    // Create status element
+    // Set the content container to use flex layout
+    this.content.className = 'socket-content';
+    
+    // Create status element with connection indicator
+    const statusContainer = document.createElement('div');
+    statusContainer.className = 'socket-status-container';
+    
     this.statusElement = document.createElement('div');
     this.statusElement.className = 'socket-status';
     this.updateStatusDisplay();
     
-    // Create connection controls
-    const controlsContainer = document.createElement('div');
-    controlsContainer.className = 'socket-controls';
+    // Create connection indicator
+    const connectionIndicator = document.createElement('div');
+    connectionIndicator.className = 'socket-connection-indicator';
+    if (this.isConnected) {
+      connectionIndicator.classList.add('connected');
+    } else if (this.isConnecting) {
+      connectionIndicator.classList.add('connecting');
+    }
     
-    // URL input
-    const urlLabel = document.createElement('label');
-    urlLabel.textContent = 'URL:';
-    urlLabel.htmlFor = 'socket-url';
-    urlLabel.className = 'socket-label';
+    // Add tooltip to connection indicator
+    connectionIndicator.title = this.isConnected ? 'Connected' : 'Disconnected';
     
-    this.urlInput = document.createElement('input');
-    this.urlInput.type = 'text';
-    this.urlInput.id = 'socket-url';
-    this.urlInput.value = this.url;
-    this.urlInput.placeholder = 'ws://localhost:1033';
-    this.urlInput.className = 'socket-input';
+    // Add elements to status container
+    statusContainer.appendChild(connectionIndicator);
+    statusContainer.appendChild(this.statusElement);
     
-    // User name input
-    const userNameLabel = document.createElement('label');
-    userNameLabel.textContent = 'User Name:';
-    userNameLabel.htmlFor = 'socket-user-name';
-    userNameLabel.className = 'socket-label';
-    
-    this.userNameInput = document.createElement('input');
-    this.userNameInput.type = 'text';
-    this.userNameInput.id = 'socket-user-name';
-    this.userNameInput.value = this.userName;
-    this.userNameInput.placeholder = 'Enter username';
-    this.userNameInput.className = 'socket-input';
-    
-    // User key input
-    const userKeyLabel = document.createElement('label');
-    userKeyLabel.textContent = 'User Key:';
-    userKeyLabel.htmlFor = 'socket-user-key';
-    userKeyLabel.className = 'socket-label';
-    
-    this.userKeyInput = document.createElement('input');
-    this.userKeyInput.type = 'text';
-    this.userKeyInput.id = 'socket-user-key';
-    this.userKeyInput.value = this.userKey;
-    this.userKeyInput.placeholder = 'Enter user key';
-    this.userKeyInput.className = 'socket-input';
-    
-    // Connect button
-    this.connectButton = document.createElement('button');
-    this.connectButton.textContent = 'Connect';
-    this.connectButton.addEventListener('click', () => this.connect());
-    this.connectButton.className = 'socket-button';
-    
-    // Disconnect button
-    this.disconnectButton = document.createElement('button');
-    this.disconnectButton.textContent = 'Disconnect';
-    this.disconnectButton.addEventListener('click', () => this.disconnect());
-    this.disconnectButton.disabled = !this.isConnected;
-    this.disconnectButton.className = 'socket-button';
-    
-    // Add elements to controls container
-    const connectionRow = document.createElement('div');
-    connectionRow.className = 'socket-control-row';
-    connectionRow.appendChild(urlLabel);
-    connectionRow.appendChild(this.urlInput);
-    
-    const userRow = document.createElement('div');
-    userRow.className = 'socket-control-row';
-    userRow.appendChild(userNameLabel);
-    userRow.appendChild(this.userNameInput);
-    userRow.appendChild(userKeyLabel);
-    userRow.appendChild(this.userKeyInput);
-    
-    const buttonRow = document.createElement('div');
-    buttonRow.className = 'socket-control-row socket-button-row';
-    buttonRow.appendChild(this.connectButton);
-    buttonRow.appendChild(this.disconnectButton);
-    
-    controlsContainer.appendChild(connectionRow);
-    controlsContainer.appendChild(userRow);
-    controlsContainer.appendChild(buttonRow);
-    
-    // Create message container
+    // Create message container (console-like)
     this.messageContainer = document.createElement('div');
     this.messageContainer.className = 'socket-messages';
     
-    // Create indicator elements
-    const indicatorContainer = document.createElement('div');
-    indicatorContainer.className = 'socket-indicators';
+    // No longer need login/logout buttons as they're in the menu bar
     
     // Add all elements to content
-    this.content.appendChild(this.statusElement);
-    this.content.appendChild(controlsContainer);
+    this.content.appendChild(statusContainer);
     this.content.appendChild(this.messageContainer);
-    this.content.appendChild(indicatorContainer);
     
     // Add some basic styling
     this.addStyles();
@@ -364,121 +311,154 @@ class SocketSideWindow extends SideWindow {
       const style = document.createElement('style');
       style.id = 'socket-side-window-styles';
       style.textContent = `
-        .socket-status {
-          padding: 5px;
-          margin-bottom: 5px;
-          font-weight: bold;
-          text-align: center;
-        }
-        .socket-status.connected {
-          background-color: rgba(0, 128, 0, 0.2);
-        }
-        .socket-status.disconnected {
-          background-color: rgba(255, 0, 0, 0.2);
-        }
-        .socket-status.connecting {
-          background-color: rgba(255, 255, 0, 0.2);
-        }
-        .status-connected {
-          color: green;
-        }
-        .status-disconnected {
-          color: red;
-        }
-        .status-connecting {
-          color: yellow;
-        }
-        .socket-controls {
+        /* Main content container with flex layout */
+        .socket-content {
           display: flex;
           flex-direction: column;
-          gap: 5px;
-          padding: 5px;
-          background-color: rgba(0, 0, 0, 0.1);
-          margin-bottom: 5px;
+          height: 100%;
+          overflow: hidden; /* Prevent double scrollbars */
         }
-        .socket-control-row {
+        
+        /* Status container styles - fixed at top */
+        .socket-status-container {
           display: flex;
-          flex-wrap: wrap;
-          gap: 5px;
           align-items: center;
+          padding: 3px;
+          background-color: #222;
+          border-bottom: 1px solid #444;
+          flex-shrink: 0; /* Prevent status from shrinking */
         }
-        .socket-label {
-          min-width: 70px;
-          font-size: 0.9em;
-        }
-        .socket-input {
+        
+        .socket-status {
           flex: 1;
-          min-width: 100px;
-          padding: 2px 4px;
-          font-size: 0.9em;
+          font-weight: bold;
+          font-size: 0.85em;
+          text-align: center;
+          color: #ddd;
         }
+        
+        .socket-status.connected {
+          color: #4CAF50;
+        }
+        
+        .socket-status.disconnected {
+          color: #F44336;
+        }
+        
+        .socket-status.connecting {
+          color: #FFC107;
+        }
+        
+        /* Connection indicator */
+        .socket-connection-indicator {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background-color: #F44336;
+          margin: 0 5px;
+        }
+        
+        .socket-connection-indicator.connected {
+          background-color: #4CAF50;
+        }
+        
+        .socket-connection-indicator.connecting {
+          background-color: #FFC107;
+        }
+        
+        /* Button row */
         .socket-button-row {
+          display: flex;
           justify-content: flex-end;
+          padding: 3px;
+          background-color: #222;
+          border-top: 1px solid #444;
+          flex-shrink: 0; /* Prevent button row from shrinking */
         }
+        
         .socket-button {
           padding: 2px 8px;
           margin-left: 5px;
-        }
-        .socket-messages {
-          padding: 5px;
-          overflow-y: auto;
-          background-color: rgba(0, 0, 0, 0.05);
-          border: 1px solid rgba(0, 0, 0, 0.1);
-        }
-        .socket-message {
-          margin-bottom: 5px;
-          padding: 3px;
-          border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-        }
-        .socket-message-time {
+          background-color: #333;
+          color: #ddd;
+          border: 1px solid #555;
+          border-radius: 2px;
           font-size: 0.8em;
-          color: #666;
+          cursor: pointer;
         }
-        .socket-message-direction {
-          font-weight: bold;
-          margin-right: 5px;
+        
+        .socket-button:hover {
+          background-color: #444;
         }
+        
+        .socket-button:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+        
+        /* Console-like message display - scrollable area */
+        .socket-messages {
+          flex: 1;
+          padding: 3px;
+          overflow-y: auto; /* Only the message area scrolls */
+          background-color: #000;
+          color: #fff;
+          font-family: monospace;
+          font-size: 0.85em;
+          line-height: 1.2;
+        }
+        
+        .socket-message {
+          margin-bottom: 1px;
+          padding: 1px 2px;
+          border-bottom: 1px solid #222;
+        }
+        
+        .socket-message-time {
+          font-size: 0.75em;
+          color: #888;
+          margin-right: 4px;
+          display: inline-block;
+        }
+        
         .socket-message-content {
           word-break: break-word;
+          display: inline;
         }
+        
+        .socket-message-content-container {
+          display: block;
+          padding-left: 2px;
+        }
+        
+        .socket-message-line {
+          word-break: break-word;
+          white-space: pre-wrap;
+        }
+        
+        .socket-message-continuation {
+          padding-left: 15px;
+          position: relative;
+        }
+        
+        .socket-message-continuation:before {
+          content: '│';
+          position: absolute;
+          left: 5px;
+          color: #555;
+        }
+        
+        .socket-message-direction {
+          font-weight: bold;
+          margin-right: 3px;
+        }
+        
         .socket-message-sent .socket-message-direction {
-          color: blue;
+          color: #2196F3;
         }
+        
         .socket-message-received .socket-message-direction {
-          color: green;
-        }
-        .socket-connection-indicator {
-          width: 10px;
-          height: 10px;
-          border-radius: 50%;
-          background-color: red;
-          margin: 5px;
-        }
-        .socket-connection-indicator.connected {
-          background-color: green;
-        }
-        .socket-connection-indicator.connecting {
-          background-color: yellow;
-        }
-        .socket-send-indicator {
-          width: 10px;
-          height: 10px;
-          border-radius: 50%;
-          background-color: gray;
-          margin: 5px;
-        }
-        .socket-send-indicator.sending {
-          background-color: blue;
-        }
-        .socket-receive-indicator {
-          width: 10px;
-          height: 10px;
-          border-radius: 50%;
-          background-color: gray;
-          margin: 5px;
-        }
-        .socket-receive-indicator.receiving {
-          background-color: green;
+          color: #4CAF50;
         }
       `;
       document.head.appendChild(style);
@@ -510,25 +490,54 @@ class SocketSideWindow extends SideWindow {
   addMessageToDisplay(message) {
     if (!this.messageContainer) return;
     
+    // Check if the message contains line breaks
+    const hasLineBreaks = message.content.includes('\n');
+    
+    // Create the message container
     const messageElement = document.createElement('div');
     messageElement.className = `socket-message socket-message-${message.direction}`;
     
-    const timeElement = document.createElement('div');
+    // Create timestamp element
+    const timeElement = document.createElement('span');
     timeElement.className = 'socket-message-time';
     timeElement.textContent = message.time;
     
-    const contentElement = document.createElement('div');
-    contentElement.className = 'socket-message-content';
-    
+    // Create direction indicator
     const directionElement = document.createElement('span');
     directionElement.className = 'socket-message-direction';
     directionElement.textContent = message.direction === 'sent' ? '→' : '←';
     
-    contentElement.appendChild(directionElement);
-    contentElement.appendChild(document.createTextNode(message.content));
-    
+    // Add timestamp and direction indicator
     messageElement.appendChild(timeElement);
-    messageElement.appendChild(contentElement);
+    messageElement.appendChild(directionElement);
+    
+    if (hasLineBreaks) {
+      // For multi-line messages, create a container for the content
+      const contentContainer = document.createElement('div');
+      contentContainer.className = 'socket-message-content-container';
+      
+      // Split the content by line breaks and add each line
+      const lines = message.content.split('\n');
+      
+      lines.forEach((line, index) => {
+        // Create a new line element
+        const lineElement = document.createElement('div');
+        lineElement.className = 'socket-message-line';
+        
+        // Add indentation for all lines except the first one
+        if (index > 0) {
+          lineElement.classList.add('socket-message-continuation');
+        }
+        
+        lineElement.textContent = line;
+        contentContainer.appendChild(lineElement);
+      });
+      
+      messageElement.appendChild(contentContainer);
+    } else {
+      // For single-line messages, just add the text directly
+      messageElement.appendChild(document.createTextNode(message.content));
+    }
     
     this.messageContainer.appendChild(messageElement);
     
@@ -542,6 +551,10 @@ class SocketSideWindow extends SideWindow {
    * @param {string} content - Content of the message
    */
   addMessage(direction, content) {
+
+    if ( typeof content === 'undefined' )
+      return;
+
     // Create message object
     const message = {
       direction,
@@ -729,7 +742,7 @@ class SocketSideWindow extends SideWindow {
     }).then(() => {
       this.handleConnectionOpen();
     }).catch(error => {
-      console.error('WebSocket connection error:', error);
+      this.handleConnectionError(error);
     });
   }
   
@@ -738,7 +751,7 @@ class SocketSideWindow extends SideWindow {
    */
   disconnect() {
     if ( this.client.getState() === 'connected' ) {
-      this.client.disconnect();
+      this.client.disconnect(false);
       this.addMessage('sent', 'Disconnecting from server...');
     }
   }
@@ -762,6 +775,9 @@ class SocketSideWindow extends SideWindow {
     this.updateSendIndicatorTooltip();
     this.updateReceiveIndicatorTooltip();
     this.addMessage('received', 'Connected to server');
+
+    // Send authentication message
+    this.client.authenticate();
   }
   
   /**
@@ -803,29 +819,52 @@ class SocketSideWindow extends SideWindow {
     // Increment received counter
     this.messagesReceived++;
     
-    // Add message to display
-    this.addMessage('received', message);
-    
     // Update receive indicator
     this.updateReceiveIndicator();
     this.updateReceiveIndicatorTooltip();
 
+    // Get message text
+    var text = message.command;
+    if (message.responseTo)
+      text = message.responseTo;
+
     // Connected?
     if (message.responseTo === SERVERCOMMANDS.CONNECT) {
       if (!message.error) {
+        this.addMessage('received', text);    
+        text = '';
         this.broadcast(SOCKETMESSAGES.CONNECTED, message.parameters);
-        console.log( message.parameters.text );
+      }
+      else{
+        text = message.error;
       }
     }
+
+    // Prompt?
+    if (message.command === SERVERCOMMANDS.PROMPT) {
+      if (!message.error) {
+        text += '\n' + message.parameters.text;
+        this.addMessage('received', text);    
+        text = '';
+        this.broadcast(SOCKETMESSAGES.FROM_PROMPT,message.parameters);
+      }
+      else{
+        text = message.error;
+      }
+    }
+
+    // Add any remaining text
+    if (text) 
+      this.addMessage('received', text);
 
     // Send message to root
     this.sendMessageToRoot(SOCKETMESSAGES.MESSAGE_RECEIVED,message);
   }
   
   ///////////////////////////////////////////////////////////////////////////////////////////////
-  // PCOS Message Handlers
+  // STAM Message Handlers
   ///////////////////////////////////////////////////////////////////////////////////////////////
-  
+    
   /**
    * Handle SOCKET_CONNECT message
    * @param {Object} messageData - Message data
@@ -848,20 +887,30 @@ class SocketSideWindow extends SideWindow {
         userName: this.userName,
         url: this.url
       });
-    }
+    } 
     return true;
   }
   
   /**
-   * Handle SOCKET_DISCONNECT message
+   * Handle MENUCOMMANDS.LOGOUT message
    * @param {Object} messageData - Message data
    * @returns {boolean} - True if handled
    */
-  handleDisconnect(data,sender) {
+  handleLogout(data,sender) {
     this.disconnect();
     return true;
   }
   
+  /**
+   * Handle MENUCOMMANDS.LOGIN message
+   * @param {Object} messageData - Message data
+   * @returns {boolean} - True if handled
+   */
+  handleLogin(data,sender) {
+    this.showConnectionDialog();
+    return true;
+  }
+
   /**
    * Handle SOCKET_SEND_MESSAGE message
    * @param {Object} messageData - Message data
@@ -893,23 +942,23 @@ class SocketSideWindow extends SideWindow {
       this.addMessage('sent', data.command);
       this.updateSendIndicator();
       this.updateSendIndicatorTooltip();
-      
+
       return new Promise((resolve, reject) => {
         this.client.request(data.command,data.parameters)
-        .then(response => {
+        .then(data => {
           // Add response to display
-          this.addMessage('received', response.responseTo);
+          this.addMessage('received', data.responseTo);
         
           // Update receive indicator
           this.updateReceiveIndicator();
           this.updateReceiveIndicatorTooltip();
 
           // Send response back to sender
-          resolve(response);
+          resolve(data.parameters);
         })
-        .catch(error => {
+        .catch(data => {
           // Add error to display
-          this.addMessage('received', error);
+          this.addMessage('received', data.responseTo + '\n' + data.parameters.error);
           
           // Update receive indicator
           this.updateReceiveIndicator();
@@ -922,7 +971,204 @@ class SocketSideWindow extends SideWindow {
     }
     return false;
   }
-  
+  handleGetConnectionInfo(data,sender) {
+    return {
+      userName: this.userName,
+      userKey: this.userKey,
+      url: this.url
+    };
+  }
+
+  /**
+   * Show a connection dialog to enter user credentials and server URL
+   * @returns {Promise<boolean>} - Resolves to true if Connect was clicked, false if Cancel was clicked
+   */
+  showConnectionDialog() {
+    return new Promise((resolve) => {
+      // Remove any existing dialog first
+      const existingDialog = document.getElementById('socket-connection-dialog');
+      if (existingDialog) {
+        document.body.removeChild(existingDialog);
+      }
+      
+      // Create dialog container
+      const dialogContainer = document.createElement('div');
+      dialogContainer.id = 'socket-connection-dialog';
+      dialogContainer.className = 'socket-dialog-container';
+      dialogContainer.style.position = 'fixed';
+      dialogContainer.style.top = '0';
+      dialogContainer.style.left = '0';
+      dialogContainer.style.width = '100%';
+      dialogContainer.style.height = '100%';
+      dialogContainer.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+      dialogContainer.style.display = 'flex';
+      dialogContainer.style.justifyContent = 'center';
+      dialogContainer.style.alignItems = 'center';
+      dialogContainer.style.zIndex = '9999';
+      
+      // Create dialog
+      const dialog = document.createElement('div');
+      dialog.className = 'socket-dialog';
+      dialog.style.backgroundColor = '#2d2d2d';
+      dialog.style.color = '#e0e0e0';
+      dialog.style.padding = '20px';
+      dialog.style.borderRadius = '5px';
+      dialog.style.boxShadow = '0 0 10px rgba(0, 0, 0, 0.3)';
+      dialog.style.width = '400px';
+      dialog.style.maxWidth = '90%';
+      
+      // Create dialog title
+      const title = document.createElement('h2');
+      title.textContent = 'Connection Settings';
+      title.style.margin = '0 0 20px 0';
+      title.style.fontSize = '18px';
+      title.style.fontWeight = 'bold';
+      title.style.borderBottom = '1px solid #555';
+      title.style.paddingBottom = '10px';
+      dialog.appendChild(title);
+      
+      // Create form
+      const form = document.createElement('form');
+      form.style.display = 'flex';
+      form.style.flexDirection = 'column';
+      form.style.gap = '15px';
+      
+      // Create username field
+      const userNameGroup = document.createElement('div');
+      userNameGroup.style.display = 'flex';
+      userNameGroup.style.flexDirection = 'column';
+      userNameGroup.style.gap = '5px';
+      
+      const userNameLabel = document.createElement('label');
+      userNameLabel.textContent = 'Username:';
+      userNameLabel.style.fontSize = '14px';
+      userNameGroup.appendChild(userNameLabel);
+      
+      const userNameInput = document.createElement('input');
+      userNameInput.type = 'text';
+      userNameInput.value = this.userName;
+      userNameInput.style.padding = '8px';
+      userNameInput.style.backgroundColor = '#3d3d3d';
+      userNameInput.style.color = '#e0e0e0';
+      userNameInput.style.border = '1px solid #555';
+      userNameInput.style.borderRadius = '3px';
+      userNameInput.style.fontSize = '14px';
+      userNameGroup.appendChild(userNameInput);
+      
+      form.appendChild(userNameGroup);
+      
+      // Create key field
+      const userKeyGroup = document.createElement('div');
+      userKeyGroup.style.display = 'flex';
+      userKeyGroup.style.flexDirection = 'column';
+      userKeyGroup.style.gap = '5px';
+      
+      const userKeyLabel = document.createElement('label');
+      userKeyLabel.textContent = 'Key:';
+      userKeyLabel.style.fontSize = '14px';
+      userKeyGroup.appendChild(userKeyLabel);
+      
+      const userKeyInput = document.createElement('input');
+      userKeyInput.type = 'password';
+      userKeyInput.value = this.userKey;
+      userKeyInput.style.padding = '8px';
+      userKeyInput.style.backgroundColor = '#3d3d3d';
+      userKeyInput.style.color = '#e0e0e0';
+      userKeyInput.style.border = '1px solid #555';
+      userKeyInput.style.borderRadius = '3px';
+      userKeyInput.style.fontSize = '14px';
+      userKeyGroup.appendChild(userKeyInput);
+      
+      form.appendChild(userKeyGroup);
+      
+      // Create URL field
+      const urlGroup = document.createElement('div');
+      urlGroup.style.display = 'flex';
+      urlGroup.style.flexDirection = 'column';
+      urlGroup.style.gap = '5px';
+      
+      const urlLabel = document.createElement('label');
+      urlLabel.textContent = 'Server URL:';
+      urlLabel.style.fontSize = '14px';
+      urlGroup.appendChild(urlLabel);
+      
+      const urlInput = document.createElement('input');
+      urlInput.type = 'text';
+      urlInput.value = this.url;
+      urlInput.style.padding = '8px';
+      urlInput.style.backgroundColor = '#3d3d3d';
+      urlInput.style.color = '#e0e0e0';
+      urlInput.style.border = '1px solid #555';
+      urlInput.style.borderRadius = '3px';
+      urlInput.style.fontSize = '14px';
+      urlGroup.appendChild(urlInput);
+      
+      form.appendChild(urlGroup);
+      
+      // Create buttons
+      const buttonGroup = document.createElement('div');
+      buttonGroup.style.display = 'flex';
+      buttonGroup.style.justifyContent = 'flex-end';
+      buttonGroup.style.gap = '10px';
+      buttonGroup.style.marginTop = '10px';
+      
+      const cancelButton = document.createElement('button');
+      cancelButton.type = 'button';
+      cancelButton.textContent = 'Cancel';
+      cancelButton.style.padding = '8px 15px';
+      cancelButton.style.backgroundColor = '#555';
+      cancelButton.style.color = '#e0e0e0';
+      cancelButton.style.border = 'none';
+      cancelButton.style.borderRadius = '3px';
+      cancelButton.style.cursor = 'pointer';
+      cancelButton.style.fontSize = '14px';
+      cancelButton.addEventListener('click', () => {
+        document.body.removeChild(dialogContainer);
+        resolve(false);
+      });
+      buttonGroup.appendChild(cancelButton);
+      
+      const connectButton = document.createElement('button');
+      connectButton.type = 'button';
+      connectButton.textContent = 'Connect';
+      connectButton.style.padding = '8px 15px';
+      connectButton.style.backgroundColor = '#4CAF50';
+      connectButton.style.color = '#fff';
+      connectButton.style.border = 'none';
+      connectButton.style.borderRadius = '3px';
+      connectButton.style.cursor = 'pointer';
+      connectButton.style.fontSize = '14px';
+      connectButton.addEventListener('click', () => {
+        // Get values from input fields
+        const userName = userNameInput.value.trim();
+        const userKey = userKeyInput.value.trim();
+        const url = urlInput.value.trim();
+        
+        // Connect to server
+        this.connect({
+          userName: userName,
+          userKey: userKey,
+          url: url
+        });
+        
+        // Close dialog
+        document.body.removeChild(dialogContainer);
+        resolve(true);
+      });
+      buttonGroup.appendChild(connectButton);
+      
+      form.appendChild(buttonGroup);
+      
+      dialog.appendChild(form);
+      dialogContainer.appendChild(dialog);
+      
+      // Add dialog to body
+      document.body.appendChild(dialogContainer);
+      
+      // Focus on username input
+      userNameInput.focus();
+    });
+  }
 }
 
 export default SocketSideWindow;

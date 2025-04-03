@@ -2,7 +2,7 @@
  * ComponentID.js - Utility for generating unique component identifiers
  * 
  * This utility provides functions for generating and managing unique identifiers
- * for components in the PCOS application. These IDs are used for message routing
+ * for components in the STAM application. These IDs are used for message routing
  * and component identification.
  */
 

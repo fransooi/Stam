@@ -1,8 +1,8 @@
 // SideBar.js - Component for the left sidebar that manages multiple SideWindow instances
-import ProjectSideWindow from './interface/sidewindows/ProjectSideWindow.js';
-import OutputSideWindow from './interface/sidewindows/OutputSideWindow.js';
-import TVSideWindow from './interface/sidewindows/TVSideWindow.js';
-import SocketSideWindow from './interface/sidewindows/SocketSideWindow.js';
+import ProjectSideWindow from './sidewindows/ProjectSideWindow.js';
+import OutputSideWindow from './sidewindows/OutputSideWindow.js';
+import TVSideWindow from './sidewindows/TVSideWindow.js';
+import SocketSideWindow from './sidewindows/SocketSideWindow.js';
 import BaseComponent, { MESSAGES } from '../utils/BaseComponent.js';
 import messageBus from '../utils/MessageBus.mjs';
 

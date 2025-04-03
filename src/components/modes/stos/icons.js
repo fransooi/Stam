@@ -1,5 +1,5 @@
 // STOS Basic Icon Bar component - Inspired by the original STOS Basic from 1987
-import BaseComponent from '../../utils/BaseComponent.js';
+import BaseComponent from '../../../utils/BaseComponent.js';
 
 class STOSIcons extends BaseComponent{
   constructor(parentId,containerId) {

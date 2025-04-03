@@ -1,5 +1,40 @@
 import BaseComponent, { MESSAGES } from '../utils/BaseComponent.js';
 import PopupMenu from './PopupMenu.js';
+import { SOCKETMESSAGES } from '../components/sidewindows/SocketSideWindow.js';
+
+// Define message types for preference handling
+export const MENUCOMMANDS = {
+  NEWPROJECT: 'MENU_NEW_PROJECT',
+  OPENPROJECT: 'MENU_OPEN_PROJECT',
+  SAVEPROJECT: 'MENU_SAVE_PROJECT',
+  SAVEASPROJECT: 'MENU_SAVEAS_PROJECT',
+  CLOSEPROJECT: 'MENU_CLOSE_PROJECT',
+  NEWFILE: 'MENU_NEW_FILE',
+  OPENFILE: 'MENU_OPEN_FILE',
+  SAVEFILE: 'MENU_SAVE_FILE',
+  SAVEASFILE: 'MENU_SAVEAS_FILE',
+  EXITFILE: 'MENU_EXIT_FILE',
+  UNDO: 'MENU_UNDO',
+  REDO: 'MENU_REDO',
+  CUT: 'MENU_CUT',
+  COPY: 'MENU_COPY',
+  PASTE: 'MENU_PASTE',
+  FIND: 'MENU_FIND',
+  REPLACE: 'MENU_REPLACE',
+  PREFERENCES: 'MENU_PREFERENCES',
+  RUN: 'MENU_RUN',
+  DEBUG: 'MENU_DEBUG',
+  STOP: 'MENU_STOP',
+  BUILD: 'MENU_BUILD',
+  DOCUMENTATION: 'MENU_DOCUMENTATION',
+  ABOUT: 'MENU_ABOUT',
+  DEBUG1: 'MENU_DEBUG1',
+  DEBUG2: 'MENU_DEBUG2',
+  LOGIN: 'MENU_LOGIN',
+  LOGOUT: 'MENU_LOGOUT',
+  HELP: 'MENU_HELP'
+};
+
 
 class MenuBar extends BaseComponent {
   constructor(parentId, containerId) {
@@ -7,10 +42,14 @@ class MenuBar extends BaseComponent {
     super('MenuBar', parentId, containerId);
     
     this.activeMenu = null;
+    // Initialize menu structure from the updated getDefaultMenuStructure function
     this.menuStructure = this.getDefaultMenuStructure();
     this.menuItems = {}; // Store references to menu title elements
     this.activePopupMenu = null; // Reference to the active popup menu
     this.messageMap[MESSAGES.MODE_CHANGE] = this.handleModeChange;
+    this.messageMap[SOCKETMESSAGES.CONNECTED] = this.handleConnected;
+    this.messageMap[SOCKETMESSAGES.DISCONNECTED] = this.handleDisconnected;
+
   }
 
   async init(options={}) {
@@ -31,49 +70,88 @@ class MenuBar extends BaseComponent {
       this.parentContainer.removeChild(this.modeSelectorContainer);
       this.modeSelectorContainer=null;
     }
+    if (this.loginButtonContainer) {
+      this.parentContainer.removeChild(this.loginButtonContainer);
+      this.loginButtonContainer=null;
+    }
+    if (this.rightContainer) {
+      this.parentContainer.removeChild(this.rightContainer);
+      this.rightContainer=null;
+    }
     super.destroy();
   }
 
   async render(containerId) {
     this.parentContainer=await super.render(containerId);
     this.parentContainer.innerHTML = '';
+    
+    // Set parent container to use flexbox for better layout control
+    this.parentContainer.style.display = 'flex';
+    this.parentContainer.style.flexDirection = 'row';
+    this.parentContainer.style.justifyContent = 'space-between';
+    this.parentContainer.style.alignItems = 'center';
   
     // Create menu items container (left side)
     this.menuItemsContainer = document.createElement('div');
     this.menuItemsContainer.className = 'menu-items-container';
+    this.menuItemsContainer.style.display = 'flex';
+    this.menuItemsContainer.style.flexDirection = 'row';
     
-    // Create menu items
-    Object.keys(this.menuStructure).forEach(menuName => {
-      const menuItem = document.createElement('div');
-      menuItem.className = 'menu-item';
+    // Clear existing menu items references before re-rendering
+    this.menuItems = {};
+    
+    // Create top-level menu items based on the updated menu structure
+    this.menuStructure.forEach(menuItem => {
+      const menuElement = document.createElement('div');
+      menuElement.className = 'menu-item';
       
       const menuTitle = document.createElement('div');
       menuTitle.className = 'menu-title';
-      menuTitle.textContent = menuName;
+      menuTitle.textContent = menuItem.name;
       menuTitle.addEventListener('click', (e) => {
         e.stopPropagation();
-        this.toggleMenu(menuName, menuItem);
+        this.toggleMenu(menuItem, menuElement);
       });
       
-      menuItem.appendChild(menuTitle);
-      this.menuItemsContainer.appendChild(menuItem);
+      menuElement.appendChild(menuTitle);
+      this.menuItemsContainer.appendChild(menuElement);
       
       // Store reference to the menu title element
-      this.menuItems[menuName] = menuItem;
+      this.menuItems[menuItem.name] = menuElement;
     });
     
     // Add menu items container to the main container
     this.parentContainer.appendChild(this.menuItemsContainer);
 
-    // Create mode selector container (right side)
+    // Create a container for the right-side elements
+    this.rightContainer = document.createElement('div');
+    this.rightContainer.className = 'right-container';
+    this.rightContainer.style.display = 'flex';
+    this.rightContainer.style.flexDirection = 'row';
+    this.rightContainer.style.alignItems = 'center';
+    
+    // Create login button container
+    this.loginButtonContainer = document.createElement('div');
+    this.loginButtonContainer.className = 'login-button-container';
+    
+    // Create and add login button
+    this.createLoginButton(this.loginButtonContainer);
+    
+    // Add login button container to the right container
+    this.rightContainer.appendChild(this.loginButtonContainer);
+
+    // Create mode selector container
     this.modeSelectorContainer = document.createElement('div');
     this.modeSelectorContainer.className = 'mode-selector-container';
     
     // Create and add mode selector
     this.createModeSelector(this.modeSelectorContainer);
     
-    // Add mode selector container to the main container
-    this.parentContainer.appendChild(this.modeSelectorContainer);
+    // Add mode selector container to the right container
+    this.rightContainer.appendChild(this.modeSelectorContainer);
+    
+    // Add the right container to the main container
+    this.parentContainer.appendChild(this.rightContainer);
 
     return this.parentContainer;
   }
@@ -83,14 +161,7 @@ class MenuBar extends BaseComponent {
     modeSelector.id = 'mode-selector';
     modeSelector.className = 'mode-selector';
     
-    const modes = [
-      { value: 'modern', text: 'Modern' },
-      { value: 'stos', text: 'STOS Basic' },
-      { value: 'amos1_3', text: 'AMOS 1.3' },
-      { value: 'amosPro', text: 'AMOS Pro' },
-      { value: 'c64', text: 'Commodore 64' }
-    ];
-    
+    const modes = this.root.possibleModes;    
     modes.forEach(mode => {
       const option = document.createElement('option');
       option.value = mode.value;
@@ -104,8 +175,8 @@ class MenuBar extends BaseComponent {
     modeSelector.addEventListener('change', (e) => {
       const newMode = e.target.value;
       
-      // Send mode change message DOWN toward the root (PCOSApp)
-      this.sendMessageDown('MODE_CHANGED', {
+      // Send mode change message DOWN toward the root (StamApp)
+      this.sendMessageToRoot('MODE_CHANGED', {
         mode: newMode
       });
     });
@@ -113,47 +184,129 @@ class MenuBar extends BaseComponent {
     container.appendChild(modeSelector);
   }
   
-  getDefaultMenuStructure() {
-    return {
-      'File': ['New', 'Open', 'Save', 'Save As', 'Exit'],
-      'Edit': ['Undo', 'Redo', 'Cut', 'Copy', 'Paste', 'Find', 'Replace', 'Preferences'],
-      'View': ['Zoom In', 'Zoom Out', 'Reset Zoom', 'Toggle Output'],
-      'Run': ['Run', 'Debug', 'Stop', 'Build'],
-      'Help': ['Documentation', 'About', 'Debug1', 'Debug2']
-    };
+  /**
+   * Create the login button in the menu bar
+   * @param {HTMLElement} container - The container to add the button to
+   */
+  createLoginButton(container) {
+    const loginButton = document.createElement('button');
+    loginButton.id = 'login-button';
+    loginButton.className = 'login-button';
+    loginButton.title = 'Log In';
+    
+    // Apply styles to match the menu bar height and appearance
+    loginButton.style.backgroundColor = 'transparent';
+    loginButton.style.color = '#e0e0e0';
+    loginButton.style.border = '1px solid #555';
+    loginButton.style.borderRadius = '4px';
+    loginButton.style.padding = '6px 12px';
+    loginButton.style.margin = '0 10px 0 0';
+    loginButton.style.cursor = 'pointer';
+    loginButton.style.display = 'flex';
+    loginButton.style.alignItems = 'center';
+    loginButton.style.justifyContent = 'center';
+    loginButton.style.transition = 'all 0.2s ease';
+    loginButton.style.height = 'calc(100% - 10px)';
+    
+    // Create icon element
+    const icon = document.createElement('i');
+    icon.className = 'fas fa-sign-in-alt';
+    icon.style.marginRight = '5px';
+    loginButton.appendChild(icon);
+    
+    // Add text
+    const text = document.createElement('span');
+    text.textContent = 'Log In';
+    loginButton.appendChild(text);
+    
+    // Add hover and active effects using the shared method
+    this.addLoginButtonEffects(loginButton);
+    
+    // Add click event listener to send button action to root
+    loginButton.addEventListener('click', () => {
+      this.broadcast(MENUCOMMANDS.LOGIN);
+    });
+    
+    container.appendChild(loginButton);
   }
   
-  toggleMenu(menuName, menuItem) {
+  getDefaultMenuStructure() {
+    return [
+      { name: 'Project', items: [
+        { name: 'New', command: MENUCOMMANDS.NEWPROJECT },
+        { name: 'Open', command: MENUCOMMANDS.OPENPROJECT },
+        { name: 'Save', command: MENUCOMMANDS.SAVEPROJECT },
+        { name: 'Save As', command: MENUCOMMANDS.SAVEASPROJECT },
+        { name: 'Close', command: MENUCOMMANDS.CLOSEPROJECT }
+      ] },
+      { name: 'File', items: [
+        { name: 'New', command: MENUCOMMANDS.NEWFILE },
+        { name: 'Open', command: MENUCOMMANDS.OPENFILE },
+        { name: 'Save', command: MENUCOMMANDS.SAVEFILE },
+        { name: 'Save As', command: MENUCOMMANDS.SAVEASFILE },
+        { name: 'Exit', command: MENUCOMMANDS.EXITFILE }
+      ] },
+      { name: 'Edit', items: [
+        { name: 'Undo', command: MENUCOMMANDS.UNDO },
+        { name: 'Redo', command: MENUCOMMANDS.REDO },
+        { name: 'Cut', command: MENUCOMMANDS.CUT },
+        { name: 'Copy', command: MENUCOMMANDS.COPY },
+        { name: 'Paste', command: MENUCOMMANDS.PASTE },
+        { name: 'Find', command: MENUCOMMANDS.FIND },
+        { name: 'Replace', command: MENUCOMMANDS.REPLACE },
+        { name: 'Preferences', command: MENUCOMMANDS.PREFERENCES }
+      ] },
+      { name: 'Run', items: [
+        { name: 'Run', command: MENUCOMMANDS.RUN },
+        { name: 'Debug', command: MENUCOMMANDS.DEBUG },
+        { name: 'Stop', command: MENUCOMMANDS.STOP },
+        { name: 'Build', command: MENUCOMMANDS.BUILD }
+      ] },
+      { name: 'Help', items: [
+        { name: 'Documentation', command: MENUCOMMANDS.DOCUMENTATION },
+        { name: 'About', command: MENUCOMMANDS.ABOUT },
+        { name: 'Debug', items: [
+          { name: 'Debug1', command: MENUCOMMANDS.DEBUG1 },
+          { name: 'Debug2', command: MENUCOMMANDS.DEBUG2 }
+        ] }
+      ] }
+    ];
+  }
+  
+  toggleMenu(menuData, menuElement) {
     // Close the active popup menu if it exists
     if (this.activePopupMenu) {
-      this.activePopupMenu.hide();
+      this.activePopupMenu.destroy();
       this.activePopupMenu = null;
       
       // If this was the active menu, it's now closed, so we're done
-      if (this.activeMenu === menuName) {
+      if (this.activeMenu === menuData.name) {
         this.activeMenu = null;
         return;
       }
     }
     
     // Set this as the active menu
-    this.activeMenu = menuName;
+    this.activeMenu = menuData.name;
     
-    // Get the menu items
-    const menuItems = this.menuStructure[menuName];
+    // If no menu items found for this menu, log error and return
+    if (!menuData.items || menuData.items.length === 0) {
+      console.error(`No menu items found for menu: ${menuData.name}`);
+      return;
+    }
     
     // Get the position for the popup menu
-    const rect = menuItem.getBoundingClientRect();
+    const rect = menuElement.getBoundingClientRect();
     const position = {
       x: rect.left,
       y: rect.bottom
     };
     
-    // Create and show the popup menu
-    this.activePopupMenu = new PopupMenu(this.getComponentID(),{
-      items: menuItems,
+    // Create and show the popup menu with recursive structure
+    this.activePopupMenu = new PopupMenu(this.getComponentID(), {
+      items: menuData.items,
       position: position,
-      menuContext: menuName
+      menuContext: menuData.name
     });
     
     this.activePopupMenu.show();
@@ -171,24 +324,10 @@ class MenuBar extends BaseComponent {
     this.closeAllMenus();
   }
   
-  handleMenuAction(menuName, option) {
-    console.log(`Menu action: ${menuName} > ${option}`);
-    
-    // Create the action string (e.g., "File:New")
-    const action = `${menuName}:${option}`;
-    
-    // Send the menu action message
-    this.sendMessageDown(MESSAGES.MENU_ACTION, {
-      action: option.toLowerCase().replace(/\s+/g, ''),
-      menuName: menuName,
-      option: option
-    });
-    
-    return true;
-  }
-  
   setMenuStructure(structure) {
+    // Update the menu structure with the new structure
     this.menuStructure = structure;
+    // Re-render the menu to reflect the changes
     this.render();
   }
   
@@ -233,6 +372,107 @@ class MenuBar extends BaseComponent {
       return true;
     }
     return false;
+  }
+
+  /**
+   * Handle connected event from socket
+   * @param {Object} data - Connection data
+   * @param {string} sender - Sender ID
+   * @returns {boolean} - Whether the message was handled
+   */
+  async handleConnected(data, sender) {
+    // Update login button to show "Log Out" state
+    const loginButton = document.getElementById('login-button');
+    if (loginButton) {
+      // Update button title
+      loginButton.title = 'Log Out';
+      
+      // Update icon
+      const icon = loginButton.querySelector('i');
+      if (icon) {
+        icon.className = 'fas fa-sign-out-alt';
+      }
+      
+      // Update text
+      const text = loginButton.querySelector('span');
+      if (text) {
+        text.textContent = 'Log Out';
+      }
+      
+      // Update click handler
+      loginButton.replaceWith(loginButton.cloneNode(true));
+      const newLoginButton = document.getElementById('login-button');
+      newLoginButton.addEventListener('click', () => {
+        this.broadcast(MENUCOMMANDS.LOGOUT);
+      });
+      
+      // Add the same hover effects
+      this.addLoginButtonEffects(newLoginButton);
+    }
+    return true;
+  }
+  
+  /**
+   * Handle disconnected event from socket
+   * @param {Object} data - Disconnection data
+   * @param {string} sender - Sender ID
+   * @returns {boolean} - Whether the message was handled
+   */
+  async handleDisconnected(data, sender) {
+    // Update login button to show "Log In" state
+    const loginButton = document.getElementById('login-button');
+    if (loginButton) {
+      // Update button title
+      loginButton.title = 'Log In';
+      
+      // Update icon
+      const icon = loginButton.querySelector('i');
+      if (icon) {
+        icon.className = 'fas fa-sign-in-alt';
+      }
+      
+      // Update text
+      const text = loginButton.querySelector('span');
+      if (text) {
+        text.textContent = 'Log In';
+      }
+      
+      // Update click handler
+      loginButton.replaceWith(loginButton.cloneNode(true));
+      const newLoginButton = document.getElementById('login-button');
+      newLoginButton.addEventListener('click', () => {
+        this.broadcast(MENUCOMMANDS.LOGIN);
+      });
+      
+      // Add the same hover effects
+      this.addLoginButtonEffects(newLoginButton);
+    }
+    return true;
+  }
+  
+  /**
+   * Add hover and click effects to the login button
+   * @param {HTMLElement} button - The login button element
+   */
+  addLoginButtonEffects(button) {
+    // Add hover and active effects
+    button.addEventListener('mouseover', () => {
+      button.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+      button.style.borderColor = '#888';
+    });
+    
+    button.addEventListener('mouseout', () => {
+      button.style.backgroundColor = 'transparent';
+      button.style.borderColor = '#555';
+    });
+    
+    button.addEventListener('mousedown', () => {
+      button.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+    });
+    
+    button.addEventListener('mouseup', () => {
+      button.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+    });
   }
   
   /**

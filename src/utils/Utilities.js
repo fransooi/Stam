@@ -1,8 +1,8 @@
 /**
- * Utilities.js - Helper functions for PCOS application
+ * Utilities.js - Helper functions for STAM application
  * 
  * This class provides utility functions that can be used across the application.
- * It is instantiated in PCOSApp and accessible through the component tree.
+ * It is instantiated in StamApp and accessible through the component tree.
  */
 
 export default class Utilities {

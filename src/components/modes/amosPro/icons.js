@@ -1,5 +1,5 @@
 // AMOS Pro Icon Bar component
-import BaseComponent from '../../utils/BaseComponent.js';
+import BaseComponent from '../../../utils/BaseComponent.js';
 
 class AMOSProIcons extends BaseComponent {
   constructor(parentId,containerId) {

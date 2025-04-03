@@ -138,6 +138,26 @@ class MessageBus {
     delete this.componentRegistry[componentId];
   }
   
+  /**
+   * Check target ID and return the appropriate component ID
+   * 
+   * @param {string} targetId - The target component ID
+   * @returns {string|Array} - The component ID or array of component IDs
+   */
+  checkTargetId(targetId) {
+    if (targetId){
+      if ( targetId.substring(0, 6)=='class:') {
+        return this.getComponentsByClassName(targetId.substring(6));
+      }else if ( targetId.substring(0, 3)=='id:') {
+        return this.getComponentById(targetId.substring(3));
+      }else if ( targetId=='root') {
+        return this.root.componentId;
+      }
+    }
+    return targetId;
+  }
+    
+  
   
   /**
    * Send a message to a specific component by ID (downward flow)
@@ -149,23 +169,61 @@ class MessageBus {
    * @returns {boolean} - True if the message was delivered to the target
    */
   async sendMessage(targetID, message, data = {}, senderId = null) {
-    // Check if we have a handler for this component ID
-    if (this.addressedHandlers.has(targetID)) {
-      const { handler, context } = this.addressedHandlers.get(targetID);
-      
-      // Call the handler with the message
+    targetID = this.checkTargetId(targetID);
+    if ( targetID){
+      if (Array.isArray(targetID)) {
+        if (targetID.length > 1) {
+          for (const id of targetID) {
+            if (this.addressedHandlers.has(id)) {
+              const { handler, context } = this.addressedHandlers.get(id);
+              await handler.call(context, message, data, senderId);
+            }
+          }
+          return true;
+        }
+        targetID = targetID[0];
+      }
+    }
+    if (targetID && this.addressedHandlers.has(targetID)) {
+      const { handler, context } = this.addressedHandlers.get(targetID);      
       return await handler.call(context, message, data, senderId);
     }    
     return false;
   }
 
+  /**
+   * Send a request to a specific component by ID (downward flow)
+   * 
+   * @param {string} targetID - The ID of the target component
+   * @param {string} message - The message to send
+   * @param {Object} data - Additional data to send with the message
+   * @param {string} senderId - The ID of the component that sent the message
+   * @returns {Promise} - A promise that resolves to the response from the target component
+   */
   async sendRequest(targetID, message, data = {}, senderId = null) {
+    targetID = this.checkTargetId(targetID);
+
+    if ( targetID){
+      if (Array.isArray(targetID)) {
+        if (targetID.length > 1) {
+          var answer = [];
+          for (const id of targetID) {
+            if (this.addressedHandlers.has(id)) {
+              const { handler, context } = this.addressedHandlers.get(id);
+              answer.push(await handler.call(context, message, data, senderId));
+            }
+          }
+          return answer;
+        }
+        targetID = targetID[0];
+      }
+    }
     if (this.addressedHandlers.has(targetID)) {
       const { handler, context } = this.addressedHandlers.get(targetID);
       return await handler.call(context, message, data, senderId);
     }    
     return new Promise((resolve, reject) => {
-      reject(new Error('No handler found for target ID'));
+      reject(new Error('Target not found.'));
     });
   }
   
@@ -216,7 +274,7 @@ class MessageBus {
    * @returns {Promise<number>} - Number of components that received the message
    */
   async broadcastUp(fromComponentId,message,includeCallback=null) {       
-    // Find the root component (PCOSApp)
+    // Find the root component (StamApp)
     if (!fromComponentId) 
       fromComponentId=this.root.componentId;    
 
