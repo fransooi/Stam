@@ -58,6 +58,7 @@ class StamApp extends BaseComponent {
     this.messageMap[MESSAGES.ICON_ACTION] = this.handleIconAction;
     this.messageMap[MESSAGES.LAYOUT_INFO] = this.handleLayoutInfo;
     this.messageMap[MESSAGES.MODE_CHANGED] = this.handleModeChanged;    
+    this.messageMap[MESSAGES.SAVE_LAYOUT] = this.handleSaveLayout;    
   }
   
   async init(options = {}) {
@@ -153,76 +154,11 @@ class StamApp extends BaseComponent {
     await this.changeMode(data.mode);
     return true;
   }
-
-  /**
-   * Handle menu actions from MenuBar
-   * @param {Object} action - Action data
-   * @param {Object} sender - Component that sent the action
-   * @returns {boolean} - True if the action was handled
-   */
-  async handleMenuAction(action, sender) {
-    console.log('Menu action:', action);
-    
-    // Handle specific menu actions
-    switch (action.option.toLowerCase()) {
-      case 'new':
-        // Handle new file action
-        console.log('New file action');
-        return true;
-        
-      case 'open':
-        // Handle open file action
-        console.log('Open file action');
-        return true;
-        
-      case 'save':
-        // Handle save file action
-        console.log('Save file action');
-        return true;
-        
-      case 'preferences':
-        // Show preferences dialog
-        this.showPreferences();
-        return true;
-        
-      case 'debug1':
-        // Call saveLayout function
-        this.debug1();
-        return true;
-        
-      case 'debug2':
-        // Call loadLayout function
-        this.debug2();
-        return true;
-        
-      // Add more menu actions as needed
-    }
-    
-    console.log(`Unhandled menu action: ${action.action}`);
-    return false;
-  }
-  
-  /**
-   * Load layout from storage and applies
-   */
-  async loadLayout() {
-    console.log('Loading interface layout...');
-    var data = this.utilities.loadStorage('stam-layout');
-    if (data) {
-      await this.recreateInterface(data);
-      setTimeout(() => {
-        console.log('Broadcasting LAYOUT_READY message after mode change');
-        this.broadcastUp('LAYOUT_READY', { mode: this.currentMode });
-      }, 1000);    
-      return true;
-    }
-    return false;
-  }
   
   /**
    * Save the current layout
    */
-  async saveLayout() {
+  async handleSaveLayout() {
     console.log('Saving interface layout...');
     var layoutJson = await this.getLayout();
     if (layoutJson) {
@@ -231,23 +167,9 @@ class StamApp extends BaseComponent {
   }
 
   /**
-   * Debug1 function - Save the current layout
-   */
-  debug1() {
-    this.saveLayout();
-  }
-
-  /**
-   * Debug2 function - Load the saved layout
-   */
-  debug2() {
-    console.log('Debug2');
-  }
-  
-  /**
    * Show the preferences dialog
    */
-  showPreferences() {
+  handleShowPreferences() {
     if (this.preferenceDialog) {
       this.sendMessageTo(this.preferenceDialog.getComponentID(), MESSAGES.SHOW_PREFERENCES);
     }
@@ -329,41 +251,6 @@ class StamApp extends BaseComponent {
       console.error('Error recreating interface:', error);
       return false;
     }
-  }
-  
-  /**
-   * Handle icon actions from IconBar
-   * @param {Object} data - Data associated with the message
-   * @param {Object} sender - Component that sent the message
-   * @returns {boolean} - True if the action was handled
-   */
-  handleIconAction(data, sender) {
-    if (!data.action) return false;    
-    var action = data.action;
-    
-    // Handle different icon actions
-    switch (action.toLowerCase()) {
-      case ICONACTIONS.NEW_FILE:
-        return true;
-      case ICONACTIONS.OPEN_FILE:
-        return true;
-      case ICONACTIONS.SAVE_FILE:
-        return true;        
-      case ICONACTIONS.RUN_PROGRAM:
-        return true;
-      case ICONACTIONS.DEBUG_PROGRAM:
-        return true;
-      case ICONACTIONS.SHARE_PROGRAM:
-        return true;
-      case ICONACTIONS.HELP:
-        return true;
-        
-      // Add more icon actions as needed
-    }
-    
-    // If we get here, the action wasn't handled
-    console.log(`Unhandled icon action: ${action}`);
-    return false;
   }
 }
 

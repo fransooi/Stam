@@ -9,6 +9,7 @@ import SideWindow from './SideWindow.js';
 import WebSocketClient from '../../utils/WebSocketClient.js';
 import { SERVERCOMMANDS } from '../../../../engine/servercommands.mjs';
 import { MENUCOMMANDS } from '../MenuBar.js';
+import { MESSAGES } from '../../utils/BaseComponent.js';
 
 // Define message types for preference handling
 export const SOCKETMESSAGES = {
@@ -37,11 +38,13 @@ class SocketSideWindow extends SideWindow {
     this.isConnected = false;
     this.isConnecting = false;
     this.wasConnected = false;
-    this.userKey = '';
+    this.loggedIn = false;
     this.userName = '';
     this.url = 'ws://localhost:1033';
     this.messages = [];
     this.maxMessages = 50; // Maximum number of messages to display
+    this.accountInfo = null;
+    this.createAccount = false;
     
     // Message counters
     this.messagesSent = 0;
@@ -52,7 +55,6 @@ class SocketSideWindow extends SideWindow {
     this.messageContainer = null;
     this.connectButton = null;
     this.disconnectButton = null;
-    this.userKeyInput = null;
     this.userNameInput = null;
     this.urlInput = null;
     
@@ -681,10 +683,12 @@ class SocketSideWindow extends SideWindow {
     const layoutInfo = await super.getLayoutInfo();
     
     // Add SocketSideWindow-specific information
-    layoutInfo.userKey = this.userKey;
+    layoutInfo.createAccount = this.createAccount;
+    layoutInfo.accountInfo = this.accountInfo;
     layoutInfo.userName = this.userName;
     layoutInfo.url = this.url;
     layoutInfo.isConnected = this.isConnected;
+    layoutInfo.isLoggedIn = this.isLoggedIn;
         
     return layoutInfo;
   }
@@ -699,10 +703,11 @@ class SocketSideWindow extends SideWindow {
     await super.applyLayout(layoutInfo);
     
     // Add SocketSideWindow-specific information
-    this.userKey = layoutInfo.userKey || '';
-    this.userName = layoutInfo.userName || 'francois';
+    this.userName = layoutInfo.userName || 'demo';
     this.url = layoutInfo.url || 'ws://localhost:1033';
+    this.accountInfo = layoutInfo.accountInfo || null;
     this.wasConnected = layoutInfo.isConnected || false;
+    this.wasLoggedIn = layoutInfo.isLoggedIn || false;
     return layoutInfo;
   }
 
@@ -710,17 +715,19 @@ class SocketSideWindow extends SideWindow {
    * Connect to the WebSocket server
    */
   connect(options) {
-    if(options) {
-      // Get values from options
-      this.userKey = options.userKey || this.userKey;
-      this.userName = options.userName || this.userName;
-      this.url = options.url || this.url;
-    }else{
-      // Get values from input fields
-      this.userKey = this.userKeyInput.value.trim();
-      this.userName = this.userNameInput.value.trim();
-      this.url = this.urlInput.value.trim();
+    var userName;
+    if (options)
+      userName = options.userName;
+    if (this.accountInfo)
+      userName = userName ? userName : this.accountInfo.userName;
+    var url = options.url || this.url;
+    if ( !url || !userName )
+    {
+      this.addMessage('sent', 'Missing required connection information');
+      return;
     }
+    this.userName = userName;
+    this.url = url;
 
     // Disconnect if already connected
     if ( this.client.getState() === 'connected' ) {
@@ -736,9 +743,8 @@ class SocketSideWindow extends SideWindow {
     this.updateConnectionIndicator();
 
     this.client.connect({
-      url: this.url,
-      userName: this.userName,
-      userKey: this.userKey
+      url: url,
+      userName: userName
     }).then(() => {
       this.handleConnectionOpen();
     }).catch(error => {
@@ -793,10 +799,7 @@ class SocketSideWindow extends SideWindow {
     this.addMessage('received', 'Disconnected from server');
 
     // Broadcast message
-    this.broadcast(SOCKETMESSAGES.DISCONNECTED, {
-      userName: this.userName,
-      userKey: this.userKey
-    });
+    this.broadcast(SOCKETMESSAGES.DISCONNECTED, { userName: this.userName });
   }
   
   /**
@@ -829,11 +832,47 @@ class SocketSideWindow extends SideWindow {
       text = message.responseTo;
 
     // Connected?
-    if (message.responseTo === SERVERCOMMANDS.CONNECT) {
-      if (!message.error) {
+    if (message.responseTo === SERVERCOMMANDS.CONNECT) 
+    {
+      if (!message.error) 
+      {
         this.addMessage('received', text);    
         text = '';
-        this.broadcast(SOCKETMESSAGES.CONNECTED, message.parameters);
+        this.broadcast(SOCKETMESSAGES.CONNECTED, message.parameters);  
+
+        // Handle login prompt
+        if (this.accountInfo)
+        {
+          if (this.createAccount)
+          {
+            this.createAccount = false;
+            this.client.requestResponse(SERVERCOMMANDS.CREATE_ACCOUNT, this.accountInfo).then((response) => 
+            {
+              if (!response.error) 
+              {
+                this.addMessage('received', 'AWI account created');
+                this.client.requestResponse(SERVERCOMMANDS.LOGIN, { userName: this.accountInfo.userName, password: this.accountInfo.password }).then((response) => {
+                  if (!response.error) 
+                  {
+                    this.loggedIn = true;
+                    this.sendMessageToRoot(MESSAGES.SAVE_LAYOUT);
+                    this.addMessage('received', 'Logged in AWI');
+                  }
+                });
+              }
+            });
+          }
+          else
+          {
+             this.client.requestResponse(SERVERCOMMANDS.LOGIN, { userName: this.accountInfo.userName, password: this.accountInfo.password }).then((response) => {
+              if (!response.error) 
+              {
+                this.loggedIn = true;
+                this.addMessage('received', 'Logged in AWI');
+              }
+            });
+          }
+        }
       }
       else{
         text = message.error;
@@ -841,15 +880,13 @@ class SocketSideWindow extends SideWindow {
     }
 
     // Prompt?
-    if (message.command === SERVERCOMMANDS.PROMPT) {
-      if (!message.error) {
+    if (message.command === SERVERCOMMANDS.PROMPT) 
+    {
+      if (!message.error)
+      {
         text += '\n' + message.parameters.text;
         this.addMessage('received', text);    
         text = '';
-        this.broadcast(SOCKETMESSAGES.FROM_PROMPT,message.parameters);
-      }
-      else{
-        text = message.error;
       }
     }
 
@@ -881,11 +918,10 @@ class SocketSideWindow extends SideWindow {
    * @returns {boolean} - True if handled
    */
   handleConnectIfConnected(data,sender) {
-    if (this.wasConnected) {
+    if (this.wasConnected && this.accountInfo) {
       this.connect({
-        userKey: this.userKey,
-        userName: this.userName,
-        url: this.url
+        userName: this.accountInfo.userName,
+        url: this.accountInfo.url
       });
     } 
     return true;
@@ -944,7 +980,7 @@ class SocketSideWindow extends SideWindow {
       this.updateSendIndicatorTooltip();
 
       return new Promise((resolve, reject) => {
-        this.client.request(data.command,data.parameters)
+        this.client.requestResponse(data.command,data.parameters)
         .then(data => {
           // Add response to display
           this.addMessage('received', data.responseTo);
@@ -974,9 +1010,283 @@ class SocketSideWindow extends SideWindow {
   handleGetConnectionInfo(data,sender) {
     return {
       userName: this.userName,
-      userKey: this.userKey,
       url: this.url
     };
+  }
+
+  /**
+   * Show a dialog to create a new account
+   * @param {Array} userList - List of existing users (optional)
+   * @returns {Promise<Object>} - Resolves to the account information
+   */
+  showCreateAccountDialog(userList = []) {
+    return new Promise((resolve) => {
+      // Remove any existing dialog first
+      const existingDialog = document.getElementById('socket-create-account-dialog');
+      if (existingDialog) {
+        document.body.removeChild(existingDialog);
+      }
+      
+      // Create dialog container
+      const dialogContainer = document.createElement('div');
+      dialogContainer.id = 'socket-create-account-dialog';
+      dialogContainer.className = 'socket-dialog-container';
+      dialogContainer.style.position = 'fixed';
+      dialogContainer.style.top = '0';
+      dialogContainer.style.left = '0';
+      dialogContainer.style.width = '100%';
+      dialogContainer.style.height = '100%';
+      dialogContainer.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+      dialogContainer.style.display = 'flex';
+      dialogContainer.style.justifyContent = 'center';
+      dialogContainer.style.alignItems = 'center';
+      dialogContainer.style.zIndex = '9999';
+      
+      // Create dialog
+      const dialog = document.createElement('div');
+      dialog.className = 'socket-dialog';
+      dialog.style.backgroundColor = '#2d2d2d';
+      dialog.style.color = '#e0e0e0';
+      dialog.style.padding = '20px';
+      dialog.style.borderRadius = '5px';
+      dialog.style.boxShadow = '0 0 10px rgba(0, 0, 0, 0.3)';
+      dialog.style.width = '500px';
+      dialog.style.maxWidth = '90%';
+      dialog.style.maxHeight = '90vh';
+      dialog.style.overflowY = 'auto';
+      
+      // Create dialog title
+      const title = document.createElement('h2');
+      title.textContent = 'Create New Account';
+      title.style.margin = '0 0 20px 0';
+      title.style.fontSize = '18px';
+      title.style.fontWeight = 'bold';
+      title.style.borderBottom = '1px solid #555';
+      title.style.paddingBottom = '10px';
+      dialog.appendChild(title);
+      
+      // Create form
+      const form = document.createElement('form');
+      form.style.display = 'flex';
+      form.style.flexDirection = 'column';
+      form.style.gap = '15px';
+      
+      // Helper function to create form groups
+      const createFormGroup = (labelText, inputType, required = false, placeholder = '') => {
+        const group = document.createElement('div');
+        group.style.display = 'flex';
+        group.style.flexDirection = 'column';
+        group.style.gap = '5px';
+        
+        const label = document.createElement('label');
+        label.textContent = labelText + (required ? ' *' : '');
+        label.style.fontSize = '14px';
+        group.appendChild(label);
+        
+        const input = document.createElement('input');
+        input.type = inputType;
+        input.placeholder = placeholder;
+        input.style.padding = '8px';
+        input.style.backgroundColor = '#3d3d3d';
+        input.style.color = '#e0e0e0';
+        input.style.border = '1px solid #555';
+        input.style.borderRadius = '3px';
+        input.style.fontSize = '14px';
+        input.required = required;
+        group.appendChild(input);
+        
+        return { group, input };
+      };
+      
+      // First name field (mandatory)
+      const { group: firstNameGroup, input: firstNameInput } = createFormGroup('First Name', 'text', true, 'Enter your first name');
+      form.appendChild(firstNameGroup);
+      
+      // Last name field (mandatory)
+      const { group: lastNameGroup, input: lastNameInput } = createFormGroup('Last Name', 'text', true, 'Enter your last name');
+      form.appendChild(lastNameGroup);
+      
+      // Note: Username field is intentionally omitted as it's already defined in the connection dialog
+      
+      // Password field (mandatory)
+      const { group: passwordGroup, input: passwordInput } = createFormGroup('Password', 'password', true, 'Enter your password');
+      form.appendChild(passwordGroup);
+      
+      // Password confirmation field (mandatory)
+      const { group: confirmPasswordGroup, input: confirmPasswordInput } = createFormGroup('Confirm Password', 'password', true, 'Confirm your password');
+      form.appendChild(confirmPasswordGroup);
+      
+      // Password validation message
+      const passwordValidation = document.createElement('div');
+      passwordValidation.style.fontSize = '12px';
+      passwordValidation.style.color = '#ff6b6b';
+      passwordValidation.style.marginTop = '-10px';
+      passwordValidation.style.display = 'none';
+      form.appendChild(passwordValidation);
+      
+      // Check password match
+      confirmPasswordInput.addEventListener('input', () => {
+        if (passwordInput.value !== confirmPasswordInput.value) {
+          passwordValidation.textContent = 'Passwords do not match';
+          passwordValidation.style.display = 'block';
+          confirmPasswordInput.style.borderColor = '#ff6b6b';
+        } else {
+          passwordValidation.style.display = 'none';
+          confirmPasswordInput.style.borderColor = '#555';
+        }
+      });
+      
+      // Email field (mandatory)
+      const { group: emailGroup, input: emailInput } = createFormGroup('Email', 'email', true, 'Enter your email address');
+      form.appendChild(emailGroup);
+      
+      // Country field (optional)
+      const countryGroup = document.createElement('div');
+      countryGroup.style.display = 'flex';
+      countryGroup.style.flexDirection = 'column';
+      countryGroup.style.gap = '5px';
+      
+      const countryLabel = document.createElement('label');
+      countryLabel.textContent = 'Country';
+      countryLabel.style.fontSize = '14px';
+      countryGroup.appendChild(countryLabel);
+      
+      const countryInput = document.createElement('input');
+      countryInput.type = 'text';
+      countryInput.placeholder = 'Enter your country (optional)';
+      countryInput.style.padding = '8px';
+      countryInput.style.backgroundColor = '#3d3d3d';
+      countryInput.style.color = '#e0e0e0';
+      countryInput.style.border = '1px solid #555';
+      countryInput.style.borderRadius = '3px';
+      countryInput.style.fontSize = '14px';
+      countryGroup.appendChild(countryInput);
+      
+      form.appendChild(countryGroup);
+      
+      // Language preference field (optional, default to English)
+      const languageGroup = document.createElement('div');
+      languageGroup.style.display = 'flex';
+      languageGroup.style.flexDirection = 'column';
+      languageGroup.style.gap = '5px';
+      
+      const languageLabel = document.createElement('label');
+      languageLabel.textContent = 'Preferred Language';
+      languageLabel.style.fontSize = '14px';
+      languageGroup.appendChild(languageLabel);
+      
+      const languageSelect = document.createElement('select');
+      languageSelect.style.padding = '8px';
+      languageSelect.style.backgroundColor = '#3d3d3d';
+      languageSelect.style.color = '#e0e0e0';
+      languageSelect.style.border = '1px solid #555';
+      languageSelect.style.borderRadius = '3px';
+      languageSelect.style.fontSize = '14px';
+      
+      const languages = ['English', 'French', 'German'];
+      languages.forEach(lang => {
+        const option = document.createElement('option');
+        option.value = lang.toLowerCase();
+        option.textContent = lang;
+        languageSelect.appendChild(option);
+      });
+      
+      languageGroup.appendChild(languageSelect);
+      form.appendChild(languageGroup);
+      
+      // Create buttons
+      const buttonGroup = document.createElement('div');
+      buttonGroup.style.display = 'flex';
+      buttonGroup.style.justifyContent = 'flex-end';
+      buttonGroup.style.gap = '10px';
+      buttonGroup.style.marginTop = '20px';
+      
+      const cancelButton = document.createElement('button');
+      cancelButton.type = 'button';
+      cancelButton.textContent = 'Cancel';
+      cancelButton.style.padding = '8px 15px';
+      cancelButton.style.backgroundColor = '#555';
+      cancelButton.style.color = '#fff';
+      cancelButton.style.border = 'none';
+      cancelButton.style.borderRadius = '3px';
+      cancelButton.style.cursor = 'pointer';
+      cancelButton.style.fontSize = '14px';
+      cancelButton.addEventListener('click', () => {
+        document.body.removeChild(dialogContainer);
+        resolve(null);
+      });
+      buttonGroup.appendChild(cancelButton);
+      
+      const createButton = document.createElement('button');
+      createButton.type = 'button';
+      createButton.textContent = 'Create AWI Account';
+      createButton.style.padding = '8px 15px';
+      createButton.style.backgroundColor = '#4CAF50';
+      createButton.style.color = '#fff';
+      createButton.style.border = 'none';
+      createButton.style.borderRadius = '3px';
+      createButton.style.cursor = 'pointer';
+      createButton.style.fontSize = '14px';
+      
+      createButton.addEventListener('click', () => {
+        // Validate form
+        let isValid = true;
+        let errorMessage = '';
+        
+        // Check required fields
+        if (!firstNameInput.value.trim()) {
+          isValid = false;
+          errorMessage = 'First name is required';
+        } else if (!lastNameInput.value.trim()) {
+          isValid = false;
+          errorMessage = 'Last name is required';
+        } else if (!passwordInput.value) {
+          isValid = false;
+          errorMessage = 'Password is required';
+        } else if (passwordInput.value !== confirmPasswordInput.value) {
+          isValid = false;
+          errorMessage = 'Passwords do not match';
+        } else if (!emailInput.value.trim()) {
+          isValid = false;
+          errorMessage = 'Email is required';
+        } else if (!emailInput.value.includes('@') || !emailInput.value.includes('.')) {
+          isValid = false;
+          errorMessage = 'Please enter a valid email address';
+        }
+        
+        if (!isValid) {
+          // Show error message
+          alert(errorMessage);
+          return;
+        }
+        
+        // Create account info object - username will be added from the connection dialog
+        const accountInfo = {
+          firstName: firstNameInput.value.trim(),
+          lastName: lastNameInput.value.trim(),
+          password: passwordInput.value,
+          email: emailInput.value.trim(),
+          country: countryInput.value.trim() || undefined,
+          language: languageSelect.value
+        };
+        
+        // Close dialog and return account info
+        document.body.removeChild(dialogContainer);
+        resolve(accountInfo);
+      });
+      
+      buttonGroup.appendChild(createButton);
+      form.appendChild(buttonGroup);
+      
+      dialog.appendChild(form);
+      dialogContainer.appendChild(dialog);
+      
+      // Add dialog to body
+      document.body.appendChild(dialogContainer);
+      
+      // Focus on first name input
+      firstNameInput.focus();
+    });
   }
 
   /**
@@ -1057,29 +1367,7 @@ class SocketSideWindow extends SideWindow {
       
       form.appendChild(userNameGroup);
       
-      // Create key field
-      const userKeyGroup = document.createElement('div');
-      userKeyGroup.style.display = 'flex';
-      userKeyGroup.style.flexDirection = 'column';
-      userKeyGroup.style.gap = '5px';
-      
-      const userKeyLabel = document.createElement('label');
-      userKeyLabel.textContent = 'Key:';
-      userKeyLabel.style.fontSize = '14px';
-      userKeyGroup.appendChild(userKeyLabel);
-      
-      const userKeyInput = document.createElement('input');
-      userKeyInput.type = 'password';
-      userKeyInput.value = this.userKey;
-      userKeyInput.style.padding = '8px';
-      userKeyInput.style.backgroundColor = '#3d3d3d';
-      userKeyInput.style.color = '#e0e0e0';
-      userKeyInput.style.border = '1px solid #555';
-      userKeyInput.style.borderRadius = '3px';
-      userKeyInput.style.fontSize = '14px';
-      userKeyGroup.appendChild(userKeyInput);
-      
-      form.appendChild(userKeyGroup);
+      // Note: User key field has been removed
       
       // Create URL field
       const urlGroup = document.createElement('div');
@@ -1104,6 +1392,28 @@ class SocketSideWindow extends SideWindow {
       urlGroup.appendChild(urlInput);
       
       form.appendChild(urlGroup);
+      
+      // Create AWI account checkbox
+      const checkboxContainer = document.createElement('div');
+      checkboxContainer.style.display = 'flex';
+      checkboxContainer.style.alignItems = 'center';
+      checkboxContainer.style.marginBottom = '15px';
+      
+      const accountCheckbox = document.createElement('input');
+      accountCheckbox.type = 'checkbox';
+      accountCheckbox.id = 'awi-account-checkbox';
+      accountCheckbox.style.marginRight = '8px';
+      accountCheckbox.style.cursor = 'pointer';
+      
+      const checkboxLabel = document.createElement('label');
+      checkboxLabel.htmlFor = 'awi-account-checkbox';
+      checkboxLabel.textContent = this.accountInfo ? 'Login AWI account' : 'Create AWI account';
+      checkboxLabel.style.fontSize = '14px';
+      checkboxLabel.style.cursor = 'pointer';
+      
+      checkboxContainer.appendChild(accountCheckbox);
+      checkboxContainer.appendChild(checkboxLabel);
+      form.appendChild(checkboxContainer);
       
       // Create buttons
       const buttonGroup = document.createElement('div');
@@ -1141,19 +1451,45 @@ class SocketSideWindow extends SideWindow {
       connectButton.addEventListener('click', () => {
         // Get values from input fields
         const userName = userNameInput.value.trim();
-        const userKey = userKeyInput.value.trim();
         const url = urlInput.value.trim();
         
-        // Connect to server
-        this.connect({
-          userName: userName,
-          userKey: userKey,
-          url: url
-        });
+        // Check if the AWI account checkbox is checked
+        const isAwiAccountChecked = accountCheckbox.checked;
         
-        // Close dialog
-        document.body.removeChild(dialogContainer);
-        resolve(true);
+        if (isAwiAccountChecked && !this.accountInfo) {
+          // Close the connection dialog
+          document.body.removeChild(dialogContainer);
+          
+          // Show the create account dialog
+          this.showCreateAccountDialog().then((accountInfo) => {
+            if (accountInfo) {
+              // Add the username from the connection dialog to the account info
+              accountInfo.userName = userName;
+              
+              // Store the account info and connect
+              this.createAccount = true;
+              this.accountInfo = accountInfo;
+              this.connect({
+                userName: userName,
+                url: url
+              });
+              resolve(true);
+            } else {
+              // If account creation was canceled
+              resolve(false);
+            }
+          });
+        } else {
+          // Connect to server normally
+          this.connect({
+            userName: userName,
+            url: url
+          });
+          
+          // Close dialog
+          document.body.removeChild(dialogContainer);
+          resolve(true);
+        }
       });
       buttonGroup.appendChild(connectButton);
       

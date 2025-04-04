@@ -12,7 +12,6 @@ class WebSocketClient {
    * Create a new WebSocket client
    * @param {Object} options - Configuration options
    * @param {string} options.url - WebSocket server URL (default: 'ws://localhost:8080')
-   * @param {string} options.userKey - User authentication key
    * @param {Function} options.onOpen - Callback when connection opens
    * @param {Function} options.onMessage - Callback when message is received
    * @param {Function} options.onClose - Callback when connection closes
@@ -24,7 +23,6 @@ class WebSocketClient {
     this.loggedIn = false;
     this.tryReconnect = true;
     this.userName = '';
-    this.userKey = '';
     this.reconnectAttempts = 0;
     this.maxReconnectAttempts = options.maxReconnectAttempts || 5;
     this.reconnectInterval = options.reconnectInterval || 3000;
@@ -47,16 +45,18 @@ class WebSocketClient {
     this.onClose = this.onClose.bind(this);
     this.onError = this.onError.bind(this);
   }
-  
+
   /**
    * Connect to the WebSocket server
-   * @param {string} userKey - Optional user key to override the one provided in constructor
+   * @param {Object} options - Optional configuration options
+   * @param {string} options.url - WebSocket server URL (default: 'ws://localhost:1033')
+   * @param {string} options.userName - User name for authentication
+   * @param {boolean} options.tryReconnect - Whether to try reconnecting on disconnect
    * @returns {Promise} - Resolves when connected, rejects on error or timeout
    */
   connect(options=null) {
     if ( options ){
       this.url = options.url || 'ws://localhost:1033';
-      this.userKey = options.userKey || '';
       this.userName = options.userName || '';
       if ( typeof options.tryReconnect === 'boolean' ){
         this.tryReconnect = options.tryReconnect;
@@ -67,8 +67,8 @@ class WebSocketClient {
         resolve();
         return;
       }
-      if (!this.userKey || !this.userName) {
-        reject('User key and name are required');
+      if (!this.userName) {
+        reject('User name is required');
         return;
       }    
       try {
@@ -126,8 +126,7 @@ class WebSocketClient {
   authenticate() {
     // Send authentication message
     this.send(SERVERCOMMANDS.CONNECT, {
-      userName: this.userName,
-      userKey: this.userKey
+      userName: this.userName
     });
   }
      
@@ -274,7 +273,7 @@ class WebSocketClient {
    * @param {Object} message - Message to send
    * @returns {Promise} - Resolves with the response, rejects on error or timeout
    */
-  request(command, parameters) {
+  requestResponse(command, parameters) {
     return new Promise((resolve, reject) => {
       const message = {
         id: this.root.utilities.getUniqueIdentifier( {}, 'message', 0, '', 3, 3 ),
