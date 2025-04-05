@@ -4,35 +4,35 @@ import { SOCKETMESSAGES } from '../components/sidewindows/SocketSideWindow.js';
 
 // Define message types for preference handling
 export const MENUCOMMANDS = {
-  NEWPROJECT: 'MENU_NEW_PROJECT',
-  OPENPROJECT: 'MENU_OPEN_PROJECT',
-  SAVEPROJECT: 'MENU_SAVE_PROJECT',
-  SAVEASPROJECT: 'MENU_SAVEAS_PROJECT',
-  CLOSEPROJECT: 'MENU_CLOSE_PROJECT',
-  NEWFILE: 'MENU_NEW_FILE',
-  OPENFILE: 'MENU_OPEN_FILE',
-  SAVEFILE: 'MENU_SAVE_FILE',
-  SAVEASFILE: 'MENU_SAVEAS_FILE',
-  EXITFILE: 'MENU_EXIT_FILE',
-  UNDO: 'MENU_UNDO',
-  REDO: 'MENU_REDO',
-  CUT: 'MENU_CUT',
-  COPY: 'MENU_COPY',
-  PASTE: 'MENU_PASTE',
-  FIND: 'MENU_FIND',
-  REPLACE: 'MENU_REPLACE',
-  PREFERENCES: 'MENU_PREFERENCES',
-  RUN: 'MENU_RUN',
-  DEBUG: 'MENU_DEBUG',
-  STOP: 'MENU_STOP',
-  BUILD: 'MENU_BUILD',
-  DOCUMENTATION: 'MENU_DOCUMENTATION',
-  ABOUT: 'MENU_ABOUT',
-  DEBUG1: 'MENU_DEBUG1',
-  DEBUG2: 'MENU_DEBUG2',
-  LOGIN: 'MENU_LOGIN',
-  LOGOUT: 'MENU_LOGOUT',
-  HELP: 'MENU_HELP'
+  NEW_PROJECT: 'NEW_PROJECT',
+  OPEN_PROJECT: 'OPEN_PROJECT',
+  SAVE_PROJECT: 'SAVE_PROJECT',
+  SAVE_AS_PROJECT: 'SAVEAS_PROJECT',
+  CLOSE_PROJECT: 'CLOSE_PROJECT',
+  NEW_FILE: 'NEW_FILE',
+  OPEN_FILE: 'OPEN_FILE',
+  SAVE_FILE: 'SAVE_FILE',
+  SAVE_AS_FILE: 'SAVEAS_FILE',
+  EXIT_FILE: 'EXIT_FILE',
+  UNDO: 'UNDO',
+  REDO: 'REDO',
+  CUT: 'CUT',
+  COPY: 'COPY',
+  PASTE: 'PASTE',
+  FIND: 'FIND',
+  REPLACE: 'REPLACE',
+  PREFERENCES: 'PREFERENCES',
+  RUN: 'RUN',
+  DEBUG: 'DEBUG',
+  STOP: 'STOP',
+  BUILD: 'BUILD',
+  DOCUMENTATION: 'DOCUMENTATION',
+  ABOUT: 'ABOUT',
+  DEBUG1: 'DEBUG1',
+  DEBUG2: 'DEBUG2',
+  LOGIN: 'LOGIN',
+  LOGOUT: 'LOGOUT',
+  HELP: 'HELP'
 };
 
 
@@ -233,18 +233,18 @@ class MenuBar extends BaseComponent {
   getDefaultMenuStructure() {
     return [
       { name: 'Project', items: [
-        { name: 'New', command: MENUCOMMANDS.NEWPROJECT },
-        { name: 'Open', command: MENUCOMMANDS.OPENPROJECT },
-        { name: 'Save', command: MENUCOMMANDS.SAVEPROJECT },
-        { name: 'Save As', command: MENUCOMMANDS.SAVEASPROJECT },
-        { name: 'Close', command: MENUCOMMANDS.CLOSEPROJECT }
+        { name: 'New', command: MENUCOMMANDS.NEW_PROJECT },
+        { name: 'Open', command: MENUCOMMANDS.OPEN_PROJECT },
+        { name: 'Save', command: MENUCOMMANDS.SAVE_PROJECT },
+        { name: 'Save As', command: MENUCOMMANDS.SAVE_AS_PROJECT },
+        { name: 'Close', command: MENUCOMMANDS.CLOSE_PROJECT }
       ] },
       { name: 'File', items: [
-        { name: 'New', command: MENUCOMMANDS.NEWFILE },
-        { name: 'Open', command: MENUCOMMANDS.OPENFILE },
-        { name: 'Save', command: MENUCOMMANDS.SAVEFILE },
-        { name: 'Save As', command: MENUCOMMANDS.SAVEASFILE },
-        { name: 'Exit', command: MENUCOMMANDS.EXITFILE }
+        { name: 'New', command: MENUCOMMANDS.NEW_FILE },
+        { name: 'Open', command: MENUCOMMANDS.OPEN_FILE },
+        { name: 'Save', command: MENUCOMMANDS.SAVE_FILE },
+        { name: 'Save As', command: MENUCOMMANDS.SAVE_AS_FILE },
+        { name: 'Exit', command: MENUCOMMANDS.EXIT_FILE }
       ] },
       { name: 'Edit', items: [
         { name: 'Undo', command: MENUCOMMANDS.UNDO },

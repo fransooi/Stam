@@ -24,7 +24,8 @@ export const SOCKETMESSAGES = {
   MESSAGE_RECEIVED: 'SOCKET_MESSAGE_RECEIVED',
   GET_CONNECTION_INFO: 'SOCKET_GET_CONNECTION_INFO',
   SHOW_CONNECTION_DIALOG: 'SOCKET_SHOW_CONNECTION_DIALOG',
-  FROM_PROMPT: 'SOCKET_FROM_PROMPT'
+  FROM_PROMPT: 'SOCKET_FROM_PROMPT',
+  ENSURE_CONNECTED: 'SOCKET_ENSURE_CONNECTED'
 };
 
 class SocketSideWindow extends SideWindow {
@@ -75,6 +76,7 @@ class SocketSideWindow extends SideWindow {
     this.messageMap[SOCKETMESSAGES.REQUEST_RESPONSE] = this.handleRequestResponse;
     this.messageMap[SOCKETMESSAGES.CONTENT_HEIGHT_CHANGED] = this.handleContentHeightChanged;    
     this.messageMap[SOCKETMESSAGES.GET_CONNECTION_INFO] = this.handleGetConnectionInfo;
+    this.messageMap[SOCKETMESSAGES.ENSURE_CONNECTED] = this.handleEnsureConnected;
     this.messageMap[MENUCOMMANDS.LOGIN] = this.handleLogin;
     this.messageMap[MENUCOMMANDS.LOGOUT] = this.handleLogout;
 
@@ -1007,11 +1009,19 @@ class SocketSideWindow extends SideWindow {
     }
     return false;
   }
-  handleGetConnectionInfo(data,sender) {
+  async handleGetConnectionInfo(data,sender) {
     return {
       userName: this.userName,
       url: this.url
     };
+  }
+
+  async handleEnsureConnected(data,sender) {
+    if (!this.isConnected) {
+      this.showConnectionDialog();
+      return false;
+    }
+    return true;
   }
 
   /**

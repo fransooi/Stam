@@ -36,7 +36,11 @@ export default class FileSystem extends BaseComponent {
 
     handleServerCommand(command, parameters) {
       if(this.isConnected)
+      {
+        if ( !parameters.mode )
+          parameters.mode = this.root.currentMode;
         return this.sendRequestTo(this.root.socket.componentId,SOCKETMESSAGES.REQUEST_RESPONSE, { command: command, parameters: parameters });
+      }
       return new Promise((resolve, reject) => {
         reject('Not connected');
       });          

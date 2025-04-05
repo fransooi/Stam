@@ -1,10 +1,13 @@
 // Phaser mode output window implementation
 import BaseOutput from '../../sidewindows/BaseOutput.js';
+import { PROJECTMESSAGES } from '../../ProjectManager.js'
 
 class PhaserOutput extends BaseOutput {
   constructor(parentId,containerId,initialHeight = 200) {
     super('PhaserOutput',parentId,containerId,initialHeight);
     this.modeName = 'phaser';
+    this.messageMap[PROJECTMESSAGES.SET_PROJECT] = this.handleSetProject;
+    this.projectUrl = null;
   }
   
   /**
@@ -26,14 +29,22 @@ class PhaserOutput extends BaseOutput {
     this.container.style.borderRadius = '4px';
     this.container.style.padding = '8px';
     
-    // Always set the content to ensure Phaser-specific display
-    this.container.innerHTML = `
-      <div style="padding: 10px; text-align: center; font-family: 'Consolas', monospace; color: #333;">
-        <strong>Phaser OUTPUT WINDOW</strong><br>
-        <span style="color: #0066cc;">JavaScript Console Ready</span><br>
-        <span style="color: #009900;">Type commands to execute</span>
-      </div>
-    `;
+    // Create a container for the iframe/project URL display
+    this.projectDisplay = document.createElement('div');
+    this.projectDisplay.id = 'phaser-project-display';
+    this.projectDisplay.style.width = '100%';
+    this.projectDisplay.style.height = '100%';
+    this.projectDisplay.style.border = 'none';
+    this.projectDisplay.style.overflow = 'hidden';
+    
+    // Append the project display container
+    this.container.appendChild(this.projectDisplay);
+    
+    // If we already have a project URL, display it
+    if (this.projectUrl) {
+      this.displayProjectUrl(this.projectUrl);
+    }
+    
     return this.container;
   }
   
@@ -101,8 +112,52 @@ class PhaserOutput extends BaseOutput {
     // Add Phaser-specific layout information
     return {
       ...baseInfo,
-      modeName: this.modeName
+      modeName: this.modeName,
+      projectUrl: this.projectUrl
     };
+  }
+  
+  /**
+   * Handle the SET_PROJECT message from ProjectManager
+   * @param {Object} project - The project object containing URL and other properties
+   * @param {string} senderId - ID of the component that sent the message
+   */
+  handleSetProject(project, senderId) {
+    if (project && project.url) {
+      this.projectUrl = project.url;
+      if (this.projectDisplay) {
+        this.displayProjectUrl(this.projectUrl);
+      }
+      console.log('Phaser output: Project URL set to', this.projectUrl);
+    }
+  }
+  
+  /**
+   * Display the project URL in an iframe
+   * @param {string} url - The URL to display
+   */
+  displayProjectUrl(url) {
+    if (!url) return;
+    
+    // Clear any existing content
+    this.projectDisplay.innerHTML = '';
+    
+    // Create an iframe to display the project
+    const iframe = document.createElement('iframe');
+    iframe.src = url;
+    iframe.style.width = '100%';
+    iframe.style.height = '100%';
+    iframe.style.border = 'none';
+    iframe.style.overflow = 'hidden';
+    
+    // Prevent full-screen capability
+    iframe.setAttribute('allow', 'accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture');
+    iframe.setAttribute('allowfullscreen', 'false');
+    iframe.setAttribute('webkitallowfullscreen', 'false');
+    iframe.setAttribute('mozallowfullscreen', 'false');
+    
+    // Add the iframe to the display container
+    this.projectDisplay.appendChild(iframe);
   }
 }
 
