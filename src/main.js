@@ -54,6 +54,12 @@ class StamApp extends BaseComponent {
     // Initialize preference dialog
     this.preferenceDialog = new PreferenceDialog(this.componentId);
 
+    // Get extra parameters of the URL
+    this.debug = false;
+    this.URLParameters = this.utilities.getURLParameters();     
+    if (this.URLParameters.debug)
+      this.debug = true;
+    
     this.messageMap[MESSAGES.MENU_ACTION] = this.handleMenuAction;
     this.messageMap[MESSAGES.ICON_ACTION] = this.handleIconAction;
     this.messageMap[MESSAGES.LAYOUT_INFO] = this.handleLayoutInfo;

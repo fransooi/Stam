@@ -293,8 +293,8 @@ class ProjectManager extends BaseComponent {
           if (template.iconUrl) {
             const iconContainer = document.createElement('div');
             iconContainer.style.marginRight = '15px';
-            iconContainer.style.width = '48px';
-            iconContainer.style.height = '48px';
+            iconContainer.style.width = '96px';
+            iconContainer.style.height = '96px';
             iconContainer.style.display = 'flex';
             iconContainer.style.alignItems = 'center';
             iconContainer.style.justifyContent = 'center';
@@ -491,8 +491,8 @@ class ProjectManager extends BaseComponent {
           if (project.iconUrl) {
             const iconContainer = document.createElement('div');
             iconContainer.style.marginRight = '15px';
-            iconContainer.style.width = '48px';
-            iconContainer.style.height = '48px';
+            iconContainer.style.width = '96px';
+            iconContainer.style.height = '96px';
             iconContainer.style.display = 'flex';
             iconContainer.style.alignItems = 'center';
             iconContainer.style.justifyContent = 'center';

@@ -210,4 +210,13 @@ export default class Utilities {
   sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
   } 
+
+  getURLParameters() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const params = {};
+    urlParams.forEach((value, key) => {
+      params[key] = value;
+    });
+    return params;
+  }
 }
