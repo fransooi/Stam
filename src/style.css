@@ -178,6 +178,16 @@ html, body {
   overflow: hidden;
 }
 
+/* Editor area container */
+#editor-area-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+  width: 100%;
+  min-width: 0; /* This prevents flex items from overflowing their container */
+}
+
 /* Icon area */
 #icon-area {
   background-color: #1a1a1a;
@@ -187,6 +197,7 @@ html, body {
   gap: 8px;
   border-bottom: 1px solid #334155;
   font-size: 0;
+  width: 100%;
 }
 
 .icon-container {
@@ -341,6 +352,9 @@ html, body {
 #editor-area {
   flex: 1;
   overflow: hidden;
+  width: 100%;
+  min-width: 0; /* Prevent flex item from overflowing */
+  display: flex; /* Use flexbox layout */
 }
 
 /* Status line */
@@ -601,6 +615,29 @@ html, body {
   overflow-x: auto; /* Add horizontal scrolling if needed */
   width: 100%; /* Ensure it takes full width */
   max-width: 100%; /* Prevent any max-width limitations */
+}
+
+/* Generic mode editor styling */
+.mode-editor-wrapper {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.mode-editor-content {
+  width: 100%;
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+}
+
+#mode-editor-container {
+  width: 100%;
+  flex: 1;
+  min-width: 0;
 }
 
 /* Media query for responsive layout */

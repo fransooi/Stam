@@ -32,7 +32,8 @@ class JavaScriptEditor {
         oneDark,
         EditorState.allowMultipleSelections.of(true)
       ],
-      initialDoc: '// Javascript Editor'
+      initialDoc: '// Javascript Editor',
+      multi: true
     };
   }
   

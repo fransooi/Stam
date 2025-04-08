@@ -9,9 +9,9 @@ class PhaserEditor {
     this.editorView = null;
   }
 
-  // Prepare the container with Phaser-specific styling
+  // Prepare the container with appropriate styling
   prepareContainer() {
-    // Create a styled container for Phaser without the header
+    // Create a styled container for the editor without the header
     this.container.innerHTML = `
       <div class="phaser-editor">
         <div id="phaser-editor-container" class="phaser-content"></div>
@@ -32,7 +32,8 @@ class PhaserEditor {
         oneDark,
         EditorState.allowMultipleSelections.of(true)
       ],
-      initialDoc: '// Phaser Editor'
+      initialDoc: '// Phaser Editor',
+      multi: true
     };
   }
   

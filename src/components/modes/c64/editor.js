@@ -68,7 +68,8 @@ class C64Editor {
     
     return {
       extensions: [c64Theme],
-      initialDoc: '10 REM COMMODORE 64 BASIC V2\n20 PRINT "HELLO FROM C64 BASIC!"\n30 FOR I=1 TO 10\n40 PRINT "LOOP: ";I\n50 NEXT I\n60 END'
+      initialDoc: '10 REM COMMODORE 64 BASIC V2\n20 PRINT "HELLO FROM C64 BASIC!"\n30 FOR I=1 TO 10\n40 PRINT "LOOP: ";I\n50 NEXT I\n60 END',
+      multi: false
     };
   }
   

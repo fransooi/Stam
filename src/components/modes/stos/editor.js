@@ -56,7 +56,8 @@ class STOSEditor {
     
     return {
       extensions: [stosTheme],
-      initialDoc: '10 REM STOS Basic Program\n20 PRINT "Hello from STOS Basic!"\n30 FOR I=1 TO 10\n40 PRINT "Loop: ";I\n50 NEXT I\n60 END'
+      initialDoc: '10 REM STOS Basic Program\n20 PRINT "Hello from STOS Basic!"\n30 FOR I=1 TO 10\n40 PRINT "Loop: ";I\n50 NEXT I\n60 END',
+      multi: false
     };
   }
   

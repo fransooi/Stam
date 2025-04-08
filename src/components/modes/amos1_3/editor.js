@@ -68,7 +68,8 @@ class AMOS13Editor {
     
     return {
       extensions: [amosTheme],
-      initialDoc: '10 REM AMOS 1.3 Program\n20 PRINT "Hello from AMOS 1.3!"\n30 FOR I=1 TO 10\n40 PRINT "Loop: ";I\n50 NEXT I\n60 END'
+      initialDoc: '10 REM AMOS 1.3 Program\n20 PRINT "Hello from AMOS 1.3!"\n30 FOR I=1 TO 10\n40 PRINT "Loop: ";I\n50 NEXT I\n60 END',
+      multi: false
     };
   }
   

@@ -1,203 +1,154 @@
-// Editor.js - Component for the code editor area
-import { basicSetup } from 'codemirror'
-import { EditorState } from '@codemirror/state'
-import { EditorView, keymap } from '@codemirror/view'
-import { defaultKeymap } from '@codemirror/commands'
+// Editor.js - Container component that manages the source code editor
 import BaseComponent, { MESSAGES } from '../utils/BaseComponent.js'
+import EditorSource from './EditorSource.js'
 
 class Editor extends BaseComponent {
   constructor(parentId, containerId) {
     // Initialize the base component with component name
-    super('Editor', parentId, containerId);    
-    this.editorInstance = null;
-    this.editorView = null;
-    this.modeConfig = null;
+    super('Editor', parentId, containerId);
+    
+    // Editor instance
+    this.editor = null;
+    
+    // Forward all relevant messages to the editor
     this.messageMap[MESSAGES.MODE_CHANGE] = this.handleModeChange;
     this.messageMap[MESSAGES.NEW_FILE] = this.handleNewFile;
     this.messageMap[MESSAGES.OPEN_FILE] = this.handleOpenFile;
     this.messageMap[MESSAGES.SAVE_FILE] = this.handleSaveFile;
     this.messageMap[MESSAGES.RUN_PROGRAM] = this.handleRunProgram;
     this.messageMap[MESSAGES.DEBUG_PROGRAM] = this.handleDebugProgram;
+    
+    // Also listen for responses from the editor
+    this.messageMap[MESSAGES.SAVE_FILE_CONTENT] = this.handleSaveFileContent;
+    this.messageMap[MESSAGES.RUN_PROGRAM_CONTENT] = this.handleRunProgramContent;
+    this.messageMap[MESSAGES.DEBUG_PROGRAM_CONTENT] = this.handleDebugProgramContent;
   }
   
   async init(options) {
     super.init(options);
     this.currentMode = options?.mode || 'javascript';
+    
+    // Create the editor instance but don't render it yet
+    this.editor = new EditorSource(this.id, this.id + '-editor');
+    await this.editor.init({ mode: this.currentMode });
   }
 
   async destroy() {
+    // Destroy the editor instance
+    if (this.editor) {
+      await this.editor.destroy();
+    }
+    
     super.destroy();
   }
 
   async render(containerId) {
-    this.container=await super.render(containerId);
+    this.container = await super.render(containerId);
     this.container.innerHTML = '';
-
-    // Load mode-specific configuration
-    await this.loadModeSpecificConfig(this.currentMode);
     
-    // Create the CodeMirror editor with mode-specific configuration
-    this.createEditor();
+    // Create a container for the editor
+    const editorContainer = document.createElement('div');
+    editorContainer.id = 'editor-container';
+    editorContainer.className = 'editor-container';
+    editorContainer.style.width = '100%';
+    editorContainer.style.height = '100%';
+    editorContainer.style.minWidth = '0'; // Prevent flex item from overflowing
+    editorContainer.style.flex = '1'; // Take up all available space
+    editorContainer.style.display = 'flex'; // Use flexbox layout
+    this.container.appendChild(editorContainer);
+    
+    // Render the editor in the container
+    await this.editor.render(editorContainer.id || 'editor-container');
     
     return this.container;
   }
   
-  async loadModeSpecificConfig(mode) {
-    try {     
-      // Dynamically import the editor module for the current mode
-      let ConfigModule;
-      
-      switch (mode) {
-        case 'phaser':
-          ConfigModule = await import('./modes/phaser/editor.js');
-          break;
-        case 'stos':
-          ConfigModule = await import('./modes/stos/editor.js');
-          break;
-        case 'amos1_3':
-          ConfigModule = await import('./modes/amos1_3/editor.js');
-          break;
-        case 'amosPro':
-          ConfigModule = await import('./modes/amosPro/editor.js');
-          break;
-        case 'c64':
-          ConfigModule = await import('./modes/c64/editor.js');
-          break;
-        case 'javascript':
-        default:
-          ConfigModule = await import('./modes/javascript/editor.js');
-          break;
-      }
-      
-      // Create the mode-specific configuration
-      this.editorInstance = new ConfigModule.default(this.container);
-      
-      // Get configuration from the mode-specific instance  
-      this.modeConfig = this.editorInstance.getConfig ? 
-                        this.editorInstance.getConfig() : 
-                        { extensions: [], initialDoc: '' };
-      return this.modeConfig;
-    } catch (error) {
-      console.error(`Error loading configuration for mode ${mode}:`, error);
-      this.container.innerHTML = `<div class="error-message">Failed to load editor for ${mode} mode</div>`;
-    }
-  }
-  
-  createEditor() {
-    try {
-      // Prepare container if mode requires it
-      this.editorInstance.prepareContainer();
-      
-      // Get the parent element for the editor
-      const parent = this.editorInstance.getEditorParent ? 
-                     this.editorInstance.getEditorParent() : 
-                     this.container;
-      
-      // Create base extensions that all editors need
-      const baseExtensions = [
-        basicSetup,
-        keymap.of(defaultKeymap),
-        EditorView.lineWrapping
-      ];
-      
-      // Combine base extensions with mode-specific extensions
-      const allExtensions = [...baseExtensions, ...(this.modeConfig.extensions || [])];
-      
-      // Create editor state
-      const startState = EditorState.create({
-        doc: this.modeConfig.initialDoc || '',
-        extensions: allExtensions
-      });
-      
-      // Create editor view
-      this.editorView = new EditorView({
-        state: startState,
-        parent: parent
-      });
-      
-      // Let the mode-specific instance know about the editor view
-      this.editorInstance.setEditorView(this.editorView);
-    } catch (error) {
-      console.error('Error creating CodeMirror editor:', error);
-      this.container.innerHTML = `<div class="error-message">Failed to create editor: ${error.message}</div>`;
-    }
-  }
+
   
   
   // Core editor methods that all modes can use
   
   getContent() {
-    if (this.editorInstance && this.editorInstance.getContent) {
-      return this.editorInstance.getContent();
+    if (this.editor) {
+      return this.editor.getContent();
     }
-    
-    // For CodeMirror-based editors
-    if (this.editorView) {
-      return this.editorView.state.doc.toString();
-    }
-    
     return '';
   }
   
   setContent(content) {
-    if (this.editorInstance && this.editorInstance.setContent) {
-      this.editorInstance.setContent(content);
-      return;
-    }
-    
-    // For CodeMirror-based editors
-    if (this.editorView) {
-      const transaction = this.editorView.state.update({
-        changes: {
-          from: 0,
-          to: this.editorView.state.doc.length,
-          insert: content
-        }
-      });
-      this.editorView.dispatch(transaction);
+    if (this.editor) {
+      this.editor.setContent(content);
     }
   }
   
+  // Message handlers - forward to editor
+  
   async handleModeChange(data, sender) {
     if (data.mode) {
-      this.setMode(data.mode);
+      this.currentMode = data.mode;
+      
+      // Update the editor mode
+      if (this.editor) {
+        await this.editor.handleModeChange(data, this.id);
+      }
+      
       return true;
     }
     return false;
   }
+  
   async handleNewFile(data, sender) {
-    if (this.editorInstance && this.editorInstance.newFile) {
-      this.editorInstance.newFile();
-      return;
+    if (this.editor) {
+      return await this.editor.handleNewFile(data, this.id);
     }
-    return true;
+    return false;
   }
+  
   async handleOpenFile(data, sender) {
-    if (this.editorInstance && this.editorInstance.openFile) {
-      this.editorInstance.openFile();
-      return;
+    if (this.editor) {
+      return await this.editor.handleOpenFile(data, this.id);
     }
-    return true;
+    return false;
   }
+  
   async handleSaveFile(data, sender) {
-    if (this.editorInstance && this.editorInstance.saveFile) {
-      this.editorInstance.saveFile();
-      return;
+    if (this.editor) {
+      return await this.editor.handleSaveFile(data, this.id);
     }
-    return true;
+    return false;
   }
+  
   async handleRunProgram(data, sender) {
-    if (this.editorInstance && this.editorInstance.runProgram) {
-      this.editorInstance.runProgram();
-      return;
+    if (this.editor) {
+      return await this.editor.handleRunProgram(data, this.id);
     }
+    return false;
+  }
+  
+  async handleDebugProgram(data, sender) {
+    if (this.editor) {
+      return await this.editor.handleDebugProgram(data, this.id);
+    }
+    return false;
+  }
+  
+  // Handle responses from the active editor and forward to parent
+  
+  async handleSaveFileContent(data, sender) {
+    // Forward to parent
+    this.sendMessage(MESSAGES.SAVE_FILE_CONTENT, data);
     return true;
   }
-  async handleDebugProgram(data, sender) {
-    if (this.editorInstance && this.editorInstance.debugProgram) {
-      this.editorInstance.debugProgram();
-      return;
-    }
+  
+  async handleRunProgramContent(data, sender) {
+    // Forward to parent
+    this.sendMessage(MESSAGES.RUN_PROGRAM_CONTENT, data);
+    return true;
+  }
+  
+  async handleDebugProgramContent(data, sender) {
+    // Forward to parent
+    this.sendMessage(MESSAGES.DEBUG_PROGRAM_CONTENT, data);
     return true;
   }
 
@@ -207,10 +158,15 @@ class Editor extends BaseComponent {
    */
   async applyLayout(layoutInfo) {
     await super.applyLayout(layoutInfo);
-
-    // Set content if specified
-    if (layoutInfo.content) {
-      this.setContent(layoutInfo.content);
+    
+    // Set the mode first
+    if (layoutInfo.currentMode) {
+      this.currentMode = layoutInfo.currentMode;
+    }
+    
+    // Apply layout to the editor
+    if (this.editor) {
+      await this.editor.applyLayout(layoutInfo);
     }
   }
   
@@ -225,10 +181,17 @@ class Editor extends BaseComponent {
     // Add Editor-specific information
     layoutInfo.currentMode = this.currentMode;
     
-    // Add editor content if it's not too large
-    const content = this.getContent();
-    if (content && content.length < 10000) { // Only save if content is not too large
-      layoutInfo.content = content;
+    // Get layout info from the editor
+    if (this.editor) {
+      const editorLayout = await this.editor.getLayoutInfo();
+      
+      // Merge the editor layout with our layout
+      Object.assign(layoutInfo, {
+        content: editorLayout.content,
+        tabs: editorLayout.tabs,
+        activeTabIndex: editorLayout.activeTabIndex,
+        modeSpecific: editorLayout.modeSpecific
+      });
     }
     
     // Get dimensions if available
@@ -240,17 +203,20 @@ class Editor extends BaseComponent {
       };
     }
     
-    // Add mode-specific layout information if available
-    if (this.editorInstance && typeof this.editorInstance.getLayoutInfo === 'function') {
-      layoutInfo.modeSpecific = this.editorInstance.getLayoutInfo();
-    }
-    
     return layoutInfo;
   }
   
-  setMode(mode) {
+  /**
+   * Sets the editor mode
+   * @param {string} mode - The mode to set
+   */
+  async setMode(mode) {
+    if (mode === this.currentMode) return;
+    
     this.currentMode = mode;
-    this.render();  
+    if (this.editor) {
+      await this.editor.handleModeChange({ mode }, this.id);
+    }
   }
 }
 
