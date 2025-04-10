@@ -125,10 +125,10 @@ class PhaserOutput extends BaseOutput {
   handleSetProject(project, senderId) {
     if (project && project.url) {
       this.projectUrl = project.url;
+      this.runUrl = project.runUrl;
       if (this.projectDisplay) {
-        this.displayProjectUrl(this.projectUrl);
+        this.displayProjectUrl(this.runUrl);
       }
-      console.log('Phaser output: Project URL set to', this.projectUrl);
     }
   }
   

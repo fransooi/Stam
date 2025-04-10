@@ -126,7 +126,8 @@ class WebSocketClient {
   authenticate() {
     // Send authentication message
     this.send(SERVERCOMMANDS.CONNECT, {
-      userName: this.userName
+      userName: this.userName,
+      debug: this.root.debug
     });
   }
      

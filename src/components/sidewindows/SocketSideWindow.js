@@ -41,7 +41,7 @@ class SocketSideWindow extends SideWindow {
     this.wasConnected = false;
     this.loggedIn = false;
     this.userName = '';
-    this.url = 'ws://localhost:1033';
+    this.url = 'ws://217.154.15.90:1033';  //'ws://localhost:1033';
     this.messages = [];
     this.maxMessages = 50; // Maximum number of messages to display
     this.accountInfo = null;
@@ -706,7 +706,7 @@ class SocketSideWindow extends SideWindow {
     
     // Add SocketSideWindow-specific information
     this.userName = layoutInfo.userName || 'demo';
-    this.url = layoutInfo.url || 'ws://localhost:1033';
+    this.url = layoutInfo.url || 'ws://217.154.15.90:1033';
     this.accountInfo = layoutInfo.accountInfo || null;
     this.wasConnected = layoutInfo.isConnected || false;
     this.wasLoggedIn = layoutInfo.isLoggedIn || false;

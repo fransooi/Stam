@@ -163,12 +163,9 @@ class EditorSource extends BaseComponent {
    * @returns {EditorView} The editor view instance
    */
   async createEditor(initialContent = '', mode = null) {
-    try {
-      console.log(`Creating or updating editor instance for mode: ${mode || this.currentMode}`);
-      
+    try {     
       // If we already have an editor view and the mode hasn't changed, just update content
       if (this.editorView && this.currentMode === mode) {
-        console.log('Editor view already exists with same mode, updating content');
         return this.updateEditorContent(initialContent);
       }
       
@@ -203,7 +200,7 @@ class EditorSource extends BaseComponent {
         });
         });
       } 
-      
+
       // Get the parent element for the editor
       const parent = this.editorInstance.getEditorParent ? 
                      this.editorInstance.getEditorParent() : 
@@ -238,7 +235,6 @@ class EditorSource extends BaseComponent {
       
       // If we already have an editor view, destroy it first
       if (this.editorView) {
-        console.log('Destroying existing editor view');
         this.editorView.destroy();
         this.editorView = null;
       }
@@ -262,7 +258,6 @@ class EditorSource extends BaseComponent {
       // Focus the editor immediately
       this.editorView.focus();
       
-      console.log('Editor created successfully');
       return this.editorView;
     } catch (error) {
       console.error('Error creating CodeMirror editor:', error);
@@ -293,7 +288,6 @@ class EditorSource extends BaseComponent {
       scrollLeft: this.editorView.scrollDOM.scrollLeft
     };
     
-    console.log(`Saved state for tab ${tab.name}`);
   }
   
   /**
@@ -303,7 +297,6 @@ class EditorSource extends BaseComponent {
    */
   updateEditorContent(content) {
     if (!this.editorView) {
-      console.error('Cannot update editor content: editor view does not exist');
       return null;
     }
 
@@ -349,7 +342,6 @@ class EditorSource extends BaseComponent {
     const mode = options.mode || this.currentMode;
     const content = options.content || '';
     
-    console.log(`Adding new tab with mode: ${mode}`);
     
     // Create the tab object with initial state
     const tabObj = {
@@ -398,14 +390,12 @@ class EditorSource extends BaseComponent {
           try {
             // Focus the editor
             this.editorView.focus();
-            console.log('Editor focused');
             
             // Place cursor at the beginning
             const transaction = this.editorView.state.update({
               selection: {anchor: 0, head: 0}
             });
             this.editorView.dispatch(transaction);
-            console.log('Cursor positioned at start of document');
           } catch (error) {
             console.error('Error focusing editor:', error);
           }
@@ -473,29 +463,21 @@ class EditorSource extends BaseComponent {
   /**
    * Shows the currently active tab by updating the editor content and state
    */
-  async showActiveTab() {
-    console.log('showActiveTab called, active tab index:', this.activeTabIndex);
-    
+  async showActiveTab() {   
     // Check if we have a valid active tab
     if (this.activeTabIndex < 0 || this.activeTabIndex >= this.tabs.length) {
-      console.log('No active tab to show');
       return;
     }
     
     const activeTab = this.tabs[this.activeTabIndex];
-    console.log(`Showing active tab: ${activeTab.name}, mode: ${activeTab.mode}`);
     
     // If we don't have an editor instance yet, or if the mode has changed, create one
     if (!this.editorView || this.currentMode !== activeTab.mode) {
-      console.log(`Creating editor for mode: ${activeTab.mode}`);
       await this.createEditor(activeTab.content, activeTab.mode);
     } else {
       // Otherwise, just update the content of the existing editor
-      console.log('Updating existing editor content');
-      
       if (activeTab.stateData) {
         // If we have saved state data for this tab, restore it
-        console.log('Restoring saved editor state');
         
         // First update the content
         this.updateEditorContent(activeTab.content);
@@ -532,7 +514,6 @@ class EditorSource extends BaseComponent {
         try {
           // Focus the editor
           this.editorView.focus();
-          console.log('Editor focused');
         } catch (error) {
           console.error('Error focusing editor:', error);
         }
