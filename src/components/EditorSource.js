@@ -1,9 +1,10 @@
 // EditorSource.js - Component for single-file code editor
 import { basicSetup } from 'codemirror'
 import { EditorState, StateEffect, StateField } from '@codemirror/state'
-import { EditorView, keymap } from '@codemirror/view'
+import { EditorView, keymap, rectangularSelection } from '@codemirror/view'
 import { defaultKeymap } from '@codemirror/commands'
 import BaseComponent, { MESSAGES } from '../utils/BaseComponent.js'
+import { PROJECTMESSAGES } from './ProjectManager.js'
 
 class EditorSource extends BaseComponent {
   constructor(parentId, containerId) {
@@ -11,7 +12,7 @@ class EditorSource extends BaseComponent {
     super('EditorSource', parentId, containerId);    
     
     // Tab management properties
-    this.tabs = []; // Array to store tab data: {id, name, path, content, state, mode, unsaved}
+    this.tabs = []; // Array to store tab data: {id, name, path, content, state, mode, modified}
     this.activeTabIndex = -1; // Index of the currently active tab
     this.tabsContainer = null; // DOM element for the tabs bar
     this.editorContainer = null; // DOM element containing the editor
@@ -23,11 +24,6 @@ class EditorSource extends BaseComponent {
     
     // Set up message handlers
     this.messageMap[MESSAGES.MODE_CHANGE] = this.handleModeChange;
-    this.messageMap[MESSAGES.NEW_FILE] = this.handleNewFile;
-    this.messageMap[MESSAGES.OPEN_FILE] = this.handleOpenFile;
-    this.messageMap[MESSAGES.SAVE_FILE] = this.handleSaveFile;
-    this.messageMap[MESSAGES.RUN_PROGRAM] = this.handleRunProgram;
-    this.messageMap[MESSAGES.DEBUG_PROGRAM] = this.handleDebugProgram;
   }
   
   async init(options) {
@@ -82,6 +78,7 @@ class EditorSource extends BaseComponent {
     this.tabsContainer.style.display = isMultiMode ? 'flex' : 'none';
         
     // If we have no tabs, create a default one
+    /*
     if (this.tabs.length === 0) {
       // Create a default tab with appropriate content for the current mode
       await this.addNewTab({
@@ -90,10 +87,11 @@ class EditorSource extends BaseComponent {
         setActive: true
       });
     } else {
+     */
       // Render all tabs and show the active one
       this.renderTabs();
       this.showActiveTab();
-    }
+    //}
     
     return this.container;
   }
@@ -215,7 +213,13 @@ class EditorSource extends BaseComponent {
       const baseExtensions = [
         basicSetup,
         keymap.of(defaultKeymap),
-        EditorView.lineWrapping
+        EditorView.lineWrapping,
+        // Add update listener to detect content modifications
+        EditorView.updateListener.of(update => {
+          if (update.docChanged) {
+            this.markContentModified();
+          }
+        })
       ];
       
       // Combine base extensions with mode-specific extensions
@@ -324,7 +328,6 @@ class EditorSource extends BaseComponent {
   }
   
   // Tab management methods
-  
   /**
    * Creates a new tab with an empty editor
    * @param {Object} options - Options for the new tab
@@ -350,8 +353,8 @@ class EditorSource extends BaseComponent {
       path,
       mode,
       content,
-      unsaved: false,
-      // Store editor state when switching away from this tab
+      modified: false,
+      justLoaded: true,
       state: null
     };
     
@@ -413,6 +416,27 @@ class EditorSource extends BaseComponent {
   async removeTab(index) {
     if (index < 0 || index >= this.tabs.length) return;
     
+    if (!this.tabs[index].justLoaded && this.tabs[index].modified) {
+      // Show a confirmation dialog
+      await this.showFileModifiedDialog(this.tabs[index]).then((result) => {
+        if (result === 'save') {
+          this.saveTabState(index);
+          this.sendMessageTo('class:Projectmanager', PROJECTMESSAGES.SAVE_FILE, {path: this.tabs[index].path, content: this.tabs[index].content, info: this.tabs[index].stateData });
+          this.closeTab(index);
+        } else if (result === 'discard') {
+          this.closeTab(index);
+        }
+      });
+    } else {
+      this.closeTab(index);
+    }
+  }
+  
+  /**
+   * Closes the tab and removes it from the tabs array
+   * @param {number} index - Index of the tab to close
+   */
+  closeTab(index) {
     // Remove from the tabs array
     this.tabs.splice(index, 1);
     
@@ -428,7 +452,7 @@ class EditorSource extends BaseComponent {
       // If we removed the active tab, activate the next one or the last one
       this.activeTabIndex = Math.min(index, this.tabs.length - 1);
       // Show the new active tab
-      await this.showActiveTab();
+      this.showActiveTab();
     } else if (index < this.activeTabIndex) {
       // If we removed a tab before the active one, adjust the index
       this.activeTabIndex--;
@@ -437,7 +461,7 @@ class EditorSource extends BaseComponent {
     // Update the tabs UI
     this.renderTabs();
   }
-  
+     
   /**
    * Switches to a specific tab
    * @param {number} index - Index of the tab to switch to
@@ -452,6 +476,7 @@ class EditorSource extends BaseComponent {
     
     // Update the active tab index
     this.activeTabIndex = index;
+    this.tabs[this.activeTabIndex].justLoaded = true;
     
     // Update the tabs UI
     this.renderTabs();
@@ -475,6 +500,8 @@ class EditorSource extends BaseComponent {
     if (!this.editorView || this.currentMode !== activeTab.mode) {
       await this.createEditor(activeTab.content, activeTab.mode);
     } else {
+      activeTab.justLoaded = true; 
+
       // Otherwise, just update the content of the existing editor
       if (activeTab.stateData) {
         // If we have saved state data for this tab, restore it
@@ -550,7 +577,7 @@ class EditorSource extends BaseComponent {
       
       // Tab name
       const name = document.createElement('span');
-      name.textContent = tab.name + (tab.unsaved ? ' *' : '');
+      name.textContent = tab.name + ((!tab.justLoaded && tab.modified) ? ' *' : '');
       tabElement.appendChild(name);
       
       // Close button
@@ -603,45 +630,28 @@ class EditorSource extends BaseComponent {
   }
   
   // Core editor methods that all modes can use
-  
-  getContent() {
+  getContent(file) {
     const activeFile = this.getActiveFile();
-    if (activeFile) {
-      if (activeFile.editorInstance && activeFile.editorInstance.getContent) {
-        return activeFile.editorInstance.getContent();
-      }
-      
-      if (activeFile.editorView) {
-        return activeFile.editorView.state.doc.toString();
-      }
-    }
+    if (activeFile)
+        return this.editorView.state.doc.toString();
     return '';
   }
-  
   setContent(content) {
     const activeFile = this.getActiveFile();
     if (activeFile) {
-      if (activeFile.editorInstance && activeFile.editorInstance.setContent) {
-        activeFile.editorInstance.setContent(content);
-        return;
-      }
-      
-      if (activeFile.editorView) {
-        const transaction = activeFile.editorView.state.update({
-          changes: {
-            from: 0,
-            to: activeFile.editorView.state.doc.length,
-            insert: content
-          }
-        });
-        activeFile.editorView.dispatch(transaction);
-        return;
-      }
+      const transaction = this.editorView.state.update({
+        changes: {
+          from: 0,
+          to: this.editorView.state.doc.length,
+          insert: content
+        }
+      });
+      this.editorView.dispatch(transaction);
+      return;
     }
   }
   
-  // Message handlers
-  
+  // Message handlers  
   /**
    * Handle mode change by preserving tab state per mode and switching between them
    * @param {Object} data - Mode change data
@@ -728,54 +738,28 @@ class EditorSource extends BaseComponent {
     return true;
   }
   
-  async handleNewFile(data, sender) {
-    // Check if the current mode supports multi-file editing
-    const isMultiMode = this.modeConfig?.multi !== false;
-    
-    if (isMultiMode) {
-      // Create a new file tab in multi-file mode
-      await this.addNewTab({
-        name: 'Untitled',
-        mode: this.currentMode,
-        setActive: true
-      });
-    } else {
-      // In single-file mode, replace the content of the current tab
-      const activeFile = this.getActiveFile();
-      if (activeFile) {
-        // Get new content from the mode-specific editor if available
-        let newContent = '';
-        if (this.editorInstance && typeof this.editorInstance.newFile === 'function') {
-          newContent = this.editorInstance.newFile() || '';
-        }
-        
-        // Update the editor content
-        this.updateEditorContent(newContent);
-        
-        // Update the tab name
-        activeFile.name = 'Untitled';
-        activeFile.path = null;
-        activeFile.unsaved = false;
-        
-        // Render the tabs (even though they might be hidden)
-        this.renderTabs();
-      }
-    }
-    return true;
-  }
-  
-  async handleOpenFile(data, sender) {
-    if (data && data.content) {
+  async handleLoadFile(file, sender) {
+    if (file.content) {
       // Check if the current mode supports multi-file editing
       const isMultiMode = this.modeConfig?.multi !== false;
       
       if (isMultiMode) {
+
+        // If already open-> activate
+        for (let index = 0; index < this.tabs.length; index++) {
+          if (this.tabs[index].path === file.path) {
+            this.switchToTab(index);
+            return true;
+          }
+        }
+            
         // Create a new tab with the file content in multi-file mode
         await this.addNewTab({
-          name: data.name || 'Untitled',
-          path: data.path || null,
-          content: data.content,
-          mode: data.mode || this.currentMode,
+          name: file.name || 'Untitled',
+          path: file.path || null,
+          content: file.content,
+          mode: this.currentMode,
+          modified: false,
           setActive: true
         });
       } else {
@@ -783,13 +767,13 @@ class EditorSource extends BaseComponent {
         const activeFile = this.getActiveFile();
         if (activeFile) {
           // Update the editor content
-          this.updateEditorContent(data.content);
+          this.updateEditorContent(file.content);
           
           // Update the tab info
-          activeFile.name = data.name || 'Untitled';
-          activeFile.path = data.path || null;
-          activeFile.mode = data.mode || this.currentMode;
-          activeFile.unsaved = false;
+          activeFile.name = file.name || 'Untitled';
+          activeFile.path = file.path || null;
+          activeFile.mode = this.currentMode;
+          activeFile.modified = false;
           
           // Render the tabs (even though they might be hidden)
           this.renderTabs();
@@ -800,30 +784,26 @@ class EditorSource extends BaseComponent {
     return false;
   }
   
-  async handleSaveFile(data, sender) {
-    // Get the current content from the editor
-    const content = this.getContent();
-    
-    // Get the active file info
-    const activeFile = this.getActiveFile();
-    if (activeFile) {
-      // Mark the file as saved
-      activeFile.unsaved = false;
-      this.renderTabs();
-      
+  async handleSaveFile(data, sender) {    
+    var file = null;
+    if ( data && data.path )
+      file = this.findFile(data.path);
+    else{
+      file = this.getActiveFile();
+      file.content = this.editorView.state.doc.toString();
+    }
+    if (file) {
       // Send a message to the parent component with the content to save
-      this.sendMessage(MESSAGES.SAVE_FILE_CONTENT, { 
-        content,
-        name: activeFile.name,
-        path: activeFile.path,
-        mode: activeFile.mode
-      });
+      var response = await this.sendMessageTo('class:ProjectManager', PROJECTMESSAGES.SAVE_FILE, { path: file.path, content: file.content });
+      if (response && !response.error)
+      {
+        // Mark the file as saved
+        file.modified = false;
+        this.renderTabs();
+      }       
       return true;
     }
-    
-    // Fallback if no active file
-    this.sendMessage(MESSAGES.SAVE_FILE_CONTENT, { content });
-    return true;
+    return false;
   }
   
   async handleRunProgram(data, sender) {
@@ -870,6 +850,144 @@ class EditorSource extends BaseComponent {
     return true;
   }
 
+  /**
+   * Shows a dialog asking the user what to do with modified file
+   * @param {Object} tab - The tab object with file information
+   * @returns {Promise} - Resolves with 'save', 'discard', or 'cancel'
+   */
+  async showFileModifiedDialog(tab) {
+    return new Promise((resolve) => {
+      // Create the modal overlay
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-overlay';
+      overlay.style.position = 'fixed';
+      overlay.style.top = '0';
+      overlay.style.left = '0';
+      overlay.style.width = '100%';
+      overlay.style.height = '100%';
+      overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+      overlay.style.display = 'flex';
+      overlay.style.justifyContent = 'center';
+      overlay.style.alignItems = 'center';
+      overlay.style.zIndex = '9999';
+      
+      // Create the dialog box
+      const dialog = document.createElement('div');
+      dialog.className = 'file-modified-dialog';
+      dialog.style.backgroundColor = '#2a2a2a';
+      dialog.style.border = '1px solid #444';
+      dialog.style.borderRadius = '4px';
+      dialog.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.3)';
+      dialog.style.padding = '20px';
+      dialog.style.width = '400px';
+      dialog.style.maxWidth = '90%';
+      dialog.style.display = 'flex';
+      dialog.style.flexDirection = 'column';
+      dialog.style.gap = '15px';
+      
+      // Create dialog header
+      const header = document.createElement('div');
+      header.style.borderBottom = '1px solid #444';
+      header.style.paddingBottom = '10px';
+      
+      const title = document.createElement('h2');
+      title.textContent = 'Save Changes?';
+      title.style.margin = '0';
+      title.style.color = '#eee';
+      title.style.fontSize = '18px';
+      
+      header.appendChild(title);
+      dialog.appendChild(header);
+      
+      // Create dialog content
+      const content = document.createElement('div');
+      
+      const message = document.createElement('p');
+      message.textContent = `The file "${tab.name}" has unsaved changes. Do you want to save them?`;
+      message.style.color = '#ddd';
+      message.style.margin = '0 0 15px 0';
+      
+      content.appendChild(message);
+      dialog.appendChild(content);
+      
+      // Create dialog buttons
+      const buttonsContainer = document.createElement('div');
+      buttonsContainer.style.display = 'flex';
+      buttonsContainer.style.justifyContent = 'flex-end';
+      buttonsContainer.style.gap = '10px';
+      
+      // Function to close the dialog and clean up
+      const closeDialog = () => {
+        document.body.removeChild(overlay);
+      };
+      
+      // Save button
+      const saveButton = document.createElement('button');
+      saveButton.textContent = 'Save';
+      saveButton.style.padding = '8px 16px';
+      saveButton.style.backgroundColor = '#4a6da7';
+      saveButton.style.color = '#fff';
+      saveButton.style.border = 'none';
+      saveButton.style.borderRadius = '4px';
+      saveButton.style.cursor = 'pointer';
+      saveButton.addEventListener('click', () => {
+        closeDialog();
+        resolve('save');
+      });
+      
+      // Discard button
+      const discardButton = document.createElement('button');
+      discardButton.textContent = 'Discard';
+      discardButton.style.padding = '8px 16px';
+      discardButton.style.backgroundColor = '#a74a4a';
+      discardButton.style.color = '#fff';
+      discardButton.style.border = 'none';
+      discardButton.style.borderRadius = '4px';
+      discardButton.style.cursor = 'pointer';
+      discardButton.addEventListener('click', () => {
+        closeDialog();
+        resolve('discard');
+      });
+      
+      // Cancel button
+      const cancelButton = document.createElement('button');
+      cancelButton.textContent = 'Cancel';
+      cancelButton.style.padding = '8px 16px';
+      cancelButton.style.backgroundColor = '#3a3a3a';
+      cancelButton.style.color = '#ddd';
+      cancelButton.style.border = 'none';
+      cancelButton.style.borderRadius = '4px';
+      cancelButton.style.cursor = 'pointer';
+      cancelButton.addEventListener('click', () => {
+        closeDialog();
+        resolve('cancel');
+      });
+      
+      // Add buttons in order: Cancel, Discard, Save
+      buttonsContainer.appendChild(cancelButton);
+      buttonsContainer.appendChild(discardButton);
+      buttonsContainer.appendChild(saveButton);
+      dialog.appendChild(buttonsContainer);
+      
+      // Add keyboard navigation
+      overlay.tabIndex = 0;
+      overlay.focus();
+      overlay.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          closeDialog();
+          resolve('cancel');
+        }
+      });
+      
+      // Add the dialog to the document body
+      document.body.appendChild(overlay);
+      overlay.appendChild(dialog);
+      
+      // Focus the save button by default
+      saveButton.focus();
+    });
+  }
+  
   /**
    * Apply layout information to restore the Editor state
    * @param {Object} layoutInfo - Layout information for this Editor
@@ -939,7 +1057,7 @@ class EditorSource extends BaseComponent {
         path: tab.path,
         mode: tab.mode,
         content: content.length < 10000 ? content : '', // Only save if not too large
-        unsaved: tab.unsaved || false
+        modified: tab.modified || false
       };
     });
     
@@ -959,13 +1077,35 @@ class EditorSource extends BaseComponent {
   }
   
   /**
-   * Marks the active file as having unsaved changes
+   * Marks the active file as having modified changes
    */
-  markContentChanged() {
+  markContentModified() {
     const activeFile = this.getActiveFile();
     if (activeFile) {
-      activeFile.unsaved = true;
-      this.renderTabs();
+      // Only proceed if the file isn't already marked as modified
+      if (!activeFile.modified) {
+        if (activeFile.justLoaded) {
+          activeFile.justLoaded = false;
+          return;
+        }
+        activeFile.modified = true;
+        
+        // Find the active tab element and update just its text
+        if (this.tabsContainer) {
+          const activeTabElement = this.tabsContainer.querySelector(`.editor-tab[data-index="${this.activeTabIndex}"]`);
+          if (activeTabElement) {
+            // Find the name span (first span child)
+            const nameSpan = activeTabElement.querySelector('span');
+            if (nameSpan) {
+              nameSpan.textContent = activeFile.name + ' *';
+              return; // Exit early since we've updated the DOM directly
+            }
+          }
+        }
+        
+        // Fallback to full render if direct DOM update fails
+        this.renderTabs();
+      }
     }
   }
 }

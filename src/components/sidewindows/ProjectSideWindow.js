@@ -1,7 +1,8 @@
 // ProjectSideWindow.js - Project file tree side window implementation
 import SideWindow from './SideWindow.js';
 import { MESSAGES } from '../../utils/BaseComponent.js';
-import { PROJECTMESSAGES } from '../ProjectManager.js';
+import { PROJECTMESSAGES } from '../ProjectManager.js'
+import { MENUCOMMANDS } from '../MenuBar.js';
 
 class ProjectSideWindow extends SideWindow {
   constructor(parentId, containerId, initialHeight = 300) {
@@ -235,9 +236,9 @@ getFilePath(item) {
       
       // Add click handler for file
       itemElement.addEventListener('click', () => {
-        this.sendMessage('PROJECT_FILE_SELECTED', { 
-          fileName: item.name,
-          filePath: this.getFilePath(item, itemElement)
+        this.broadcast(MENUCOMMANDS.OPEN_FILE, { 
+          name: item.name,
+          path: this.getFilePath(item, itemElement)
         });
       });
       

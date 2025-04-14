@@ -220,15 +220,20 @@ class MessageBus {
     }
     if (this.addressedHandlers.has(targetID)) {
       const { handler, context } = this.addressedHandlers.get(targetID);
-      return await handler.call(context, message, data, senderId);
+      var answer = await handler.call(context, message, data, senderId);
+      return answer;
     }    
-    return new Promise((resolve, reject) => {
-      reject(new Error('Target not found.'));
-    });
+    return { error: 'Target not found.' };
   }
   
   /**
    * Broadcast a message to all registered handlers without traversing the component tree
+   * 
+   * @param {string} message - The message to broadcast
+   * @param {Object} data - Additional data to send with the message
+   * @param {string} senderId - The ID of the component that sent the message
+   * @param {Array} excludeIDs - Array of component IDs to exclude from the broadcast
+   * @returns {number} - Number of components that received the message
    */
   async broadcastToHandlers(message, data = {}, senderId = null, excludeIDs = []) {
     let deliveryCount = 0;

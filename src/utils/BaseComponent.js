@@ -22,23 +22,7 @@ export const MESSAGES = {
   MODE_CHANGE: 'MODE_CHANGE',
   MODE_ENTER: 'MODE_ENTER',
   MODE_EXIT: 'MODE_EXIT',
-  MENU_ACTION: 'MENU_ACTION',
-  ICON_ACTION: 'ICON_ACTION',
-  RUN_PROGRAM: 'RUN_PROGRAM',
-  DEBUG_PROGRAM: 'DEBUG_PROGRAM',
-  NEW_FILE: 'NEW_FILE',
-  OPEN_FILE: 'OPEN_FILE',
-  SAVE_FILE: 'SAVE_FILE',
   SIDEBAR_LAYOUT_CHANGED: 'SIDEBAR_LAYOUT_CHANGED',
-  UPDATE_STATUS: 'UPDATE_STATUS',
-  SHOW_TEMPORARY_STATUS: 'SHOW_TEMPORARY_STATUS',
-  WINDOW_TOGGLE: 'WINDOW_TOGGLE',
-  WINDOW_CLOSE: 'WINDOW_CLOSE',
-  WINDOW_RESIZE: 'WINDOW_RESIZE',
-  WINDOW_ENLARGE: 'WINDOW_ENLARGE',
-  OUTPUT_APPEND: 'OUTPUT_APPEND',
-  OUTPUT_CLEAR: 'OUTPUT_CLEAR',
-  OUTPUT_UPDATE: 'OUTPUT_UPDATE',
   INIT: 'INIT',
   RENDER: 'RENDER',
   ADD_SIDE_WINDOW: 'ADD_SIDE_WINDOW',
@@ -354,11 +338,12 @@ export default class BaseComponent {
    * @returns {Promise} - Promise that resolves with the response
    */
   sendRequestTo(targetComponentId, messageType, messageData = {}) {
-    return messageBus.sendRequest(targetComponentId, messageType, {
+    var answer = messageBus.sendRequest(targetComponentId, messageType, {
       type: messageType,
       data: messageData,
       from: this.componentId
     }, this.componentId);
+    return answer;
   }
     
   

@@ -717,20 +717,13 @@ class SocketSideWindow extends SideWindow {
    * Connect to the WebSocket server
    */
   connect(options) {
-    var userName;
-    if (options)
-      userName = options.userName;
-    if (this.accountInfo)
-      userName = userName ? userName : this.accountInfo.userName;
-    var url = options.url || this.url;
+    var userName=options.userName;
+    var url= options.url;
     if ( !url || !userName )
     {
       this.addMessage('sent', 'Missing required connection information');
       return;
     }
-    this.userName = userName;
-    this.url = url;
-
     // Disconnect if already connected
     if ( this.client.getState() === 'connected' ) {
       this.client.disconnect();
@@ -748,6 +741,8 @@ class SocketSideWindow extends SideWindow {
       url: url,
       userName: userName
     }).then(() => {
+      this.userName = userName;
+      this.url = url;
       this.handleConnectionOpen();
     }).catch(error => {
       this.handleConnectionError(error);
@@ -861,12 +856,10 @@ class SocketSideWindow extends SideWindow {
                     this.addMessage('received', 'Logged in AWI');
                   }
                 });
-              }
-            });
-          }
-          else
-          {
-             this.client.requestResponse(SERVERCOMMANDS.LOGIN, { userName: this.accountInfo.userName, password: this.accountInfo.password }).then((response) => {
+              } 
+            });  
+          }else{
+            this.client.requestResponse(SERVERCOMMANDS.LOGIN, { userName: this.accountInfo.userName, password: this.accountInfo.password }).then((response) => {
               if (!response.error) 
               {
                 this.loggedIn = true;
@@ -909,9 +902,22 @@ class SocketSideWindow extends SideWindow {
    * @param {Object} messageData - Message data
    * @returns {boolean} - True if handled
    */
-  handleConnect(data,sender) {
-    this.connect(data);
-    return true;
+  async handleConnect(data,sender) {
+    if ( data.userName && data.url )
+    {
+      if (data.accountInfo){
+        this.createAccount = true;
+        this.accountInfo = data.accountInfo;
+      }
+      else
+      {
+        this.createAccount = false;
+        this.accountInfo = null;
+      }
+      this.connect(data);
+      return true;
+    }
+    return false;
   }
   
   /**
@@ -944,9 +950,30 @@ class SocketSideWindow extends SideWindow {
    * @param {Object} messageData - Message data
    * @returns {boolean} - True if handled
    */
-  handleLogin(data,sender) {
-    this.showConnectionDialog();
-    return true;
+  async handleLogin(data,sender) {
+    const result = await this.showConnectionDialog();
+    if (result){
+      if (result.isAwiAccountChecked && !this.accountInfo) {
+        // Show the create account dialog
+        this.showCreateAccountDialog().then((accountInfo) => {
+          if (accountInfo) {
+            accountInfo.userName = result.userName;
+            this.createAccount = true;
+            this.accountInfo = accountInfo;
+            this.connect({
+              userName: result.userName,
+              url: result.url
+            });
+          }
+        });
+      } else {
+        this.createAccount = false;
+        this.connect({
+          userName: result.userName,
+          url: result.url
+        });
+      }
+    }
   }
 
   /**
@@ -985,8 +1012,11 @@ class SocketSideWindow extends SideWindow {
         this.client.requestResponse(data.command,data.parameters)
         .then(data => {
           // Add response to display
-          this.addMessage('received', data.responseTo);
-        
+          if (!data.parameters.error)
+            this.addMessage('received', data.responseTo);
+          else
+            this.addMessage('received', data.responseTo + ': ' + data.parameters.error);
+          
           // Update receive indicator
           this.updateReceiveIndicator();
           this.updateReceiveIndicatorTooltip();
@@ -1003,7 +1033,7 @@ class SocketSideWindow extends SideWindow {
           this.updateReceiveIndicatorTooltip();
 
           // Send error back to sender
-          reject(error);
+          reject(data.error);
         });
       });
     }
@@ -1462,43 +1492,10 @@ class SocketSideWindow extends SideWindow {
         // Get values from input fields
         const userName = userNameInput.value.trim();
         const url = urlInput.value.trim();
-        
-        // Check if the AWI account checkbox is checked
         const isAwiAccountChecked = accountCheckbox.checked;
-        
-        if (isAwiAccountChecked && !this.accountInfo) {
-          // Close the connection dialog
+        if (userName && url) {
           document.body.removeChild(dialogContainer);
-          
-          // Show the create account dialog
-          this.showCreateAccountDialog().then((accountInfo) => {
-            if (accountInfo) {
-              // Add the username from the connection dialog to the account info
-              accountInfo.userName = userName;
-              
-              // Store the account info and connect
-              this.createAccount = true;
-              this.accountInfo = accountInfo;
-              this.connect({
-                userName: userName,
-                url: url
-              });
-              resolve(true);
-            } else {
-              // If account creation was canceled
-              resolve(false);
-            }
-          });
-        } else {
-          // Connect to server normally
-          this.connect({
-            userName: userName,
-            url: url
-          });
-          
-          // Close dialog
-          document.body.removeChild(dialogContainer);
-          resolve(true);
+          resolve( { userName, url, isAwiAccountChecked } );
         }
       });
       buttonGroup.appendChild(connectButton);

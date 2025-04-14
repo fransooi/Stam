@@ -1,6 +1,8 @@
 // Editor.js - Container component that manages the source code editor
 import BaseComponent, { MESSAGES } from '../utils/BaseComponent.js'
 import EditorSource from './EditorSource.js'
+import { PROJECTMESSAGES } from './ProjectManager.js'
+import { MENUCOMMANDS } from './MenuBar.js'
 
 class Editor extends BaseComponent {
   constructor(parentId, containerId) {
@@ -12,16 +14,9 @@ class Editor extends BaseComponent {
     
     // Forward all relevant messages to the editor
     this.messageMap[MESSAGES.MODE_CHANGE] = this.handleModeChange;
-    this.messageMap[MESSAGES.NEW_FILE] = this.handleNewFile;
-    this.messageMap[MESSAGES.OPEN_FILE] = this.handleOpenFile;
-    this.messageMap[MESSAGES.SAVE_FILE] = this.handleSaveFile;
-    this.messageMap[MESSAGES.RUN_PROGRAM] = this.handleRunProgram;
-    this.messageMap[MESSAGES.DEBUG_PROGRAM] = this.handleDebugProgram;
-    
-    // Also listen for responses from the editor
-    this.messageMap[MESSAGES.SAVE_FILE_CONTENT] = this.handleSaveFileContent;
-    this.messageMap[MESSAGES.RUN_PROGRAM_CONTENT] = this.handleRunProgramContent;
-    this.messageMap[MESSAGES.DEBUG_PROGRAM_CONTENT] = this.handleDebugProgramContent;
+    this.messageMap[PROJECTMESSAGES.LOAD_FILE] = this.handleLoadFile;
+    this.messageMap[PROJECTMESSAGES.CLOSE_FILE] = this.handleCloseFile;
+    this.messageMap[MENUCOMMANDS.SAVE_FILE] = this.handleSaveFile;
   }
   
   async init(options) {
@@ -29,7 +24,7 @@ class Editor extends BaseComponent {
     this.currentMode = options?.mode || 'javascript';
     
     // Create the editor instance but don't render it yet
-    this.editor = new EditorSource(this.id, this.id + '-editor');
+    this.editor = new EditorSource(this.componentId);
     await this.editor.init({ mode: this.currentMode });
   }
 
@@ -58,7 +53,7 @@ class Editor extends BaseComponent {
     this.container.appendChild(editorContainer);
     
     // Render the editor in the container
-    await this.editor.render(editorContainer.id || 'editor-container');
+    //await this.editor.render(editorContainer.id || 'editor-container');
     
     return this.container;
   }
@@ -84,72 +79,28 @@ class Editor extends BaseComponent {
   // Message handlers - forward to editor
   
   async handleModeChange(data, sender) {
-    if (data.mode) {
-      this.currentMode = data.mode;
-      
-      // Update the editor mode
-      if (this.editor) {
-        await this.editor.handleModeChange(data, this.id);
-      }
-      
-      return true;
-    }
+    this.currentMode = data.mode;
+    if (this.editor) 
+      return await this.editor.handleModeChange(data, sender);
     return false;
   }
-  
-  async handleNewFile(data, sender) {
+  async handleLoadFile(data, sender) {
     if (this.editor) {
-      return await this.editor.handleNewFile(data, this.id);
+      return await this.editor.handleLoadFile(data, sender);
     }
     return false;
   }
-  
-  async handleOpenFile(data, sender) {
-    if (this.editor) {
-      return await this.editor.handleOpenFile(data, this.id);
-    }
-    return false;
-  }
-  
   async handleSaveFile(data, sender) {
     if (this.editor) {
-      return await this.editor.handleSaveFile(data, this.id);
+      return await this.editor.handleSaveFile(data, sender);
     }
     return false;
   }
-  
-  async handleRunProgram(data, sender) {
+  async handleCloseFile(data, sender) {
     if (this.editor) {
-      return await this.editor.handleRunProgram(data, this.id);
+      return await this.editor.handleCloseFile(data, sender);
     }
     return false;
-  }
-  
-  async handleDebugProgram(data, sender) {
-    if (this.editor) {
-      return await this.editor.handleDebugProgram(data, this.id);
-    }
-    return false;
-  }
-  
-  // Handle responses from the active editor and forward to parent
-  
-  async handleSaveFileContent(data, sender) {
-    // Forward to parent
-    this.sendMessage(MESSAGES.SAVE_FILE_CONTENT, data);
-    return true;
-  }
-  
-  async handleRunProgramContent(data, sender) {
-    // Forward to parent
-    this.sendMessage(MESSAGES.RUN_PROGRAM_CONTENT, data);
-    return true;
-  }
-  
-  async handleDebugProgramContent(data, sender) {
-    // Forward to parent
-    this.sendMessage(MESSAGES.DEBUG_PROGRAM_CONTENT, data);
-    return true;
   }
 
   /**

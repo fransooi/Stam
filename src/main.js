@@ -111,7 +111,10 @@ class StamApp extends BaseComponent {
     await this.broadcastUp(MESSAGES.LAYOUT_READY);
 
     // Send CONNECT message to socket
-    await this.sendMessageTo('class:SocketSideWindow',SOCKETMESSAGES.CONNECT_IF_CONNECTED);
+    if ( this.debug)
+      await this.sendMessageTo('class:SocketSideWindow',SOCKETMESSAGES.CONNECT, {userName: 'francois', url: 'ws://217.154.15.90:1033'});
+    else
+      await this.sendMessageTo('class:SocketSideWindow',SOCKETMESSAGES.CONNECT_IF_CONNECTED);
 
     // Log initialization
     console.log('STAM Application initialized in ' + this.currentMode + ' mode');

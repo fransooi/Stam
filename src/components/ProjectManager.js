@@ -9,9 +9,11 @@ import { SOCKETMESSAGES } from './sidewindows/SocketSideWindow.js';
 import { MENUCOMMANDS } from './MenuBar.js'
 
 export const PROJECTMESSAGES = {
-  SHOW_PROJECTDIALOG: 'show-project-dialog',
-  HIDE_PROJECTDIALOG: 'hide-project-dialog',
-  SET_PROJECT: 'set-project'
+  SET_PROJECT: 'PROJECT_SET_PROJECT',
+  CLOSE_PROJECT: 'PROJECT_CLOSE_PROJECT',
+  LOAD_FILE: 'PROJECT_LOAD_FILE',
+  SAVE_FILE: 'PROJECT_SAVE_FILE',
+  FILE_SAVED: 'PROJECT_FILE_SAVED'
 };
 
 class ProjectManager extends BaseComponent {
@@ -22,12 +24,14 @@ class ProjectManager extends BaseComponent {
   constructor(parentId = null,containerId) {
     super('Project', parentId,containerId);      
     this.projectName = null;
-    this.messageMap[PROJECTMESSAGES.SHOW_PROJECTDIALOG] = this.handleShowProjectDialog;
-    this.messageMap[PROJECTMESSAGES.HIDE_PROJECTDIALOG] = this.handleHideProjectDialog;
+    this.project = null;
+
     this.messageMap[SOCKETMESSAGES.CONNECTED] = this.handleConnected;
     this.messageMap[SOCKETMESSAGES.DISCONNECTED] = this.handleDisconnected;
     this.messageMap[MENUCOMMANDS.NEW_PROJECT] = this.handleNewProject;
     this.messageMap[MENUCOMMANDS.OPEN_PROJECT] = this.handleOpenProject;
+    this.messageMap[MENUCOMMANDS.OPEN_FILE] = this.handleOpenFile;
+    this.messageMap[PROJECTMESSAGES.SAVE_FILE] = this.handleSaveFile;
   }
 
   async init(options = {}) {
@@ -38,12 +42,88 @@ class ProjectManager extends BaseComponent {
     await super.destroy();
   }
   
-  handleShowProjectDialog(data, senderId) {
-    
+  // Find a file in the project
+  findFile( path )
+  {
+      function find( parent, path )
+      {
+          for ( var f = 0; f < parent.files.length; f++ )
+          {
+              var file = parent.files[f];
+              if ( file.path == path )
+                  return file;
+              if ( file.isDirectory )
+              {
+                  var found = find( file, path );
+                  if ( found )
+                      return found;
+              }
+          }
+          return null;
+      }
+      if ( this.project )
+          return find( this.project, path );
+      return null;
+  }
+  findFileParent( path )
+  {
+      function find( parent, path )
+      {
+          for ( var f = 0; f < parent.files.length; f++ )
+          {
+              var file = parent.files[f];
+              if ( file.path == path )
+                  return parent;
+              if ( file.isDirectory )
+              {
+                  var found = find( file, path );
+                  if ( found )
+                      return found;
+              }
+          }
+          return null;
+      }
+      if ( this.project )
+          return find( this.project, path );
+      return null;
+  }
+  findFolder( path )
+  {
+      function find( parent, path )
+      {
+          for ( var f = 0; f < parent.files.length; f++ )
+          {
+              var file = parent.files[f];
+              if ( file.path == path && file.isDirectory )
+                  return parent;
+              if ( file.isDirectory )
+              {
+                  var found = find( file, path );
+                  if ( found )
+                      return found;
+              }
+          }
+          return null;
+      }
+      if ( this.project )
+          return find( this.project, path );
+      return null;
   }
 
-  handleHideProjectDialog(data, senderId) {
-    
+  setFileContent(file) {
+    var hostFile = this.findFile(file.path);
+    if (hostFile)
+    {
+      hostFile.content = file.content;
+    }   
+  }
+
+  updateFile(file) {
+    var hostFile = this.findFile(file.path);
+    if (hostFile)
+    {
+      hostFile.content = file.content;
+    }   
   }
 
   async handleConnected(data, senderId) {
@@ -62,41 +142,6 @@ class ProjectManager extends BaseComponent {
     
   }
 
-  async handleLoadProject(data, senderId) {
-    if ( data.name )
-    {
-      this.root.fileSystem.openProject(data)
-      .then((project) => {
-        this.projectName = project.name;
-        this.project = project;
-        console.log( 'Project loaded: ', this.projectName );
-        console.log( '              : ', project.url );
-        this.broadcast(PROJECTMESSAGES.SET_PROJECT, project);
-      })
-      .catch((error) => {
-        console.error('Error loading project:', error);
-      });
-    }
-  }
-
-  async handleOpenProject(data, senderId) {
-    if ( !await this.sendRequestTo( 'class:SocketSideWindow', SOCKETMESSAGES.ENSURE_CONNECTED, {}))
-      return;
-
-    this.root.fileSystem.getProjectList({ mode: this.root.currentMode })
-    .then((projects) => {
-      if ( projects )
-      {
-        this.showOpenProjectDialog(projects).then((response) =>{
-          if (response)
-          {
-            this.handleLoadProject(response, senderId);
-          }
-        });
-      }
-    })
-  }
-  
   async handleNewProject(data, senderId) {
     if ( !await this.sendRequestTo( 'class:SocketSideWindow', SOCKETMESSAGES.ENSURE_CONNECTED, {}))
       return;
@@ -142,6 +187,112 @@ class ProjectManager extends BaseComponent {
       createProject(data);
       return true;
     }
+  }
+  
+  async handleLoadProject(data, senderId) {
+    if ( data.name )
+    {
+      this.root.fileSystem.openProject(data)
+      .then((project) => {
+        this.projectName = project.name;
+        this.project = project;
+        console.log( 'Project loaded: ', this.projectName );
+        console.log( '              : ', project.url );
+        this.broadcast(PROJECTMESSAGES.SET_PROJECT, project);
+      })
+      .catch((error) => {
+        console.error('Error loading project:', error);
+      });
+    }
+  }
+
+  async handleOpenProject(data, senderId) {
+    if ( !await this.sendRequestTo( 'class:SocketSideWindow', SOCKETMESSAGES.ENSURE_CONNECTED, {}))
+      return;
+
+    this.root.fileSystem.getProjectList({ mode: this.root.currentMode })
+    .then((projects) => {
+      if ( projects )
+      {
+        this.showOpenProjectDialog(projects).then((response) =>{
+          if (response)
+          {
+            this.handleLoadProject(response, senderId);
+          }
+        });
+      }
+    })
+  }
+  
+  async handleOpenFile(data, senderId) {
+    if ( !await this.sendRequestTo( 'class:SocketSideWindow', SOCKETMESSAGES.ENSURE_CONNECTED, {}))
+      return;
+
+    if ( !this.project)
+    {
+      console.error('No project loaded');
+      return;
+    }
+
+    // No file name-> file selector
+    if (!data.path)
+    {
+      this.showOpenFileDialog().then((response) =>{
+        if (response)
+        {
+          this.handleOpenFile(response, senderId);
+        }
+      });
+      return;
+    }
+
+    // If the file is already loaded-> display it
+    var file = this.findFile(data.path);
+    if (file && file.content)
+    {
+      this.broadcast(PROJECTMESSAGES.LOAD_FILE, file);
+      return;
+    }
+
+    // Load the file from the server
+    data.mode = this.root.currentMode;
+    data.handle = this.project.handle;
+    this.root.fileSystem.loadFile(data)
+    .then((file) => {
+      if ( file )
+      {
+        this.setFileContent(file);
+        this.broadcast(PROJECTMESSAGES.LOAD_FILE, file);
+      }
+    })
+  }
+  
+  async handleSaveFile(data, senderId) {
+    if ( !await this.sendRequestTo( 'class:SocketSideWindow', SOCKETMESSAGES.ENSURE_CONNECTED, {}))
+      return;
+
+    if ( !this.project)
+    {
+      console.error('No project loaded');
+      return;
+    }
+
+    // No file name-> get current file from editor
+    if (!data.path)
+    {
+      this.showSaveFileDialog().then((response) =>{
+        if (response)
+        {
+          this.handleSaveFile(response, senderId);
+        }
+      });
+      return;
+    }
+
+    // Save the file on the server
+    data.mode = this.root.currentMode;
+    data.handle = this.project.handle;
+    return await this.root.fileSystem.saveFile(data);
   }
   
   async getLayoutInfo() {
@@ -589,6 +740,287 @@ class ProjectManager extends BaseComponent {
       
       // Add the dialog to the document body
       document.body.appendChild(dialog);
+    });
+  }
+  
+  /**
+   * Show a file open dialog with the project file structure
+   * @param {Array|string} fileExtensions - File extensions to filter (e.g., "*.js" or ["*.js", "*.mjs"])
+   * @returns {Promise} - Resolves with the selected file or null if cancelled
+   */
+  async showOpenFileDialog(fileExtensions = null) {
+    return new Promise((resolve) => {
+      // Convert single extension to array for consistent handling
+      const extensions = Array.isArray(fileExtensions) ? fileExtensions : (fileExtensions ? [fileExtensions] : null);
+      
+      // Create the dialog element
+      const dialog = document.createElement('div');
+      dialog.className = 'file-dialog';
+      dialog.style.display = 'block';
+      dialog.style.position = 'fixed';
+      dialog.style.top = '50%';
+      dialog.style.left = '50%';
+      dialog.style.transform = 'translate(-50%, -50%)';
+      dialog.style.backgroundColor = '#2a2a2a';
+      dialog.style.border = '1px solid #444';
+      dialog.style.borderRadius = '4px';
+      dialog.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.3)';
+      dialog.style.padding = '20px';
+      dialog.style.width = '500px';
+      dialog.style.maxHeight = '80vh';
+      dialog.style.zIndex = '1000';
+      dialog.style.display = 'flex';
+      dialog.style.flexDirection = 'column';
+      
+      // Create dialog header
+      const header = document.createElement('div');
+      header.className = 'file-dialog-header';
+      header.style.marginBottom = '20px';
+      header.style.borderBottom = '1px solid #444';
+      header.style.paddingBottom = '10px';
+      
+      const title = document.createElement('h2');
+      title.textContent = 'Open File';
+      title.style.margin = '0';
+      title.style.color = '#eee';
+      title.style.fontSize = '18px';
+      
+      header.appendChild(title);
+      dialog.appendChild(header);
+      
+      // Create filter display if extensions are provided
+      if (extensions && extensions.length > 0) {
+        const filterInfo = document.createElement('div');
+        filterInfo.style.fontSize = '14px';
+        filterInfo.style.color = '#aaa';
+        filterInfo.style.marginBottom = '10px';
+        filterInfo.textContent = `Filter: ${extensions.join(', ')}`;
+        dialog.appendChild(filterInfo);
+      }
+      
+      // Create file tree container
+      const treeContainer = document.createElement('div');
+      treeContainer.className = 'file-tree-container';
+      treeContainer.style.overflowY = 'auto';
+      treeContainer.style.maxHeight = 'calc(80vh - 150px)';
+      treeContainer.style.marginBottom = '20px';
+      treeContainer.style.border = '1px solid #444';
+      treeContainer.style.borderRadius = '4px';
+      treeContainer.style.padding = '10px';
+      
+      // Function to check if a file matches the extensions filter
+      const fileMatchesFilter = (filename) => {
+        if (!extensions || extensions.length === 0) return true;
+        
+        return extensions.some(ext => {
+          const pattern = ext.replace('*.', '.').toLowerCase();
+          return filename.toLowerCase().endsWith(pattern);
+        });
+      };
+      
+      // Function to recursively build the file tree
+      const buildFileTree = (files, parentElement, level = 0) => {
+        if (!Array.isArray(files)) return;
+        
+        // Sort files: directories first, then files alphabetically
+        const sortedFiles = [...files].sort((a, b) => {
+          if (a.isDirectory && !b.isDirectory) return -1;
+          if (!a.isDirectory && b.isDirectory) return 1;
+          return a.name.localeCompare(b.name);
+        });
+        
+        sortedFiles.forEach(file => {
+          const isDirectory = file.isDirectory;
+          
+          // Skip files that don't match the filter
+          if (!isDirectory && !fileMatchesFilter(file.name)) return;
+          
+          // Create item container
+          const itemContainer = document.createElement('div');
+          itemContainer.className = 'file-tree-item';
+          itemContainer.style.paddingLeft = `${level * 20}px`;
+          itemContainer.style.padding = '5px';
+          itemContainer.style.paddingLeft = `${level * 20 + 5}px`;
+          itemContainer.style.cursor = 'pointer';
+          itemContainer.style.display = 'flex';
+          itemContainer.style.alignItems = 'center';
+          itemContainer.style.borderRadius = '3px';
+          
+          // Hover effect
+          itemContainer.addEventListener('mouseover', () => {
+            itemContainer.style.backgroundColor = '#3a3a3a';
+          });
+          
+          itemContainer.addEventListener('mouseout', () => {
+            itemContainer.style.backgroundColor = 'transparent';
+          });
+          
+          // Create icon
+          const icon = document.createElement('span');
+          icon.className = 'file-icon';
+          icon.style.marginRight = '5px';
+          icon.style.fontSize = '14px';
+          icon.textContent = isDirectory ? '📁' : '📄';
+          
+          // Create label
+          const label = document.createElement('span');
+          label.className = 'file-label';
+          label.textContent = file.name;
+          label.style.color = '#ddd';
+          
+          // Add elements to container
+          itemContainer.appendChild(icon);
+          itemContainer.appendChild(label);
+          parentElement.appendChild(itemContainer);
+          
+          // Handle directory expansion
+          if (isDirectory) {
+            // Add expand/collapse indicator
+            const expandIcon = document.createElement('span');
+            expandIcon.className = 'expand-icon';
+            expandIcon.style.marginRight = '5px';
+            expandIcon.textContent = '▶';
+            expandIcon.style.fontSize = '10px';
+            expandIcon.style.color = '#aaa';
+            
+            // Insert expand icon before the folder icon
+            itemContainer.insertBefore(expandIcon, icon);
+            
+            // Create container for children (initially hidden)
+            const childrenContainer = document.createElement('div');
+            childrenContainer.className = 'file-children';
+            childrenContainer.style.display = 'none';
+            parentElement.appendChild(childrenContainer);
+            
+            // Toggle expansion on click
+            let expanded = false;
+            itemContainer.addEventListener('click', (e) => {
+              e.stopPropagation();
+              expanded = !expanded;
+              expandIcon.textContent = expanded ? '▼' : '▶';
+              childrenContainer.style.display = expanded ? 'block' : 'none';
+              
+              // Only build children the first time we expand
+              if (expanded && childrenContainer.children.length === 0) {
+                buildFileTree(file.files, childrenContainer, level + 1);
+              }
+            });
+          } else {
+            // File selection
+            itemContainer.addEventListener('click', () => {
+              // Remove selection from any previously selected item
+              const selectedItems = treeContainer.querySelectorAll('.file-selected');
+              selectedItems.forEach(item => {
+                item.classList.remove('file-selected');
+                item.style.backgroundColor = 'transparent';
+              });
+              
+              // Mark this item as selected
+              itemContainer.classList.add('file-selected');
+              itemContainer.style.backgroundColor = '#4a6da7';
+              
+              // Store the selected file
+              selectedFile = file;
+              updateOpenButtonState();
+            });
+            
+            // Double-click to select and confirm
+            itemContainer.addEventListener('dblclick', () => {
+              selectedFile = file;
+              closeDialogWithResult(true);
+            });
+          }
+        });
+      };
+      
+      // Variable to store the selected file
+      let selectedFile = null;
+      
+      // Build the initial file tree
+      if (this.project && this.project.files) {
+        buildFileTree(this.project.files, treeContainer);
+      } else {
+        const noFiles = document.createElement('div');
+        noFiles.textContent = 'No files available';
+        noFiles.style.padding = '10px';
+        noFiles.style.color = '#aaa';
+        treeContainer.appendChild(noFiles);
+      }
+      
+      dialog.appendChild(treeContainer);
+      
+      // Create dialog footer with buttons
+      const footer = document.createElement('div');
+      footer.className = 'file-dialog-footer';
+      footer.style.display = 'flex';
+      footer.style.justifyContent = 'flex-end';
+      footer.style.gap = '10px';
+      footer.style.marginTop = 'auto';
+      
+      const cancelButton = document.createElement('button');
+      cancelButton.textContent = 'Cancel';
+      cancelButton.style.padding = '8px 16px';
+      cancelButton.style.backgroundColor = '#3a3a3a';
+      cancelButton.style.color = '#ddd';
+      cancelButton.style.border = 'none';
+      cancelButton.style.borderRadius = '4px';
+      cancelButton.style.cursor = 'pointer';
+      
+      const openButton = document.createElement('button');
+      openButton.textContent = 'Open';
+      openButton.style.padding = '8px 16px';
+      openButton.style.backgroundColor = '#4a6da7';
+      openButton.style.color = '#fff';
+      openButton.style.border = 'none';
+      openButton.style.borderRadius = '4px';
+      openButton.style.cursor = 'pointer';
+      openButton.disabled = true;
+      openButton.style.opacity = '0.6';
+      
+      // Function to close the dialog and return result
+      const closeDialogWithResult = (confirmed) => {
+        document.body.removeChild(dialog);
+        if (confirmed && selectedFile) {
+          resolve(selectedFile);
+        } else {
+          resolve(null);
+        }
+      };
+      
+      // Update open button state when a file is selected
+      const updateOpenButtonState = () => {
+        if (selectedFile && !selectedFile.isDirectory) {
+          openButton.disabled = false;
+          openButton.style.opacity = '1';
+        } else {
+          openButton.disabled = true;
+          openButton.style.opacity = '0.6';
+        }
+      };
+      
+      // Set up button click handlers
+      cancelButton.addEventListener('click', () => closeDialogWithResult(false));
+      openButton.addEventListener('click', () => closeDialogWithResult(true));
+      
+      footer.appendChild(cancelButton);
+      footer.appendChild(openButton);
+      dialog.appendChild(footer);
+      
+      // Add the dialog to the document body
+      document.body.appendChild(dialog);
+      
+      // Add keyboard navigation
+      dialog.tabIndex = 0;
+      dialog.focus();
+      dialog.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          closeDialogWithResult(false);
+        } else if (e.key === 'Enter') {
+          if (selectedFile && !selectedFile.isDirectory) {
+            closeDialogWithResult(true);
+          }
+        }
+      });
     });
   }
   

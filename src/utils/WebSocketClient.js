@@ -170,11 +170,7 @@ class WebSocketClient {
         const { resolve, reject, timeout } = this.callbacks.get(message.callbackId);
         clearTimeout(timeout);
         this.callbacks.delete(message.callbackId);
-        if (message.parameters.error) {
-          reject(message);
-        } else {
-          resolve(message);
-        }
+        resolve(message);
         return;
       }
       // Call the user callback
